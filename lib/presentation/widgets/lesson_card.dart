@@ -36,7 +36,7 @@ class LessonCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _NumberBadge(number: number, accentColor: accentColor),
             const SizedBox(width: 12),
