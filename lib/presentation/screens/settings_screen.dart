@@ -4,7 +4,7 @@ import 'package:my_mpt/domain/entities/group.dart';
 import 'package:my_mpt/domain/usecases/get_specialties_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_groups_by_specialty_usecase.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
-import 'package:my_mpt/data/repositories/specialty_repository.dart';
+import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -32,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = SpecialtyRepository();
+    _repository = repo_impl.MptRepository();
     _getSpecialtiesUseCase = GetSpecialtiesUseCase(_repository);
     _getGroupsBySpecialtyUseCase = GetGroupsBySpecialtyUseCase(_repository);
     _loadSpecialties();
@@ -61,6 +61,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadGroups(String specialtyCode) async {
+    print('DEBUG: Начинаем загрузку групп для специальности: $specialtyCode');
+    print('DEBUG: Длина кода специальности: ${specialtyCode.length}');
+    print('DEBUG: Код специальности в байтах: ${specialtyCode.codeUnits}');
+    print('DEBUG: Начинается с #: ${specialtyCode.startsWith('#')}');
+    print('DEBUG: Тип кода специальности: ${specialtyCode.runtimeType}');
     setState(() {
       _isLoading = true;
       _groups = [];
@@ -69,22 +74,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     try {
       final groups = await _getGroupsBySpecialtyUseCase(specialtyCode);
+      print('DEBUG: Получено групп: ${groups.length}');
       setState(() {
         _groups = groups;
         _isLoading = false;
       });
+      
+      // Show message if no groups found
+      if (groups.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Для выбранной специальности группы не найдены')),
+        );
+      } else {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Загружено ${groups.length} групп')),
+        );
+      }
+      
+      // Force refresh the UI
+      setState(() {});
     } catch (e) {
+      print('DEBUG: Ошибка загрузки групп: $e');
       setState(() {
         _isLoading = false;
       });
       // Handle error appropriately
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка загрузки групп')),
+        SnackBar(content: Text('Ошибка загрузки групп: $e')),
       );
     }
   }
 
   void _onSpecialtySelected(Specialty specialty) {
+    print('DEBUG: Выбрана специальность: ${specialty.code} - ${specialty.name}');
     setState(() {
       _selectedSpecialty = specialty;
       _selectedGroup = null;
@@ -221,10 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               specialty.name,
                               style: const TextStyle(color: Colors.white),
                             ),
-                            subtitle: Text(
-                              specialty.code,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
+                            // Убираем subtitle с кодом специальности
                             onTap: () {
                               Navigator.pop(context);
                               _onSpecialtySelected(specialty);
@@ -275,22 +295,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00)))
-                    : ListView.builder(
-                        itemCount: _groups.length,
-                        itemBuilder: (context, index) {
-                          final group = _groups[index];
-                          return ListTile(
-                            title: Text(
-                              group.code,
-                              style: const TextStyle(color: Colors.white),
+                    : _groups.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Группы не найдены',
+                              style: TextStyle(color: Colors.white70),
                             ),
-                            onTap: () {
-                              Navigator.pop(context);
-                              _onGroupSelected(group);
+                          )
+                        : ListView.builder(
+                            itemCount: _groups.length,
+                            itemBuilder: (context, index) {
+                              final group = _groups[index];
+                              return ListTile(
+                                title: Text(
+                                  group.code,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _onGroupSelected(group);
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
+                          ),
               ),
             ],
           ),
