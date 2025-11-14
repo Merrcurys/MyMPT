@@ -75,7 +75,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF05070C),
+      backgroundColor: const Color(0xFF000000),
       body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 12, 16, 24),
