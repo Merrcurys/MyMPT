@@ -81,36 +81,39 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                       ),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                      padding: const EdgeInsets.symmetric(vertical: 24),
                       sliver: SliverToBoxAdapter(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const Expanded(
-                                  child: Text(
-                                    'Сегодня',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (building.isNotEmpty) ...[
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Align(
-                                      alignment: Alignment.centerRight,
-                                      child: BuildingChip(label: building),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Сегодня',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  if (building.isNotEmpty) ...[
+                                    const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: BuildingChip(label: building),
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 20),
                             Column(
                               children: List.generate(_scheduleData.length, (index) {
                                 final item = _scheduleData[index];
@@ -139,7 +142,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
                                 return Padding(
                                   padding: EdgeInsets.only(
-                                    bottom: index == _scheduleData.length - 1 ? 0 : 16,
+                                    bottom: index == _scheduleData.length - 1 ? 0 : 14,
                                   ),
                                   child: Column(
                                     children: widgets,
@@ -214,36 +217,40 @@ class _TodayHeader extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 30, 24, 26),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              dateLabel,
-              style: const TextStyle(fontSize: 16, color: Colors.white70),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: const Text(
+                'Числитель',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
             const Text(
               'Сегодня',
               style: TextStyle(
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                _MetricChip(
-                  icon: Icons.book_outlined,
-                  label: '$lessonsCount занятий',
-                ),
-                const SizedBox(width: 12),
-                const _MetricChip(
-                  icon: Icons.schedule_outlined,
-                  label: 'Числитель',
-                ),
-              ],
+            const SizedBox(height: 6),
+            Text(
+              dateLabel,
+              style: const TextStyle(fontSize: 16, color: Colors.white70),
             ),
           ],
         ),
@@ -277,7 +284,6 @@ class _MetricChip extends StatelessWidget {
             style: const TextStyle(fontSize: 13, color: Colors.white),
           ),
         ],
-      ),
-    );
+      );
   }
 }
