@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
+import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import '../../data/repositories/schedule_repository.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
@@ -260,17 +261,35 @@ class _DaySection extends StatelessWidget {
           Column(
             children: List.generate(lessons.length, (index) {
               final lesson = lessons[index];
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: index == lessons.length - 1 ? 0 : 14,
-                ),
-                child: LessonCard(
+              final widgets = <Widget>[
+                LessonCard(
                   number: lesson.number,
                   subject: lesson.subject,
                   teacher: lesson.teacher,
                   startTime: lesson.startTime,
                   endTime: lesson.endTime,
                   accentColor: accentColor,
+                ),
+              ];
+
+              // Add break indicator after each lesson except the last one
+              if (index < lessons.length - 1) {
+                final nextLesson = lessons[index + 1];
+                widgets.add(
+                  BreakIndicator(
+                    duration: '20 минут', // This could be calculated based on actual times
+                    startTime: lesson.endTime,
+                    endTime: nextLesson.startTime,
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == lessons.length - 1 ? 0 : 14,
+                ),
+                child: Column(
+                  children: widgets,
                 ),
               );
             }),

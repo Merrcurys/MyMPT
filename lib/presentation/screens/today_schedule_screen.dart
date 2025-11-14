@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
+import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import '../../data/repositories/schedule_repository.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
@@ -105,22 +106,42 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                               ],
                             ),
                             const SizedBox(height: 24),
-                            ...List.generate(_scheduleData.length, (index) {
-                              final item = _scheduleData[index];
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: index == _scheduleData.length - 1 ? 0 : 16,
-                                ),
-                                child: LessonCard(
-                                  number: item.number,
-                                  subject: item.subject,
-                                  teacher: item.teacher,
-                                  startTime: item.startTime,
-                                  endTime: item.endTime,
-                                  accentColor: _lessonAccent,
-                                ),
-                              );
-                            }),
+                            Column(
+                              children: List.generate(_scheduleData.length, (index) {
+                                final item = _scheduleData[index];
+                                final widgets = <Widget>[
+                                  LessonCard(
+                                    number: item.number,
+                                    subject: item.subject,
+                                    teacher: item.teacher,
+                                    startTime: item.startTime,
+                                    endTime: item.endTime,
+                                    accentColor: _lessonAccent,
+                                  ),
+                                ];
+
+                                // Add break indicator after each lesson except the last one
+                                if (index < _scheduleData.length - 1) {
+                                  final nextItem = _scheduleData[index + 1];
+                                  widgets.add(
+                                    BreakIndicator(
+                                      duration: '20 минут', // This could be calculated based on actual times
+                                      startTime: item.endTime,
+                                      endTime: nextItem.startTime,
+                                    ),
+                                  );
+                                }
+
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index == _scheduleData.length - 1 ? 0 : 16,
+                                  ),
+                                  child: Column(
+                                    children: widgets,
+                                  ),
+                                );
+                              }),
+                            ),
                           ],
                         ),
                       ),
