@@ -170,7 +170,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                         final nextItem = scheduleData[index + 1];
                         widgets.add(
                           BreakIndicator(
-                            duration: '20 минут', // This could be calculated based on actual times
                             startTime: item.endTime,
                             endTime: nextItem.startTime,
                           ),

@@ -256,7 +256,6 @@ class _DaySection extends StatelessWidget {
                 final nextLesson = lessons[index + 1];
                 widgets.add(
                   BreakIndicator(
-                    duration: '20 минут', // This could be calculated based on actual times
                     startTime: lesson.endTime,
                     endTime: nextLesson.startTime,
                   ),

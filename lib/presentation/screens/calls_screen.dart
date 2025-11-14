@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_mpt/data/models/call.dart';
+import 'package:my_mpt/data/services/calls_service.dart';
 
 class CallsScreen extends StatelessWidget {
   const CallsScreen({super.key});
@@ -9,18 +11,10 @@ class CallsScreen extends StatelessWidget {
     Color(0xFF111111),
   ];
 
-  static final List<Map<String, String>> _callsData = [
-    {'period': '1', 'time': '08:30 - 10:00', 'description': 'Перемена 10 минут'},
-    {'period': '2', 'time': '10:10 - 11:40', 'description': 'Перемена 20 минут'},
-    {'period': '3', 'time': '12:00 - 13:30', 'description': 'Перемена 20 минут'},
-    {'period': '4', 'time': '13:50 - 15:20', 'description': 'Перемена 10 минут'},
-    {'period': '5', 'time': '15:30 - 17:00', 'description': 'Перемена 5 минут'},
-    {'period': '6', 'time': '17:05 - 18:35', 'description': 'Перемена 5 минут'},
-    {'period': '7', 'time': '18:40 - 20:10', 'description': 'Конец учебного дня'},
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final List<Call> callsData = CallsService.getCalls();
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
@@ -48,13 +42,14 @@ class CallsScreen extends StatelessWidget {
                   ],
                 ),
                 child: Column(
-                  children: List.generate(_callsData.length, (index) {
-                    final call = _callsData[index];
-                    final isLast = index == _callsData.length - 1;
+                  children: List.generate(callsData.length, (index) {
+                    final call = callsData[index];
+                    final isLast = index == callsData.length - 1;
                     return _CallTimelineTile(
-                      period: call['period']!,
-                      time: call['time']!,
-                      description: call['description']!,
+                      period: call.period,
+                      startTime: call.startTime,
+                      endTime: call.endTime,
+                      description: call.description,
                       showConnector: !isLast,
                     );
                   }),
@@ -111,13 +106,15 @@ class _CallsHeader extends StatelessWidget {
 
 class _CallTimelineTile extends StatelessWidget {
   final String period;
-  final String time;
+  final String startTime;
+  final String endTime;
   final String description;
   final bool showConnector;
 
   const _CallTimelineTile({
     required this.period,
-    required this.time,
+    required this.startTime,
+    required this.endTime,
     required this.description,
     required this.showConnector,
   });
@@ -162,12 +159,12 @@ class _CallTimelineTile extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  time,
+                  '$startTime - $endTime',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

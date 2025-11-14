@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:my_mpt/data/services/calls_service.dart';
 
 class BreakIndicator extends StatelessWidget {
-  final String duration;
   final String startTime;
   final String endTime;
 
   const BreakIndicator({
     super.key,
-    this.duration = '20 минут',
-    this.startTime = '10:20',
-    this.endTime = '10:40',
+    required this.startTime,
+    required this.endTime,
   });
 
   @override
   Widget build(BuildContext context) {
+    final String duration = CallsService.getBreakDuration(startTime, endTime);
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0), // Added top padding (8.0) and removed bottom padding
       child: Row(
