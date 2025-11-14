@@ -1,226 +1,278 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/presentation/widgets/building_chip.dart';
+import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 
-/// Экран "Расписание на сегодня"
+/// Экран "Сегодня" с обновлённым тёмным стилем
 class TodayScheduleScreen extends StatelessWidget {
   const TodayScheduleScreen({super.key});
 
+  static const _backgroundColor = Color(0xFF05070C);
+  static const _accentPalette = [
+    Color(0xFF7C3AED),
+    Color(0xFF0EA5E9),
+    Color(0xFF10B981),
+    Color(0xFFF97316),
+    Color(0xFFE11D48),
+  ];
+
+  static final List<Schedule> _scheduleData = [
+    Schedule(
+      id: '1',
+      number: '1',
+      subject: 'Математика',
+      teacher: 'Иванова И.И.',
+      startTime: '08:30',
+      endTime: '09:15',
+      building: 'Нежинская',
+    ),
+    Schedule(
+      id: '2',
+      number: '2',
+      subject: 'Физика',
+      teacher: 'Петров П.П.',
+      startTime: '09:25',
+      endTime: '10:10',
+      building: 'Нахимовский',
+    ),
+    Schedule(
+      id: '3',
+      number: '3',
+      subject: 'Программирование',
+      teacher: 'Сидоров С.С.',
+      startTime: '10:30',
+      endTime: '11:15',
+      building: 'Нежинская',
+    ),
+    Schedule(
+      id: '4',
+      number: '4',
+      subject: 'Английский язык',
+      teacher: 'Козлова К.К.',
+      startTime: '11:25',
+      endTime: '12:10',
+      building: 'Нахимовский',
+    ),
+    Schedule(
+      id: '5',
+      number: '5',
+      subject: 'Физическая культура',
+      teacher: 'Васильев В.В.',
+      startTime: '12:30',
+      endTime: '13:15',
+      building: 'Нежинская',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    // Данные расписания на сегодня
-    final List<Schedule> scheduleData = [
-      Schedule(
-        id: '1',
-        number: '1',
-        subject: 'Математика',
-        teacher: 'Иванова И.И.',
-        startTime: '08:30',
-        endTime: '09:15',
-        building: 'Нежинская',
+    final building = _primaryBuilding(_scheduleData);
+    final dateLabel = _formatDate(DateTime.now());
+
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _TodayHeader(
+                dateLabel: dateLabel,
+                lessonsCount: _scheduleData.length,
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Сегодня',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (building.isNotEmpty) ...[
+                          const SizedBox(width: 10),
+                          Flexible(child: BuildingChip(label: building)),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    ...List.generate(_scheduleData.length, (index) {
+                      final item = _scheduleData[index];
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == _scheduleData.length - 1 ? 0 : 16,
+                        ),
+                        child: LessonCard(
+                          number: item.number,
+                          subject: item.subject,
+                          teacher: item.teacher,
+                          startTime: item.startTime,
+                          endTime: item.endTime,
+                          accentColor:
+                              _accentPalette[index % _accentPalette.length],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      Schedule(
-        id: '2',
-        number: '2',
-        subject: 'Физика',
-        teacher: 'Петров П.П.',
-        startTime: '09:25',
-        endTime: '10:10',
-        building: 'Нахимовский',
-      ),
-      Schedule(
-        id: '3',
-        number: '3',
-        subject: 'Программирование',
-        teacher: 'Сидоров С.С.',
-        startTime: '10:30',
-        endTime: '11:15',
-        building: 'Нежинская',
-      ),
-      Schedule(
-        id: '4',
-        number: '4',
-        subject: 'Английский язык',
-        teacher: 'Козлова К.К.',
-        startTime: '11:25',
-        endTime: '12:10',
-        building: 'Нахимовский',
-      ),
-      Schedule(
-        id: '5',
-        number: '5',
-        subject: 'Физическая культура',
-        teacher: 'Васильев В.В.',
-        startTime: '12:30',
-        endTime: '13:15',
-        building: 'Нежинская',
-      ),
+    );
+  }
+
+  String _primaryBuilding(List<Schedule> schedule) {
+    if (schedule.isEmpty) return '';
+
+    final counts = <String, int>{};
+    for (final lesson in schedule) {
+      counts[lesson.building] = (counts[lesson.building] ?? 0) + 1;
+    }
+
+    String primary = schedule.first.building;
+    var maxCount = 0;
+    counts.forEach((building, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        primary = building;
+      }
+    });
+    return primary;
+  }
+
+  String _formatDate(DateTime date) {
+    const days = [
+      'Понедельник',
+      'Вторник',
+      'Среда',
+      'Четверг',
+      'Пятница',
+      'Суббота',
+      'Воскресенье',
+    ];
+    const months = [
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря',
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Заголовок недели
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF7943C),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Числитель',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Четверг, 12 ноября',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 24),
-        
-        // Информация о корпусе
-        Center(
-          child: Text(
-            'Нежинская',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[400],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        
-        // Элементы расписания
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ListView.separated(
-              itemCount: scheduleData.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final item = scheduleData[index];
-                return _ScheduleItem(
-                  number: item.number,
-                  subject: item.subject,
-                  teacher: item.teacher,
-                  startTime: item.startTime,
-                  endTime: item.endTime,
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
+    final weekday = days[(date.weekday - 1) % days.length];
+    final month = months[(date.month - 1) % months.length];
+    return '$weekday, ${date.day} $month';
   }
 }
 
-/// Компактная карточка занятия
-class _ScheduleItem extends StatelessWidget {
-  final String number;
-  final String subject;
-  final String teacher;
-  final String startTime;
-  final String endTime;
+class _TodayHeader extends StatelessWidget {
+  final String dateLabel;
+  final int lessonsCount;
 
-  const _ScheduleItem({
-    required this.number,
-    required this.subject,
-    required this.teacher,
-    required this.startTime,
-    required this.endTime,
-  });
+  const _TodayHeader({required this.dateLabel, required this.lessonsCount});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.only(top: 16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF333333),
-          width: 1,
+        borderRadius: BorderRadius.circular(32),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF312E81), Color(0xFF1E1B4B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.45),
+            blurRadius: 30,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(24, 30, 24, 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Номер пары
             Text(
-              number,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+              dateLabel,
+              style: const TextStyle(fontSize: 16, color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Сегодня',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(width: 16),
-            // Информация о паре
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subject,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    teacher,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Время
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 20),
+            Row(
               children: [
-                Text(
-                  startTime,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                _MetricChip(
+                  icon: Icons.book_outlined,
+                  label: '$lessonsCount занятий',
                 ),
-                Text(
-                  endTime,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
+                const SizedBox(width: 12),
+                const _MetricChip(
+                  icon: Icons.schedule_outlined,
+                  label: 'Числитель',
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetricChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white.withOpacity(0.85)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
