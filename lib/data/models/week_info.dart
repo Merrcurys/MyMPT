@@ -1,4 +1,3 @@
-/// Data class to hold week information extracted from the MPT website
 class WeekInfo {
   final String weekType;
   final String date;

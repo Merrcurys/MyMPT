@@ -124,16 +124,13 @@ class _ParserDemoScreenState extends State<ParserDemoScreen> {
     });
 
     try {
-      final groups = await _parser.parseGroups();
-      // Filter groups by specialty
-      final filteredGroups = groups.where((group) => 
-        group.specialtyCode.contains(specialtyCode) || 
-        group.specialtyName.contains(specialtyCode)
-      ).toList();
-      
+      // Используем оптимизированный метод парсера, который фильтрует группы на стороне сервера
+      final groups = await _parser.parseGroups(specialtyCode);
+
       setState(() {
-        _groups = filteredGroups;
-        _status = 'Получено ${filteredGroups.length} групп для специальности $specialtyCode';
+        _groups = groups;
+        _status =
+            'Получено ${groups.length} групп для специальности $specialtyCode';
       });
     } catch (e) {
       setState(() {
@@ -192,7 +189,10 @@ class _ParserDemoScreenState extends State<ParserDemoScreen> {
                     if (_weekInfo != null) ...[
                       Card(
                         child: ListTile(
-                          title: const Text('Информация о неделе', style: TextStyle(fontWeight: FontWeight.bold)),
+                          title: const Text(
+                            'Информация о неделе',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -210,8 +210,12 @@ class _ParserDemoScreenState extends State<ParserDemoScreen> {
                       child: Column(
                         children: [
                           // Если есть выбранные группы, отображаем их
-                          if (_selectedSpecialty != null && _groups.isNotEmpty) ...[
-                            const Text('Группы:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          if (_selectedSpecialty != null &&
+                              _groups.isNotEmpty) ...[
+                            const Text(
+                              'Группы:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             const SizedBox(height: 10),
                             Expanded(
                               child: ListView.builder(
@@ -237,7 +241,11 @@ class _ParserDemoScreenState extends State<ParserDemoScreen> {
                                   if (item is TabInfo) {
                                     return Card(
                                       child: ListTile(
-                                        title: Text(item.name.isNotEmpty ? item.name : 'Без названия'),
+                                        title: Text(
+                                          item.name.isNotEmpty
+                                              ? item.name
+                                              : 'Без названия',
+                                        ),
                                         // Убираем subtitle с техническими данными
                                       ),
                                     );

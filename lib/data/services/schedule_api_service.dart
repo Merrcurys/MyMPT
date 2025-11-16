@@ -3,22 +3,18 @@ import 'package:my_mpt/domain/entities/schedule.dart';
 import '../models/schedule_response.dart';
 
 class ScheduleApiService {
-  // Simulate network delay
   static const int _networkDelay = 500;
 
-  /// Get schedule data for the week
   Future<ScheduleResponse> getScheduleData() async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return ScheduleResponse.fromJson({});
   }
 
-  /// Get today's schedule
   Future<List<Schedule>> getTodaySchedule() async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return _getMockTodaySchedule();
   }
 
-  /// Get weekly schedule
   Future<Map<String, List<Schedule>>> getWeeklySchedule() async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return _getMockWeeklySchedule();

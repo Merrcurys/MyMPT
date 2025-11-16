@@ -1,4 +1,3 @@
-/// Data class to hold group information extracted from the MPT website
 class GroupInfo {
   final String code;
   final String specialtyCode;

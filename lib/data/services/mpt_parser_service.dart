@@ -10,11 +10,8 @@ import 'package:my_mpt/data/models/group_info.dart';
 class MptParserService {
   final String baseUrl = 'https://mpt.ru/raspisanie/';
 
-  /// Parses the MPT schedule page and extracts href and aria-controls attributes
-  /// from the tablist elements
   Future<List<TabInfo>> parseTabList() async {
     try {
-      // Fetch the HTML content from the website with timeout
       final response = await http.get(Uri.parse(baseUrl)).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -23,22 +20,18 @@ class MptParserService {
       );
       
       if (response.statusCode == 200) {
-        // Parse the HTML document
         final document = parser.parse(response.body);
         
-        // Find the tablist element
         final tablist = document.querySelector('ul[role="tablist"]');
         
         if (tablist == null) {
           throw Exception('Tablist not found on the page');
         }
         
-        // Find all li elements with role="presentation" within the tablist
         final tabItems = tablist.querySelectorAll('li[role="presentation"]');
         
         final List<TabInfo> tabs = [];
         
-        // Extract href, aria-controls, and name from each tab
         for (var item in tabItems) {
           final anchor = item.querySelector('a');
           if (anchor != null) {
@@ -61,11 +54,8 @@ class MptParserService {
     }
   }
 
-  /// Parses the MPT schedule page and extracts week information
-  /// including week type (numerator/denominator), date and day
   Future<WeekInfo> parseWeekInfo() async {
     try {
-      // Fetch the HTML content from the website with timeout
       final response = await http.get(Uri.parse(baseUrl)).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -74,16 +64,13 @@ class MptParserService {
       );
       
       if (response.statusCode == 200) {
-        // Parse the HTML document
         final document = parser.parse(response.body);
         
-        // Extract date and day information (e.g., "14 Ноября - Пятница")
         String date = '';
         String day = '';
         final dateHeader = document.querySelector('h2');
         if (dateHeader != null) {
           final dateText = dateHeader.text.trim();
-          // Split by dash to separate date and day
           final parts = dateText.split(' - ');
           if (parts.length >= 2) {
             date = parts[0];
@@ -93,15 +80,12 @@ class MptParserService {
           }
         }
         
-        // Extract week type information (e.g., "Числитель")
         String weekType = '';
         final weekHeaders = document.querySelectorAll('h3');
         for (var header in weekHeaders) {
           final text = header.text.trim();
           if (text.startsWith('Неделя:')) {
-            // Extract the week type after "Неделя:"
             weekType = text.substring(7).trim();
-            // Remove any label classes if present
             final labelElement = header.querySelector('.label');
             if (labelElement != null) {
               weekType = labelElement.text.trim();
@@ -110,7 +94,6 @@ class MptParserService {
           }
         }
         
-        // If we couldn't find week type in h3, try to find it in spans with label classes
         if (weekType.isEmpty) {
           final labelElements = document.querySelectorAll('.label');
           for (var label in labelElements) {
@@ -135,8 +118,6 @@ class MptParserService {
     }
   }
 
-  /// Parses the MPT schedule page and extracts group information
-  /// grouped by specialties
   Future<List<GroupInfo>> parseGroups([String? specialtyFilter]) async {
     // Если задан фильтр специальности, используем оптимизированный метод
     if (specialtyFilter != null) {
@@ -147,10 +128,8 @@ class MptParserService {
     return _parseAllGroups();
   }
   
-  /// Parses all groups from the MPT schedule page
   Future<List<GroupInfo>> _parseAllGroups() async {
     try {
-      // Fetch the HTML content from the website with timeout
       final response = await http.get(Uri.parse(baseUrl)).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
@@ -159,20 +138,16 @@ class MptParserService {
       );
       
       if (response.statusCode == 200) {
-        // Parse the HTML document
         final document = parser.parse(response.body);
         
         final List<GroupInfo> groups = [];
         
-        // Find all h2/h3/h4/h5 elements that might contain group information
         final groupHeaders = document.querySelectorAll('h2, h3, h4, h5');
         
-        // Also look for div elements with specific classes that might contain group info
         final groupDivs = document.querySelectorAll('div');
         
         print('DEBUG: Найдено заголовков: ${groupHeaders.length}, div элементов: ${groupDivs.length}');
         
-        // Process header elements
         for (var header in groupHeaders) {
           final text = header.text.trim();
           if (text.startsWith('Группа ')) {
@@ -181,7 +156,6 @@ class MptParserService {
           }
         }
         
-        // Process div elements as fallback
         if (groups.isEmpty) {
           print('DEBUG: Не найдено групп в заголовках, проверяем div элементы');
           for (var div in groupDivs) {
@@ -190,7 +164,7 @@ class MptParserService {
               final groupInfo = _parseGroupFromHeader(text, document);
               if (groupInfo.isNotEmpty) {
                 groups.addAll(groupInfo);
-                break; // Take only first match to avoid duplicates
+                break;
               }
             }
           }
@@ -208,10 +182,8 @@ class MptParserService {
     }
   }
   
-  /// Parses groups for a specific specialty from the MPT schedule page
   Future<List<GroupInfo>> _parseGroupsBySpecialty(String specialtyFilter) async {
     try {
-      // Fetch the HTML content from the website with timeout
       final response = await http.get(Uri.parse(baseUrl)).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
@@ -220,7 +192,6 @@ class MptParserService {
       );
       
       if (response.statusCode == 200) {
-        // Parse the HTML document
         final document = parser.parse(response.body);
         
         // Получаем список табов для поиска соответствия между specialtyFilter и ID
@@ -332,7 +303,6 @@ class MptParserService {
     }
   }
   
-  /// Helper method to parse group information from header text
   List<GroupInfo> _parseGroupFromHeader(String headerText, Document document, [String? specialtyFromContext]) {
     final List<GroupInfo> groups = [];
     
@@ -403,12 +373,9 @@ class MptParserService {
           print('DEBUG: Определена специальность по префиксу "$prefix": $specialtyCode');
         } else {
           print('DEBUG: Не удалось определить специальность для префикса "$prefix"');
-          // Fallback - пытаемся найти специальность в документе
-          // Approach 1: Look for specialty list items with more precise pattern matching
           final specialtyListItems = document.querySelectorAll('ul li');
           for (var item in specialtyListItems) {
             final itemText = item.text.trim();
-            // Check if this item contains specialty information with precise pattern
             if (itemText.contains('.') && (itemText.contains('Э') || itemText.contains('СА') || 
                 itemText.contains('П,Т') || itemText.contains('БАС') || itemText.contains('БИ') || 
                 itemText.contains('ИС') || itemText.contains('ВД') || itemText.contains('Ю') || 
@@ -427,9 +394,7 @@ class MptParserService {
         }
       }
       
-      // ВАЖНО: Не разделяем группы типа "Т-1-24; Т-11/1-25" на отдельные записи
-      // Это одна группа, а не три разных
-      print('DEBUG: Добавляем группу как есть: $groupCode (специальность: $specialtyCode)');
+      print('DEBUG: Добавляем группу: $groupCode (специальность: $specialtyCode)');
       groups.add(GroupInfo(
         code: groupCode, // Сохраняем полное название группы
         specialtyCode: specialtyCode,

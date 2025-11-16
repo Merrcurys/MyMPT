@@ -1,4 +1,3 @@
-/// Model for representing a call schedule entry
 class Call {
   final String period;
   final String startTime;
@@ -12,7 +11,6 @@ class Call {
     required this.description,
   });
 
-  /// Create a Call instance from a map
   factory Call.fromJson(Map<String, dynamic> json) {
     return Call(
       period: json['period'] as String,
@@ -22,7 +20,6 @@ class Call {
     );
   }
 
-  /// Convert Call instance to a map
   Map<String, dynamic> toJson() {
     return {
       'period': period,

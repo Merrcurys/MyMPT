@@ -3,10 +3,8 @@ import '../models/specialty.dart';
 import '../models/group.dart';
 
 class MockApiService {
-  // Simulate network delay
   static const int _networkDelay = 500;
 
-  // Mock data for specialties
   final List<Specialty> _specialties = [
     Specialty(code: '09.02.07', name: 'Информационные системы и программирование'),
     Specialty(code: '10.02.01', name: 'Правоохранительная деятельность'),
@@ -15,7 +13,6 @@ class MockApiService {
     Specialty(code: '20.02.01', name: 'Комплексное применение в области профессиональной деятельности'),
   ];
 
-  // Mock data for groups
   final List<Group> _groups = [
     Group(code: 'П50-1-22', specialtyCode: '09.02.07'),
     Group(code: 'П50-2-22', specialtyCode: '09.02.07'),
@@ -28,19 +25,16 @@ class MockApiService {
     Group(code: 'П54-1-22', specialtyCode: '20.02.01'),
   ];
 
-  /// Get all specialties
   Future<List<Specialty>> getSpecialties() async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return _specialties;
   }
 
-  /// Get groups by specialty code
   Future<List<Group>> getGroupsBySpecialty(String specialtyCode) async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return _groups.where((group) => group.specialtyCode == specialtyCode).toList();
   }
 
-  /// Get all groups (for testing purposes)
   Future<List<Group>> getAllGroups() async {
     await Future.delayed(Duration(milliseconds: _networkDelay));
     return _groups;

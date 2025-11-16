@@ -1,4 +1,3 @@
-/// Data class to hold tab information extracted from the MPT website
 class TabInfo {
   final String href;
   final String ariaControls;
