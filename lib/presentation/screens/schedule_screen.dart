@@ -7,6 +7,7 @@ import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
+import 'package:my_mpt/data/services/calls_service.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
 class ScheduleScreen extends StatefulWidget {
@@ -50,7 +51,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       setState(() {
         _isLoading = false;
       });
-      // Handle error appropriately
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ошибка загрузки расписания')),
       );
@@ -229,6 +229,8 @@ class _DaySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final formattedTitle = _formatDayTitle(title);
 
+    final callsData = CallsService.getCalls();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -262,24 +264,55 @@ class _DaySection extends StatelessWidget {
           Column(
             children: List.generate(lessons.length, (index) {
               final lesson = lessons[index];
+
+              String lessonStartTime = lesson.startTime;
+              String lessonEndTime = lesson.endTime;
+
+              try {
+                final periodInt = int.tryParse(lesson.number);
+                if (periodInt != null &&
+                    periodInt > 0 &&
+                    periodInt <= callsData.length) {
+                  final call =
+                      callsData[periodInt - 1];
+                  lessonStartTime = call.startTime;
+                  lessonEndTime = call.endTime;
+                }
+              } catch (e) {
+              }
+
               final widgets = <Widget>[
                 LessonCard(
                   number: lesson.number,
                   subject: lesson.subject,
                   teacher: lesson.teacher,
-                  startTime: lesson.startTime,
-                  endTime: lesson.endTime,
+                  startTime: lessonStartTime,
+                  endTime: lessonEndTime,
                   accentColor: accentColor,
                 ),
               ];
 
-              // Add break indicator after each lesson except the last one
               if (index < lessons.length - 1) {
-                final nextLesson = lessons[index + 1];
+                String nextLessonStartTime = lessons[index + 1].startTime;
+
+                try {
+                  final nextPeriodInt = int.tryParse(lessons[index + 1].number);
+                  if (nextPeriodInt != null &&
+                      nextPeriodInt > 0 &&
+                      nextPeriodInt <= callsData.length) {
+                    final nextCall =
+                        callsData[nextPeriodInt -
+                            1];
+                    nextLessonStartTime = nextCall.startTime;
+                  }
+                } catch (e) {
+                  // Потом
+                }
+
                 widgets.add(
                   BreakIndicator(
-                    startTime: lesson.endTime,
-                    endTime: nextLesson.startTime,
+                    startTime: lessonEndTime,
+                    endTime: nextLessonStartTime,
                   ),
                 );
               }

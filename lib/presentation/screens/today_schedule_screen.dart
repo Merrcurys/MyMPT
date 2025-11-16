@@ -8,6 +8,7 @@ import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
+import 'package:my_mpt/data/services/calls_service.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class TodayScheduleScreen extends StatefulWidget {
@@ -67,7 +68,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       setState(() {
         _isLoading = false;
       });
-      // Handle error appropriately
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ошибка загрузки расписания')),
       );
@@ -99,9 +99,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                     });
                   },
                   children: [
-                    // Today page
                     _buildSchedulePage(_todayScheduleData, 'Сегодня'),
-                    // Tomorrow page
                     _buildSchedulePage(_tomorrowScheduleData, 'Завтра'),
                   ],
                 ),
@@ -165,6 +163,8 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       );
     }
 
+    final callsData = CallsService.getCalls();
+
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
@@ -217,24 +217,62 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                       print(
                         'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
                       );
+
+                      String lessonStartTime = item.startTime;
+                      String lessonEndTime = item.endTime;
+
+                      try {
+                        final periodInt = int.tryParse(item.number);
+                        if (periodInt != null &&
+                            periodInt > 0 &&
+                            periodInt <= callsData.length) {
+                          final call =
+                              callsData[periodInt -
+                                  1];
+                          lessonStartTime = call.startTime;
+                          lessonEndTime = call.endTime;
+                        }
+                      } catch (e) {
+                        // Потом
+                      }
+
                       final widgets = <Widget>[
                         LessonCard(
                           number: item.number,
                           subject: item.subject,
                           teacher: item.teacher,
-                          startTime: item.startTime,
-                          endTime: item.endTime,
+                          startTime: lessonStartTime,
+                          endTime: lessonEndTime,
                           accentColor: _lessonAccent,
                         ),
                       ];
 
-                      // Add break indicator after each lesson except the last one
                       if (index < scheduleData.length - 1) {
-                        final nextItem = scheduleData[index + 1];
+                        String nextLessonStartTime =
+                            scheduleData[index + 1].startTime;
+
+                        try {
+                          final nextPeriodInt = int.tryParse(
+                            scheduleData[index + 1].number,
+                          );
+                          if (nextPeriodInt != null &&
+                              nextPeriodInt > 0 &&
+                              nextPeriodInt <= callsData.length) {
+                            final nextCall =
+                                callsData[nextPeriodInt -
+                                    1];
+                            nextLessonStartTime = nextCall.startTime;
+                          }
+                        } catch (e) {
+                          // Потом
+                        }
+
                         widgets.add(
                           BreakIndicator(
-                            startTime: item.endTime,
-                            endTime: nextItem.startTime,
+                            startTime:
+                                lessonEndTime,
+                            endTime:
+                                nextLessonStartTime,
                           ),
                         );
                       }
