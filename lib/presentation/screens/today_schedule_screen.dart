@@ -49,14 +49,21 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     });
 
     try {
+      print('DEBUG: Загружаем расписание на сегодня...');
       final todaySchedule = await _getTodayScheduleUseCase();
+      print('DEBUG: Загружено ${todaySchedule.length} уроков на сегодня');
+
+      print('DEBUG: Загружаем расписание на завтра...');
       final tomorrowSchedule = await _getTomorrowScheduleUseCase();
+      print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
+
       setState(() {
         _todayScheduleData = todaySchedule;
         _tomorrowScheduleData = tomorrowSchedule;
         _isLoading = false;
       });
     } catch (e) {
+      print('DEBUG: Ошибка загрузки расписания: $e');
       setState(() {
         _isLoading = false;
       });
@@ -79,7 +86,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
+              )
             : RefreshIndicator(
                 onRefresh: _loadScheduleData,
                 child: PageView(
@@ -102,8 +111,59 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   }
 
   Widget _buildSchedulePage(List<Schedule> scheduleData, String pageTitle) {
+    print(
+      'DEBUG: Отображаем страницу "$pageTitle" с ${scheduleData.length} уроками',
+    );
     final building = _primaryBuilding(scheduleData);
-    final dateLabel = _formatDate(pageTitle == 'Сегодня' ? DateTime.now() : DateTime.now().add(const Duration(days: 1)));
+    final dateLabel = _formatDate(
+      pageTitle == 'Сегодня'
+          ? DateTime.now()
+          : DateTime.now().add(const Duration(days: 1)),
+    );
+
+    // Если нет уроков, показываем сообщение о выходном дне
+    if (scheduleData.isEmpty) {
+      return CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _TodayHeader(
+              dateLabel: dateLabel,
+              lessonsCount: scheduleData.length,
+              gradient: _headerGradient,
+              pageTitle: pageTitle,
+            ),
+          ),
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.weekend_outlined,
+                    size: 64,
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Сегодня выходной',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Нет запланированных занятий',
+                    style: TextStyle(fontSize: 16, color: Colors.white54),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return CustomScrollView(
       slivers: [
@@ -154,6 +214,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                   child: Column(
                     children: List.generate(scheduleData.length, (index) {
                       final item = scheduleData[index];
+                      print(
+                        'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
+                      );
                       final widgets = <Widget>[
                         LessonCard(
                           number: item.number,
@@ -180,9 +243,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                         padding: EdgeInsets.only(
                           bottom: index == scheduleData.length - 1 ? 0 : 14,
                         ),
-                        child: Column(
-                          children: widgets,
-                        ),
+                        child: Column(children: widgets),
                       );
                     }),
                   ),

@@ -5,6 +5,7 @@ import 'package:my_mpt/domain/usecases/get_specialties_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_groups_by_specialty_usecase.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -30,6 +31,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
   StateSetter? _modalStateSetter;
 
+  static const String _selectedGroupKey = 'selected_group';
+
   @override
   void initState() {
     super.initState();
@@ -37,13 +40,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _getSpecialtiesUseCase = GetSpecialtiesUseCase(_repository);
     _getGroupsBySpecialtyUseCase = GetGroupsBySpecialtyUseCase(_repository);
     _loadSpecialties();
+    _loadSelectedGroup();
   }
 
   Future<void> _loadSpecialties() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final specialties = await _getSpecialtiesUseCase();
       setState(() {
@@ -61,6 +65,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _loadSelectedGroup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final selectedGroupCode = prefs.getString(_selectedGroupKey);
+
+      if (selectedGroupCode != null && selectedGroupCode.isNotEmpty) {
+        // Здесь можно загрузить информацию о группе, если это необходимо
+        // Пока просто устанавливаем состояние
+        setState(() {
+          _selectedGroup = Group(code: selectedGroupCode, specialtyCode: '');
+        });
+      }
+    } catch (e) {
+      print('DEBUG: Ошибка загрузки выбранной группы: $e');
+    }
+  }
+
   Future<void> _loadGroups(String specialtyCode) async {
     print('DEBUG: Начинаем загрузку групп для специальности: $specialtyCode');
     print('DEBUG: Длина кода специальности: ${specialtyCode.length}');
@@ -72,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _groups = [];
       _selectedGroup = null;
     });
-    
+
     try {
       final groups = await _getGroupsBySpecialtyUseCase(specialtyCode);
       print('DEBUG: Получено групп: ${groups.length}');
@@ -80,14 +101,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _groups = groups;
         _isLoading = false;
       });
-      
+
       // Обновляем состояние модального окна, если оно открыто
       _modalStateSetter?.call(() {});
-      
+
       // Show message if no groups found
       if (groups.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Для выбранной специальности группы не найдены')),
+          const SnackBar(
+            content: Text('Для выбранной специальности группы не найдены'),
+          ),
         );
       } else {
         // Show success message
@@ -95,7 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SnackBar(content: Text('Загружено ${groups.length} групп')),
         );
       }
-      
+
       // Force refresh the UI
       setState(() {});
     } catch (e) {
@@ -104,14 +127,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isLoading = false;
       });
       // Handle error appropriately
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка загрузки групп: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка загрузки групп: $e')));
     }
   }
 
   void _onSpecialtySelected(Specialty specialty) {
-    print('DEBUG: Выбрана специальность: ${specialty.code} - ${specialty.name}');
+    print(
+      'DEBUG: Выбрана специальность: ${specialty.code} - ${specialty.name}',
+    );
     setState(() {
       _selectedSpecialty = specialty;
       _selectedGroup = null;
@@ -119,15 +144,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadGroups(specialty.code);
   }
 
-  void _onGroupSelected(Group group) {
+  void _onGroupSelected(Group group) async {
     setState(() {
       _selectedGroup = group;
     });
-    
+
+    // Сохраняем выбранную группу в настройки
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedGroupKey, group.code);
+    } catch (e) {
+      print('DEBUG: Ошибка сохранения выбранной группы: $e');
+    }
+
     // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Выбрана группа: ${group.code}')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}')));
   }
 
   @override
@@ -146,7 +179,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 14),
               _SettingsCard(
                 title: 'Выберите свою специальность',
-                subtitle: _selectedSpecialty?.name ?? 'Специальность не выбрана',
+                subtitle:
+                    _selectedSpecialty?.name ?? 'Специальность не выбрана',
                 icon: Icons.book_outlined,
                 onTap: _showSpecialtySelector,
               ),
@@ -231,14 +265,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Выберите специальность',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Expanded(
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00)))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF8C00),
+                        ),
+                      )
                     : ListView.builder(
                         itemCount: _specialties.length,
                         itemBuilder: (context, index) {
@@ -273,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (BuildContext context, StateSetter setModalState) {
             // Сохраняем StateSetter для обновления состояния модального окна
             _modalStateSetter = setModalState;
-            
+
             return Container(
               height: MediaQuery.of(context).size.height * 0.6,
               decoration: const BoxDecoration(
@@ -296,37 +334,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Text(
                       'Выберите группу',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Expanded(
                     child: _isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00)))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFFF8C00),
+                            ),
+                          )
                         : _groups.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Группы не найдены',
-                                  style: TextStyle(color: Colors.white70),
+                        ? const Center(
+                            child: Text(
+                              'Группы не найдены',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _groups.length,
+                            itemBuilder: (context, index) {
+                              final group = _groups[index];
+                              return ListTile(
+                                title: Text(
+                                  group.code,
+                                  style: const TextStyle(color: Colors.white),
                                 ),
-                              )
-                            : ListView.builder(
-                                itemCount: _groups.length,
-                                itemBuilder: (context, index) {
-                                  final group = _groups[index];
-                                  return ListTile(
-                                    title: Text(
-                                      group.code,
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _onGroupSelected(group);
-                                    },
-                                  );
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _onGroupSelected(group);
                                 },
-                              ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
@@ -349,10 +391,7 @@ class _SettingsHeader extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF333333),
-            Color(0xFF111111),
-          ],
+          colors: [Color(0xFF333333), Color(0xFF111111)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

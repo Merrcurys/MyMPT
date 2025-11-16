@@ -1,20 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
-import '../models/schedule_response.dart';
-import '../services/schedule_api_service.dart';
+import 'schedule_parser_repository.dart';
 
 /// Реализация репозитория для работы с расписанием
 class ScheduleRepository implements ScheduleRepositoryInterface {
-  final ScheduleApiService _apiService = ScheduleApiService();
+  final ScheduleParserRepository _parserRepository = ScheduleParserRepository();
 
   /// Получить расписание на неделю
   Future<Map<String, List<Schedule>>> getWeeklySchedule() async {
     try {
-      final response = await _apiService.getScheduleData();
-      // Поскольку ScheduleResponse уже содержит доменные сущности Schedule,
-      // мы можем вернуть weeklySchedule напрямую
-      return response.weeklySchedule;
+      // Всегда используем парсер для получения реального расписания
+      final parsedSchedule = await _parserRepository.getWeeklySchedule();
+      return parsedSchedule;
     } catch (e) {
       // В реальном приложении мы бы обработали ошибки соответствующим образом
       debugPrint('Ошибка при получении данных расписания: $e');
@@ -26,10 +24,9 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   /// Получить расписание на сегодня
   Future<List<Schedule>> getTodaySchedule() async {
     try {
-      final response = await _apiService.getScheduleData();
-      // Поскольку ScheduleResponse уже содержит доменные сущности Schedule,
-      // мы можем вернуть todaySchedule напрямую
-      return response.todaySchedule;
+      // Всегда используем парсер для получения реального расписания
+      final parsedSchedule = await _parserRepository.getTodaySchedule();
+      return parsedSchedule;
     } catch (e) {
       // В реальном приложении мы бы обработали ошибки соответствующим образом
       debugPrint('Ошибка при получении расписания на сегодня: $e');
@@ -40,10 +37,9 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   /// Получить расписание на завтра
   Future<List<Schedule>> getTomorrowSchedule() async {
     try {
-      final response = await _apiService.getScheduleData();
-      // Для демонстрации возвращаем те же данные, что и для сегодня
-      // В реальной реализации здесь должна быть логика получения расписания на завтра
-      return response.todaySchedule;
+      // Всегда используем парсер для получения реального расписания
+      final parsedSchedule = await _parserRepository.getTomorrowSchedule();
+      return parsedSchedule;
     } catch (e) {
       // В реальном приложении мы бы обработали ошибки соответствующим образом
       debugPrint('Ошибка при получении расписания на завтра: $e');

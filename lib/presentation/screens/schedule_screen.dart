@@ -65,7 +65,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF8C00)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
+              )
             : RefreshIndicator(
                 onRefresh: _loadScheduleData,
                 child: CustomScrollView(
@@ -205,8 +207,28 @@ class _DaySection extends StatelessWidget {
     required this.accentColor,
   });
 
+  /// Преобразует день недели из ЗАГЛАВНЫХ букв в формат с заглавной буквы
+  String _formatDayTitle(String day) {
+    if (day.isEmpty) return day;
+
+    // Словарь для преобразования дней недели
+    const dayMap = {
+      'ПОНЕДЕЛЬНИК': 'Понедельник',
+      'ВТОРНИК': 'Вторник',
+      'СРЕДА': 'Среда',
+      'ЧЕТВЕРГ': 'Четверг',
+      'ПЯТНИЦА': 'Пятница',
+      'СУББОТА': 'Суббота',
+      'ВОСКРЕСЕНЬЕ': 'Воскресенье',
+    };
+
+    return dayMap[day] ?? day;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final formattedTitle = _formatDayTitle(title);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -216,7 +238,7 @@ class _DaySection extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  title,
+                  formattedTitle,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -266,9 +288,7 @@ class _DaySection extends StatelessWidget {
                 padding: EdgeInsets.only(
                   bottom: index == lessons.length - 1 ? 0 : 14,
                 ),
-                child: Column(
-                  children: widgets,
-                ),
+                child: Column(children: widgets),
               );
             }),
           ),
