@@ -5,6 +5,7 @@ class Lesson {
   final String startTime;
   final String endTime;
   final String building;
+  final String? lessonType; // numerator, denominator или null для обычных пар
 
   Lesson({
     required this.number,
@@ -13,6 +14,7 @@ class Lesson {
     required this.startTime,
     required this.endTime,
     required this.building,
+    this.lessonType,
   });
 
   @override

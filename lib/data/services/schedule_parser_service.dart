@@ -166,26 +166,75 @@ class ScheduleParserService {
                     // Проверяем, что в строке есть все необходимые данные (3 ячейки)
                     if (cells.length == 3) {
                       final number = cells[0].text.trim();
-                      final subject = cells[1].text.trim();
-                      final teacher = cells[2].text.trim();
+                      final subjectCell = cells[1];
+                      final teacherCell = cells[2];
 
-                      print('DEBUG: Найден урок: $number, $subject, $teacher');
+                      // Проверяем, есть ли в ячейке несколько предметов (числитель/знаменатель)
+                      final subjectLabels = subjectCell.querySelectorAll('div.label');
+                      final teacherLabels = teacherCell.querySelectorAll('div.label');
 
-                      // Создаем урок только если есть номер и предмет
-                      if (number.isNotEmpty && subject.isNotEmpty) {
-                        lessons.add(
-                          Lesson(
-                            number: number,
-                            subject: subject,
-                            teacher: teacher,
-                            startTime: '',
-                            endTime: '',
-                            building: building,
-                          ),
-                        );
-                        print(
-                          'DEBUG: Добавлен урок: $number - $subject - $teacher',
-                        );
+                      if (subjectLabels.isNotEmpty && teacherLabels.isNotEmpty) {
+                        // Обрабатываем пары с числителем/знаменателем
+                        for (int i = 0; i < subjectLabels.length && i < teacherLabels.length; i++) {
+                          final subjectLabel = subjectLabels[i];
+                          final teacherLabel = teacherLabels[i];
+                          
+                          final subjectText = subjectLabel.text.trim();
+                          final teacherText = teacherLabel.text.trim();
+                          
+                          // Определяем тип (числитель или знаменатель) по классу
+                          final classes = subjectLabel.attributes['class'] ?? '';
+                          String lessonType = '';
+                          if (classes.contains('label-danger')) {
+                            lessonType = 'numerator';
+                          } else if (classes.contains('label-info')) {
+                            lessonType = 'denominator';
+                          }
+                          
+                          print('DEBUG: Найден урок ($lessonType): $number, $subjectText, $teacherText');
+
+                          // Создаем урок только если есть номер и предмет
+                          if (number.isNotEmpty && subjectText.isNotEmpty) {
+                            lessons.add(
+                              Lesson(
+                                number: number,
+                                subject: subjectText,
+                                teacher: teacherText,
+                                startTime: '',
+                                endTime: '',
+                                building: building,
+                                lessonType: lessonType,
+                              ),
+                            );
+                            print(
+                              'DEBUG: Добавлен урок ($lessonType): $number - $subjectText - $teacherText',
+                            );
+                          }
+                        }
+                      } else {
+                        // Обычная пара
+                        final subject = subjectCell.text.trim();
+                        final teacher = teacherCell.text.trim();
+
+                        print('DEBUG: Найден обычный урок: $number, $subject, $teacher');
+
+                        // Создаем урок только если есть номер и предмет
+                        if (number.isNotEmpty && subject.isNotEmpty) {
+                          lessons.add(
+                            Lesson(
+                              number: number,
+                              subject: subject,
+                              teacher: teacher,
+                              startTime: '',
+                              endTime: '',
+                              building: building,
+                              lessonType: null,
+                            ),
+                          );
+                          print(
+                            'DEBUG: Добавлен обычный урок: $number - $subject - $teacher',
+                          );
+                        }
                       }
                     }
                   }

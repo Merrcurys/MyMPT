@@ -37,6 +37,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
             startTime: lesson.startTime,
             endTime: lesson.endTime,
             building: lesson.building,
+            lessonType: lesson.lessonType,
           );
         }).toList();
 
@@ -91,6 +92,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
             startTime: lesson.startTime,
             endTime: lesson.endTime,
             building: lesson.building,
+            lessonType: lesson.lessonType,
           );
         }).toList();
       } else {
@@ -145,6 +147,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
             startTime: lesson.startTime,
             endTime: lesson.endTime,
             building: lesson.building,
+            lessonType: lesson.lessonType,
           );
         }).toList();
       } else {

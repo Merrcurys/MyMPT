@@ -7,6 +7,7 @@ import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
+import 'package:my_mpt/presentation/widgets/numerator_denominator_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
@@ -225,6 +226,122 @@ class _DaySection extends StatelessWidget {
     return dayMap[day] ?? day;
   }
 
+  /// Создает виджеты для отображения уроков с поддержкой числителя/знаменателя
+  List<Widget> _buildLessonWidgets(List<Schedule> lessons, List<dynamic> callsData) {
+    final widgets = <Widget>[];
+    
+    // Группируем уроки по номеру пары
+    final Map<String, List<Schedule>> lessonsByPeriod = {};
+    for (final lesson in lessons) {
+      final period = lesson.number;
+      if (!lessonsByPeriod.containsKey(period)) {
+        lessonsByPeriod[period] = [];
+      }
+      lessonsByPeriod[period]!.add(lesson);
+    }
+    
+    // Сортируем номера пар
+    final sortedPeriods = lessonsByPeriod.keys.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    
+    // Создаем виджеты для каждой пары
+    for (int i = 0; i < sortedPeriods.length; i++) {
+      final period = sortedPeriods[i];
+      final periodLessons = lessonsByPeriod[period]!;
+      
+      // Определяем время пары
+      String startTime = '';
+      String endTime = '';
+      
+      try {
+        final periodInt = int.tryParse(period);
+        if (periodInt != null && periodInt > 0 && periodInt <= callsData.length) {
+          final call = callsData[periodInt - 1];
+          startTime = call.startTime;
+          endTime = call.endTime;
+        }
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+      
+      // Проверяем, есть ли уроки с типом (числитель/знаменатель)
+      bool hasTypedLessons = periodLessons.any((lesson) => lesson.lessonType != null);
+      
+      if (hasTypedLessons) {
+        // Обрабатываем пары с числителем/знаменателем
+        Schedule? numeratorLesson;
+        Schedule? denominatorLesson;
+        
+        for (final lesson in periodLessons) {
+          if (lesson.lessonType == 'numerator') {
+            numeratorLesson = lesson;
+          } else if (lesson.lessonType == 'denominator') {
+            denominatorLesson = lesson;
+          }
+        }
+        
+        widgets.add(
+          NumeratorDenominatorCard(
+            numeratorLesson: numeratorLesson,
+            denominatorLesson: denominatorLesson,
+            lessonNumber: period,
+            startTime: startTime,
+            endTime: endTime,
+          ),
+        );
+      } else {
+        // Обычные пары отображаем как раньше
+        for (int j = 0; j < periodLessons.length; j++) {
+          final lesson = periodLessons[j];
+          widgets.add(
+            LessonCard(
+              number: lesson.number,
+              subject: lesson.subject,
+              teacher: lesson.teacher,
+              startTime: startTime,
+              endTime: endTime,
+              accentColor: accentColor,
+            ),
+          );
+          
+          // Для обычных пар добавляем разделитель между уроками в одной паре
+          if (j < periodLessons.length - 1) {
+            widgets.add(const SizedBox(height: 8));
+          }
+        }
+      }
+      
+      // Добавляем разделитель между парами, кроме последней
+      if (i < sortedPeriods.length - 1) {
+        String nextLessonStartTime = '';
+        
+        try {
+          final nextPeriodInt = int.tryParse(sortedPeriods[i + 1]);
+          if (nextPeriodInt != null && nextPeriodInt > 0 && nextPeriodInt <= callsData.length) {
+            final nextCall = callsData[nextPeriodInt - 1];
+            nextLessonStartTime = nextCall.startTime;
+          }
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+        
+        widgets.add(
+          BreakIndicator(
+            startTime: endTime,
+            endTime: nextLessonStartTime,
+          ),
+        );
+      }
+      
+      // Добавляем отступ между парами
+      if (i < sortedPeriods.length - 1) {
+        widgets.add(const SizedBox(height: 14));
+      }
+    }
+    
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     final formattedTitle = _formatDayTitle(title);
@@ -262,68 +379,7 @@ class _DaySection extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Column(
-            children: List.generate(lessons.length, (index) {
-              final lesson = lessons[index];
-
-              String lessonStartTime = lesson.startTime;
-              String lessonEndTime = lesson.endTime;
-
-              try {
-                final periodInt = int.tryParse(lesson.number);
-                if (periodInt != null &&
-                    periodInt > 0 &&
-                    periodInt <= callsData.length) {
-                  final call =
-                      callsData[periodInt - 1];
-                  lessonStartTime = call.startTime;
-                  lessonEndTime = call.endTime;
-                }
-              } catch (e) {
-              }
-
-              final widgets = <Widget>[
-                LessonCard(
-                  number: lesson.number,
-                  subject: lesson.subject,
-                  teacher: lesson.teacher,
-                  startTime: lessonStartTime,
-                  endTime: lessonEndTime,
-                  accentColor: accentColor,
-                ),
-              ];
-
-              if (index < lessons.length - 1) {
-                String nextLessonStartTime = lessons[index + 1].startTime;
-
-                try {
-                  final nextPeriodInt = int.tryParse(lessons[index + 1].number);
-                  if (nextPeriodInt != null &&
-                      nextPeriodInt > 0 &&
-                      nextPeriodInt <= callsData.length) {
-                    final nextCall =
-                        callsData[nextPeriodInt -
-                            1];
-                    nextLessonStartTime = nextCall.startTime;
-                  }
-                } catch (e) {
-                  // Потом
-                }
-
-                widgets.add(
-                  BreakIndicator(
-                    startTime: lessonEndTime,
-                    endTime: nextLessonStartTime,
-                  ),
-                );
-              }
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: index == lessons.length - 1 ? 0 : 14,
-                ),
-                child: Column(children: widgets),
-              );
-            }),
+            children: _buildLessonWidgets(lessons, callsData),
           ),
           const SizedBox(height: 12),
           Divider(color: Colors.white.withOpacity(0.05), height: 32),
