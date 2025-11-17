@@ -89,20 +89,23 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
               )
-            : RefreshIndicator(
-                onRefresh: _loadScheduleData,
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPageIndex = index;
-                    });
-                  },
-                  children: [
-                    _buildSchedulePage(_todayScheduleData, 'Сегодня'),
-                    _buildSchedulePage(_tomorrowScheduleData, 'Завтра'),
-                  ],
-                ),
+            : PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPageIndex = index;
+                  });
+                },
+                children: [
+                  RefreshIndicator(
+                    onRefresh: _loadScheduleData,
+                    child: _buildSchedulePage(_todayScheduleData, 'Сегодня'),
+                  ),
+                  RefreshIndicator(
+                    onRefresh: _loadScheduleData,
+                    child: _buildSchedulePage(_tomorrowScheduleData, 'Завтра'),
+                  ),
+                ],
               ),
       ),
     );
