@@ -9,6 +9,8 @@ import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/data/repositories/week_repository.dart';
+import 'package:my_mpt/data/models/week_info.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class TodayScheduleScreen extends StatefulWidget {
@@ -29,8 +31,10 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   late ScheduleRepositoryInterface _repository;
   late GetTodayScheduleUseCase _getTodayScheduleUseCase;
   late GetTomorrowScheduleUseCase _getTomorrowScheduleUseCase;
+  late WeekRepository _weekRepository;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
+  WeekInfo? _weekInfo;
   bool _isLoading = true;
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
@@ -39,6 +43,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   void initState() {
     super.initState();
     _repository = ScheduleRepository();
+    _weekRepository = WeekRepository();
     _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
     _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
     _loadScheduleData();
@@ -50,6 +55,10 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     });
 
     try {
+      print('DEBUG: Загружаем информацию о неделе...');
+      final weekInfo = await _weekRepository.getWeekInfo();
+      print('DEBUG: Тип недели: ${weekInfo.weekType}');
+
       print('DEBUG: Загружаем расписание на сегодня...');
       final todaySchedule = await _getTodayScheduleUseCase();
       print('DEBUG: Загружено ${todaySchedule.length} уроков на сегодня');
@@ -59,6 +68,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
 
       setState(() {
+        _weekInfo = weekInfo;
         _todayScheduleData = todaySchedule;
         _tomorrowScheduleData = tomorrowSchedule;
         _isLoading = false;
@@ -112,26 +122,34 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   }
 
   Widget _buildSchedulePage(List<Schedule> scheduleData, String pageTitle) {
+    // Определяем дату для которой отображаем расписание
+    final targetDate = pageTitle == 'Сегодня' 
+        ? DateTime.now() 
+        : DateTime.now().add(const Duration(days: 1));
+    
+    // Определяем тип недели для целевой даты
+    final weekType = _getWeekTypeForDate(targetDate);
+    
+    // Фильтруем пары в зависимости от типа недели
+    final filteredScheduleData = _filterScheduleByWeekType(scheduleData, weekType);
+    
     print(
-      'DEBUG: Отображаем страницу "$pageTitle" с ${scheduleData.length} уроками',
+      'DEBUG: Отображаем страницу "$pageTitle" с ${filteredScheduleData.length} уроками (изначально ${scheduleData.length})',
     );
-    final building = _primaryBuilding(scheduleData);
-    final dateLabel = _formatDate(
-      pageTitle == 'Сегодня'
-          ? DateTime.now()
-          : DateTime.now().add(const Duration(days: 1)),
-    );
+    final building = _primaryBuilding(filteredScheduleData);
+    final dateLabel = _formatDate(targetDate);
 
     // Если нет уроков, показываем сообщение о выходном дне
-    if (scheduleData.isEmpty) {
+    if (filteredScheduleData.isEmpty) {
       return CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: _TodayHeader(
               dateLabel: dateLabel,
-              lessonsCount: scheduleData.length,
+              lessonsCount: filteredScheduleData.length,
               gradient: _headerGradient,
               pageTitle: pageTitle,
+              weekType: weekType ?? _weekInfo?.weekType ?? 'Неизвестно',
             ),
           ),
           SliverFillRemaining(
@@ -173,9 +191,10 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         SliverToBoxAdapter(
           child: _TodayHeader(
             dateLabel: dateLabel,
-            lessonsCount: scheduleData.length,
+            lessonsCount: filteredScheduleData.length,
             gradient: _headerGradient,
             pageTitle: pageTitle,
+            weekType: weekType ?? _weekInfo?.weekType ?? 'Неизвестно',
           ),
         ),
         SliverPadding(
@@ -215,8 +234,8 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
-                    children: List.generate(scheduleData.length, (index) {
-                      final item = scheduleData[index];
+                    children: List.generate(filteredScheduleData.length, (index) {
+                      final item = filteredScheduleData[index];
                       print(
                         'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
                       );
@@ -250,13 +269,13 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                         ),
                       ];
 
-                      if (index < scheduleData.length - 1) {
+                      if (index < filteredScheduleData.length - 1) {
                         String nextLessonStartTime =
-                            scheduleData[index + 1].startTime;
+                            filteredScheduleData[index + 1].startTime;
 
                         try {
                           final nextPeriodInt = int.tryParse(
-                            scheduleData[index + 1].number,
+                            filteredScheduleData[index + 1].number,
                           );
                           if (nextPeriodInt != null &&
                               nextPeriodInt > 0 &&
@@ -282,7 +301,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
                       return Padding(
                         padding: EdgeInsets.only(
-                          bottom: index == scheduleData.length - 1 ? 0 : 14,
+                          bottom: index == filteredScheduleData.length - 1 ? 0 : 14,
                         ),
                         child: Column(children: widgets),
                       );
@@ -295,6 +314,91 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         ),
       ],
     );
+  }
+
+  /// Определяет тип недели для заданной даты
+  String? _getWeekTypeForDate(DateTime date) {
+    // Если информация о неделе недоступна, возвращаем null
+    if (_weekInfo == null) {
+      return null;
+    }
+
+    // Получаем текущую дату из информации о неделе
+    // Для простоты предполагаем, что _weekInfo.date содержит текущую дату
+    // В реальной реализации может потребоваться более сложная логика
+    
+    // Если дата - понедельник и это завтра, то это может быть новая неделя
+    if (date.weekday == DateTime.monday && 
+        date.difference(DateTime.now()).inDays == 1) {
+      // Если сегодня воскресенье, то завтра будет новая неделя
+      if (DateTime.now().weekday == DateTime.sunday) {
+        // Меняем тип недели
+        if (_weekInfo!.weekType == 'Числитель') {
+          return 'Знаменатель';
+        } else if (_weekInfo!.weekType == 'Знаменатель') {
+          return 'Числитель';
+        }
+      }
+    }
+    
+    // В остальных случаях возвращаем текущий тип недели
+    return _weekInfo!.weekType;
+  }
+
+  /// Фильтрует пары в зависимости от типа недели
+  List<Schedule> _filterScheduleByWeekType(List<Schedule> schedule, String? weekType) {
+    // Если информация о неделе недоступна, возвращаем все пары
+    if (weekType == null) {
+      return schedule;
+    }
+
+    // Группируем пары по номеру
+    final Map<String, List<Schedule>> lessonsByPeriod = {};
+    for (final lesson in schedule) {
+      final period = lesson.number;
+      if (!lessonsByPeriod.containsKey(period)) {
+        lessonsByPeriod[period] = [];
+      }
+      lessonsByPeriod[period]!.add(lesson);
+    }
+
+    // Фильтруем пары
+    final List<Schedule> filteredSchedule = [];
+    
+    lessonsByPeriod.forEach((period, lessons) {
+      // Проверяем, есть ли пары с типом (числитель/знаменатель)
+      // Фильтруем пустые уроки - у которых subject или teacher пустые
+      final numeratorLessons = lessons
+          .where((lesson) => lesson.lessonType == 'numerator' && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      final denominatorLessons = lessons
+          .where((lesson) => lesson.lessonType == 'denominator' && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      final regularLessons = lessons
+          .where((lesson) => lesson.lessonType == null && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      
+      if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
+        // Если есть пары с типом, выбираем только те, которые соответствуют текущей неделе
+        if (weekType == 'Числитель' && numeratorLessons.isNotEmpty) {
+          filteredSchedule.addAll(numeratorLessons);
+        } else if (weekType == 'Знаменатель' && denominatorLessons.isNotEmpty) {
+          filteredSchedule.addAll(denominatorLessons);
+        }
+        // Если для текущей недели нет пары, не добавляем ничего (остается пустой слот)
+      } else {
+        // Если нет пар с типом, добавляем все обычные пары
+        filteredSchedule.addAll(regularLessons);
+      }
+    });
+    
+    return filteredSchedule;
   }
 
   String _primaryBuilding(List<Schedule> schedule) {
@@ -326,12 +430,14 @@ class _TodayHeader extends StatelessWidget {
   final int lessonsCount;
   final List<Color> gradient;
   final String pageTitle;
+  final String weekType;
 
   const _TodayHeader({
     required this.dateLabel,
     required this.lessonsCount,
     required this.gradient,
     required this.pageTitle,
+    required this.weekType,
   });
 
   @override
@@ -365,9 +471,9 @@ class _TodayHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Text(
-                'Числитель',
-                style: TextStyle(
+              child: Text(
+                weekType,
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.4,
