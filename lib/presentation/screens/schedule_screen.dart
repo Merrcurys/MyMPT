@@ -301,69 +301,15 @@ class _DaySection extends StatelessWidget {
     return dayMap[day] ?? day;
   }
 
-  /// Фильтрует пары в зависимости от типа недели
-  List<Schedule> _filterScheduleByWeekType(List<Schedule> schedule, String? weekType) {
-    // Если информация о неделе недоступна, возвращаем все пары
-    if (weekType == null) {
-      return schedule;
-    }
 
-    // Группируем пары по номеру
-    final Map<String, List<Schedule>> lessonsByPeriod = {};
-    for (final lesson in schedule) {
-      final period = lesson.number;
-      if (!lessonsByPeriod.containsKey(period)) {
-        lessonsByPeriod[period] = [];
-      }
-      lessonsByPeriod[period]!.add(lesson);
-    }
-
-    // Фильтруем пары
-    final List<Schedule> filteredSchedule = [];
-    
-    lessonsByPeriod.forEach((period, lessons) {
-      // Проверяем, есть ли пары с типом (числитель/знаменатель)
-      // Фильтруем пустые уроки - у которых subject пустой
-      final numeratorLessons = lessons
-          .where((lesson) => lesson.lessonType == 'numerator' && 
-                 lesson.subject.trim().isNotEmpty)
-          .toList();
-      final denominatorLessons = lessons
-          .where((lesson) => lesson.lessonType == 'denominator' && 
-                 lesson.subject.trim().isNotEmpty)
-          .toList();
-      final regularLessons = lessons
-          .where((lesson) => lesson.lessonType == null && 
-                 lesson.subject.trim().isNotEmpty)
-          .toList();
-      
-      if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
-        // Если есть пары с типом, выбираем только те, которые соответствуют текущей неделе
-        if (weekType == 'Числитель' && numeratorLessons.isNotEmpty) {
-          filteredSchedule.addAll(numeratorLessons);
-        } else if (weekType == 'Знаменатель' && denominatorLessons.isNotEmpty) {
-          filteredSchedule.addAll(denominatorLessons);
-        }
-        // Если для текущей недели нет пары, не добавляем ничего (остается пустой слот)
-      } else {
-        // Если нет пар с типом, добавляем все обычные пары
-        filteredSchedule.addAll(regularLessons);
-      }
-    });
-    
-    return filteredSchedule;
-  }
 
   /// Создает виджеты для отображения уроков с поддержкой числителя/знаменателя
   List<Widget> _buildLessonWidgets(List<Schedule> lessons, List<dynamic> callsData) {
-    // Фильтруем уроки в зависимости от типа недели
-    final filteredLessons = _filterScheduleByWeekType(lessons, weekType);
-    
     final widgets = <Widget>[];
     
     // Группируем уроки по номеру пары
     final Map<String, List<Schedule>> lessonsByPeriod = {};
-    for (final lesson in filteredLessons) {
+    for (final lesson in lessons) {
       final period = lesson.number;
       if (!lessonsByPeriod.containsKey(period)) {
         lessonsByPeriod[period] = [];
@@ -400,6 +346,7 @@ class _DaySection extends StatelessWidget {
       
       if (hasTypedLessons) {
         // Обрабатываем пары с числителем/знаменателем
+        // В недельном расписании показываем обе пары, независимо от типа недели
         Schedule? numeratorLesson;
         Schedule? denominatorLesson;
         

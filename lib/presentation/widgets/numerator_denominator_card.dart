@@ -54,7 +54,9 @@ class NumeratorDenominatorCard extends StatelessWidget {
                 children: [
                   // Числитель
                   if (numeratorLesson != null)
-                    _buildLessonItem(numeratorLesson!, true),
+                    _buildLessonItem(numeratorLesson!, true)
+                  else
+                    _buildEmptyLessonItem(true),
                   
                   // Разделитель
                   Container(
@@ -65,7 +67,9 @@ class NumeratorDenominatorCard extends StatelessWidget {
                   
                   // Знаменатель
                   if (denominatorLesson != null)
-                    _buildLessonItem(denominatorLesson!, false),
+                    _buildLessonItem(denominatorLesson!, false)
+                  else
+                    _buildEmptyLessonItem(false),
                 ],
               ),
             ),
@@ -145,6 +149,49 @@ class NumeratorDenominatorCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white.withOpacity(0.7),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyLessonItem(bool isNumerator) {
+    final color = isNumerator 
+        ? const Color(0xFFFF8C00) // Оранжевый для числителя
+        : const Color(0xFF4FC3F7); // Голубой для знаменателя;
+    
+    return Expanded(
+      child: Row(
+        children: [
+          // Индикатор типа (числитель/знаменатель)
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          
+          // Основной контент
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Нет пары',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
