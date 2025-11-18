@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/domain/usecases/get_weekly_schedule_usecase.dart';
+import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/numerator_denominator_card.dart';
+import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/data/repositories/week_repository.dart';
+import 'package:my_mpt/data/models/week_info.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
 class ScheduleScreen extends StatefulWidget {
@@ -23,8 +29,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   static const _borderColor = Color(0xFF333333);
 
   late ScheduleRepositoryInterface _repository;
+  late ScheduleChangesRepository _changesRepository;
   late GetWeeklyScheduleUseCase _getWeeklyScheduleUseCase;
+  late GetScheduleChangesUseCase _getScheduleChangesUseCase;
+  late WeekRepository _weekRepository;
   Map<String, List<Schedule>> _weeklySchedule = {};
+  List<ScheduleChangeEntity> _scheduleChanges = [];
+  WeekInfo? _weekInfo;
   bool _isLoading = true;
 
   static const Color _lessonAccent = Color(0xFFFF8C00);
@@ -33,7 +44,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     _repository = ScheduleRepository();
+    _changesRepository = ScheduleChangesRepository();
+    _weekRepository = WeekRepository();
     _getWeeklyScheduleUseCase = GetWeeklyScheduleUseCase(_repository);
+    _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
     _loadScheduleData();
   }
 
@@ -43,9 +57,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
 
     try {
+      // Load week information
+      final weekInfo = await _weekRepository.getWeekInfo();
+      
       final scheduleData = await _getWeeklyScheduleUseCase();
+      
+      // Load schedule changes
+      final scheduleChanges = await _getScheduleChangesUseCase();
+      
       setState(() {
+        _weekInfo = weekInfo;
         _weeklySchedule = scheduleData;
+        _scheduleChanges = scheduleChanges;
         _isLoading = false;
       });
     } catch (e) {
@@ -77,6 +100,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       child: _Header(
                         borderColor: _borderColor,
                         dateLabel: _formatDate(DateTime.now()),
+                        weekType: _weekInfo?.weekType ?? 'Неизвестно',
                       ),
                     ),
                     SliverPadding(
@@ -90,6 +114,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             building: building,
                             lessons: day.value,
                             accentColor: _lessonAccent,
+                            weekType: _weekInfo?.weekType,
                           );
                         }, childCount: days.length),
                       ),
@@ -127,10 +152,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 class _Header extends StatelessWidget {
   final Color borderColor;
   final String dateLabel;
+  final String weekType;
 
   static const List<Color> _gradient = [Color(0xFF333333), Color(0xFF111111)];
 
-  const _Header({required this.borderColor, required this.dateLabel});
+  const _Header({required this.borderColor, required this.dateLabel, required this.weekType});
 
   @override
   Widget build(BuildContext context) {
@@ -164,9 +190,9 @@ class _Header extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: Colors.white.withOpacity(0.1)),
               ),
-              child: const Text(
-                'Числитель',
-                style: TextStyle(
+              child: Text(
+                weekType,
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.4,
@@ -200,12 +226,14 @@ class _DaySection extends StatelessWidget {
   final String building;
   final List<Schedule> lessons;
   final Color accentColor;
+  final String? weekType;
 
   const _DaySection({
     required this.title,
     required this.building,
     required this.lessons,
     required this.accentColor,
+    this.weekType,
   });
 
   /// Преобразует день недели из ЗАГЛАВНЫХ букв в формат с заглавной буквы
@@ -226,13 +254,72 @@ class _DaySection extends StatelessWidget {
     return dayMap[day] ?? day;
   }
 
+  /// Фильтрует пары в зависимости от типа недели
+  List<Schedule> _filterScheduleByWeekType(List<Schedule> schedule, String? weekType) {
+    // Если информация о неделе недоступна, возвращаем все пары
+    if (weekType == null) {
+      return schedule;
+    }
+
+    // Группируем пары по номеру
+    final Map<String, List<Schedule>> lessonsByPeriod = {};
+    for (final lesson in schedule) {
+      final period = lesson.number;
+      if (!lessonsByPeriod.containsKey(period)) {
+        lessonsByPeriod[period] = [];
+      }
+      lessonsByPeriod[period]!.add(lesson);
+    }
+
+    // Фильтруем пары
+    final List<Schedule> filteredSchedule = [];
+    
+    lessonsByPeriod.forEach((period, lessons) {
+      // Проверяем, есть ли пары с типом (числитель/знаменатель)
+      // Фильтруем пустые уроки - у которых subject или teacher пустые
+      final numeratorLessons = lessons
+          .where((lesson) => lesson.lessonType == 'numerator' && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      final denominatorLessons = lessons
+          .where((lesson) => lesson.lessonType == 'denominator' && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      final regularLessons = lessons
+          .where((lesson) => lesson.lessonType == null && 
+                 lesson.subject.trim().isNotEmpty && 
+                 lesson.teacher.trim().isNotEmpty)
+          .toList();
+      
+      if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
+        // Если есть пары с типом, выбираем только те, которые соответствуют текущей неделе
+        if (weekType == 'Числитель' && numeratorLessons.isNotEmpty) {
+          filteredSchedule.addAll(numeratorLessons);
+        } else if (weekType == 'Знаменатель' && denominatorLessons.isNotEmpty) {
+          filteredSchedule.addAll(denominatorLessons);
+        }
+        // Если для текущей недели нет пары, не добавляем ничего (остается пустой слот)
+      } else {
+        // Если нет пар с типом, добавляем все обычные пары
+        filteredSchedule.addAll(regularLessons);
+      }
+    });
+    
+    return filteredSchedule;
+  }
+
   /// Создает виджеты для отображения уроков с поддержкой числителя/знаменателя
   List<Widget> _buildLessonWidgets(List<Schedule> lessons, List<dynamic> callsData) {
+    // Фильтруем уроки в зависимости от типа недели
+    final filteredLessons = _filterScheduleByWeekType(lessons, weekType);
+    
     final widgets = <Widget>[];
     
     // Группируем уроки по номеру пары
     final Map<String, List<Schedule>> lessonsByPeriod = {};
-    for (final lesson in lessons) {
+    for (final lesson in filteredLessons) {
       final period = lesson.number;
       if (!lessonsByPeriod.containsKey(period)) {
         lessonsByPeriod[period] = [];

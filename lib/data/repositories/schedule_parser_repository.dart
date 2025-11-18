@@ -161,9 +161,16 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
     }
   }
 
-  /// Получает код выбранной группы из настроек
+  /// Получает код выбранной группы из настроек или из переменной окружения
   Future<String> _getSelectedGroupCode() async {
     try {
+      // Проверяем переменную окружения first
+      const envGroup = String.fromEnvironment('SELECTED_GROUP');
+      if (envGroup.isNotEmpty) {
+        return envGroup;
+      }
+      
+      // Если переменная окружения не задана, используем SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_selectedGroupKey) ?? '';
     } catch (e) {

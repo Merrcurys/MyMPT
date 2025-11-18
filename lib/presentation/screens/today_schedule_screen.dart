@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/domain/usecases/get_today_schedule_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_tomorrow_schedule_usecase.dart';
+import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
+import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 import 'package:my_mpt/data/repositories/week_repository.dart';
 import 'package:my_mpt/data/models/week_info.dart';
@@ -29,11 +33,14 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   ];
 
   late ScheduleRepositoryInterface _repository;
+  late ScheduleChangesRepository _changesRepository;
   late GetTodayScheduleUseCase _getTodayScheduleUseCase;
   late GetTomorrowScheduleUseCase _getTomorrowScheduleUseCase;
+  late GetScheduleChangesUseCase _getScheduleChangesUseCase;
   late WeekRepository _weekRepository;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
+  List<ScheduleChangeEntity> _scheduleChanges = [];
   WeekInfo? _weekInfo;
   bool _isLoading = true;
   final PageController _pageController = PageController();
@@ -43,9 +50,11 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   void initState() {
     super.initState();
     _repository = ScheduleRepository();
+    _changesRepository = ScheduleChangesRepository();
     _weekRepository = WeekRepository();
     _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
     _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
+    _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
     _loadScheduleData();
   }
 
@@ -67,10 +76,15 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       final tomorrowSchedule = await _getTomorrowScheduleUseCase();
       print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
 
+      print('DEBUG: Загружаем изменения в расписании...');
+      final scheduleChanges = await _getScheduleChangesUseCase();
+      print('DEBUG: Загружено ${scheduleChanges.length} изменений в расписании');
+
       setState(() {
         _weekInfo = weekInfo;
         _todayScheduleData = todaySchedule;
         _tomorrowScheduleData = tomorrowSchedule;
+        _scheduleChanges = scheduleChanges;
         _isLoading = false;
       });
     } catch (e) {
@@ -234,78 +248,118 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
-                    children: List.generate(filteredScheduleData.length, (index) {
-                      final item = filteredScheduleData[index];
-                      print(
-                        'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
-                      );
+                    children: [
+                      // Отображаем основное расписание
+                      ...List.generate(filteredScheduleData.length, (index) {
+                        final item = filteredScheduleData[index];
+                        print(
+                          'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
+                        );
 
-                      String lessonStartTime = item.startTime;
-                      String lessonEndTime = item.endTime;
-
-                      try {
-                        final periodInt = int.tryParse(item.number);
-                        if (periodInt != null &&
-                            periodInt > 0 &&
-                            periodInt <= callsData.length) {
-                          final call =
-                              callsData[periodInt -
-                                  1];
-                          lessonStartTime = call.startTime;
-                          lessonEndTime = call.endTime;
-                        }
-                      } catch (e) {
-                        // Потом
-                      }
-
-                      final widgets = <Widget>[
-                        LessonCard(
-                          number: item.number,
-                          subject: item.subject,
-                          teacher: item.teacher,
-                          startTime: lessonStartTime,
-                          endTime: lessonEndTime,
-                          accentColor: _lessonAccent,
-                        ),
-                      ];
-
-                      if (index < filteredScheduleData.length - 1) {
-                        String nextLessonStartTime =
-                            filteredScheduleData[index + 1].startTime;
+                        String lessonStartTime = item.startTime;
+                        String lessonEndTime = item.endTime;
 
                         try {
-                          final nextPeriodInt = int.tryParse(
-                            filteredScheduleData[index + 1].number,
-                          );
-                          if (nextPeriodInt != null &&
-                              nextPeriodInt > 0 &&
-                              nextPeriodInt <= callsData.length) {
-                            final nextCall =
-                                callsData[nextPeriodInt -
+                          final periodInt = int.tryParse(item.number);
+                          if (periodInt != null &&
+                              periodInt > 0 &&
+                              periodInt <= callsData.length) {
+                            final call =
+                                callsData[periodInt -
                                     1];
-                            nextLessonStartTime = nextCall.startTime;
+                            lessonStartTime = call.startTime;
+                            lessonEndTime = call.endTime;
                           }
                         } catch (e) {
                           // Потом
                         }
 
-                        widgets.add(
-                          BreakIndicator(
-                            startTime:
-                                lessonEndTime,
-                            endTime:
-                                nextLessonStartTime,
+                        final widgets = <Widget>[
+                          LessonCard(
+                            number: item.number,
+                            subject: item.subject,
+                            teacher: item.teacher,
+                            startTime: lessonStartTime,
+                            endTime: lessonEndTime,
+                            accentColor: _lessonAccent,
                           ),
-                        );
-                      }
+                        ];
 
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == filteredScheduleData.length - 1 ? 0 : 14,
-                        ),
-                        child: Column(children: widgets),
-                      );
-                    }),
+                        if (index < filteredScheduleData.length - 1) {
+                          String nextLessonStartTime =
+                              filteredScheduleData[index + 1].startTime;
+
+                          try {
+                            final nextPeriodInt = int.tryParse(
+                              filteredScheduleData[index + 1].number,
+                            );
+                            if (nextPeriodInt != null &&
+                                nextPeriodInt > 0 &&
+                                nextPeriodInt <= callsData.length) {
+                              final nextCall =
+                                  callsData[nextPeriodInt -
+                                      1];
+                              nextLessonStartTime = nextCall.startTime;
+                            }
+                          } catch (e) {
+                            // Потом
+                          }
+
+                          widgets.add(
+                            BreakIndicator(
+                              startTime:
+                                  lessonEndTime,
+                              endTime:
+                                  nextLessonStartTime,
+                            ),
+                          );
+                        }
+
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == filteredScheduleData.length - 1 ? 0 : 14,
+                          ),
+                          child: Column(children: widgets),
+                        );
+                      }),
+                      // Отображаем изменения в расписании, если они есть (только для соответствующего дня)
+                      ...() {
+                        final filteredChanges = _getFilteredScheduleChanges(pageTitle);
+                        if (filteredChanges.isNotEmpty) {
+                          return [
+                            const SizedBox(height: 30),
+                            const Divider(
+                              color: Color(0xFF333333),
+                              thickness: 1,
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Изменения в расписании',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ]..addAll(
+                            filteredChanges.map((change) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: ScheduleChangeCard(
+                                  lessonNumber: change!.lessonNumber,
+                                  replaceFrom: change.replaceFrom,
+                                  replaceTo: change.replaceTo,
+                                  updatedAt: change.updatedAt,
+                                  changeDate: change.changeDate,
+                                ),
+                              );
+                            }).toList(),
+                          )..add(const SizedBox(height: 20));
+                        }
+                        return [];
+                      }(),
+                    ],
                   ),
                 ),
               ],
@@ -422,6 +476,29 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
   String _formatDate(DateTime date) {
     return DateFormatter.formatDayWithMonth(date);
+  }
+
+  /// Фильтрует изменения в расписании по дате для отображения только на соответствующей странице
+  List<ScheduleChangeEntity?> _getFilteredScheduleChanges(String pageTitle) {
+    final today = DateTime.now();
+    final tomorrow = DateTime.now().add(Duration(days: 1));
+    
+    // Форматируем даты в строку для сравнения с changeDate
+    final String todayDate = '${today.day}.${today.month.toString().padLeft(2, '0')}.${today.year}';
+    final String tomorrowDate = '${tomorrow.day}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
+    
+    // Определяем, какие изменения показывать на текущей странице
+    String targetDate = '';
+    if (pageTitle == 'Сегодня') {
+      targetDate = todayDate;
+    } else if (pageTitle == 'Завтра') {
+      targetDate = tomorrowDate;
+    }
+    
+    // Фильтруем изменения по дате применения (changeDate)
+    return _scheduleChanges
+        .where((change) => change.changeDate == targetDate)
+        .toList();
   }
 }
 
