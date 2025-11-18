@@ -4,8 +4,7 @@ import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/domain/usecases/get_weekly_schedule_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
-import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
-import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
@@ -28,7 +27,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   static const _backgroundColor = Color(0xFF000000);
   static const _borderColor = Color(0xFF333333);
 
-  late ScheduleRepositoryInterface _repository;
+  late UnifiedScheduleRepository _repository;
   late ScheduleChangesRepository _changesRepository;
   late GetWeeklyScheduleUseCase _getWeeklyScheduleUseCase;
   late GetScheduleChangesUseCase _getScheduleChangesUseCase;
@@ -43,15 +42,56 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = ScheduleRepository();
+    _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
     _weekRepository = WeekRepository();
     _getWeeklyScheduleUseCase = GetWeeklyScheduleUseCase(_repository);
     _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
+    
+    // Слушаем уведомления об обновлении данных
+    _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
+    
     _loadScheduleData();
   }
 
   Future<void> _loadScheduleData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load week information
+      final weekInfo = await _weekRepository.getWeekInfo();
+      
+      final scheduleData = await _getWeeklyScheduleUseCase(forceRefresh: true);
+      
+      // Load schedule changes
+      final scheduleChanges = await _getScheduleChangesUseCase();
+      
+      setState(() {
+        _weekInfo = weekInfo;
+        _weeklySchedule = scheduleData;
+        _scheduleChanges = scheduleChanges;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка загрузки расписания')),
+      );
+    }
+  }
+
+  /// Обработчик уведомлений об обновлении данных
+  void _onDataUpdated() {
+    // Перезагружаем данные без forceRefresh, чтобы использовать кэш
+    _loadScheduleDataWithoutForceRefresh();
+  }
+
+  /// Загрузка данных без принудительного обновления
+  Future<void> _loadScheduleDataWithoutForceRefresh() async {
     setState(() {
       _isLoading = true;
     });
@@ -142,6 +182,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
     });
     return primary;
+  }
+
+  @override
+  void dispose() {
+    // Удаляем слушателя уведомлений
+    _repository.dataUpdatedNotifier.removeListener(_onDataUpdated);
+    super.dispose();
   }
 
   String _formatDate(DateTime date) {
@@ -276,21 +323,18 @@ class _DaySection extends StatelessWidget {
     
     lessonsByPeriod.forEach((period, lessons) {
       // Проверяем, есть ли пары с типом (числитель/знаменатель)
-      // Фильтруем пустые уроки - у которых subject или teacher пустые
+      // Фильтруем пустые уроки - у которых subject пустой
       final numeratorLessons = lessons
           .where((lesson) => lesson.lessonType == 'numerator' && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       final denominatorLessons = lessons
           .where((lesson) => lesson.lessonType == 'denominator' && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       final regularLessons = lessons
           .where((lesson) => lesson.lessonType == null && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       
       if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {

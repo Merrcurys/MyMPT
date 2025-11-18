@@ -5,6 +5,7 @@ import 'package:my_mpt/domain/usecases/get_specialties_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_groups_by_specialty_usecase.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
+import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,7 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Group? _selectedGroup;
   String? _selectedSpecialtyCode;
   bool _isLoading = false;
+  bool _isRefreshing = false;
   StateSetter? _modalStateSetter;
+  DateTime? _lastUpdate;
 
   static const String _selectedGroupKey = 'selected_group';
   static const String _selectedSpecialtyKey = 'selected_specialty';
@@ -76,6 +79,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final selectedSpecialtyName = prefs.getString(
         '${_selectedSpecialtyKey}_name',
       );
+      // Загружаем время последнего обновления
+      final lastUpdateMillis = prefs.getString('last_schedule_update');
+      if (lastUpdateMillis != null && lastUpdateMillis.isNotEmpty) {
+        try {
+          // Проверяем, является ли строка числом (новый формат)
+          if (RegExp(r'^\d+$').hasMatch(lastUpdateMillis)) {
+            _lastUpdate = DateTime.fromMillisecondsSinceEpoch(int.parse(lastUpdateMillis));
+          } else {
+            // Старый формат - игнорируем
+            print('DEBUG: Старый формат даты, игнорируем');
+          }
+        } catch (e) {
+          print('DEBUG: Ошибка парсинга времени последнего обновления: $e');
+        }
+      }
 
       setState(() {
         if (selectedGroupCode != null && selectedGroupCode.isNotEmpty) {
@@ -107,6 +125,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (e) {
       print('DEBUG: Ошибка загрузки выбранных настроек: $e');
+    }
+  }
+
+  /// Получает текст для отображения времени последнего обновления
+  String _getLastUpdateText() {
+    if (_lastUpdate == null) {
+      return 'Расписание еще не обновлялось';
+    }
+    
+    final now = DateTime.now();
+    final difference = now.difference(_lastUpdate!);
+    
+    if (difference.inDays > 0) {
+      return 'Последнее обновление: ${_lastUpdate!.day}.${_lastUpdate!.month.toString().padLeft(2, '0')} в ${_lastUpdate!.hour.toString().padLeft(2, '0')}:${_lastUpdate!.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inHours > 0) {
+      return 'Последнее обновление: ${difference.inHours} ${_getHoursText(difference.inHours)} назад';
+    } else if (difference.inMinutes > 0) {
+      return 'Последнее обновление: ${difference.inMinutes} ${_getMinutesText(difference.inMinutes)} назад';
+    } else {
+      return 'Последнее обновление: только что';
+    }
+  }
+
+  /// Возвращает правильное склонение слова "час" в зависимости от числа
+  String _getHoursText(int hours) {
+    if (hours % 10 == 1 && hours % 100 != 11) {
+      return 'час';
+    } else if (hours % 10 >= 2 && hours % 10 <= 4 && (hours % 100 < 10 || hours % 100 >= 20)) {
+      return 'часа';
+    } else {
+      return 'часов';
+    }
+  }
+
+  /// Возвращает правильное склонение слова "минута" в зависимости от числа
+  String _getMinutesText(int minutes) {
+    if (minutes % 10 == 1 && minutes % 100 != 11) {
+      return 'минуту';
+    } else if (minutes % 10 >= 2 && minutes % 10 <= 4 && (minutes % 100 < 10 || minutes % 100 >= 20)) {
+      return 'минуты';
+    } else {
+      return 'минут';
+    }
+  }
+
+  /// Обновляет расписание
+  Future<void> _refreshSchedule() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      // Проверяем, выбрана ли группа
+      final prefs = await SharedPreferences.getInstance();
+      final selectedGroupCode = prefs.getString(_selectedGroupKey);
+      
+      if (selectedGroupCode == null || selectedGroupCode.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Сначала выберите группу')),
+          );
+        }
+        setState(() {
+          _isRefreshing = false;
+        });
+        return;
+      }
+
+      // Обновляем расписание через unified repository
+      final repository = UnifiedScheduleRepository();
+      await repository.forceRefresh();
+      
+      // Сохраняем время обновления
+      final now = DateTime.now();
+      await prefs.setString('last_schedule_update', now.millisecondsSinceEpoch.toString());
+      
+      setState(() {
+        _lastUpdate = now;
+        _isRefreshing = false;
+      });
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Расписание успешно обновлено')),
+        );
+      }
+    } catch (e) {
+      print('DEBUG: Ошибка обновления расписания: $e');
+      setState(() {
+        _isRefreshing = false;
+      });
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка обновления расписания')),
+        );
+      }
     }
   }
 
@@ -197,10 +312,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       print('DEBUG: Ошибка сохранения выбранной группы: $e');
     }
 
-    // Show confirmation
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}')));
+    // Принудительно обновляем расписание
+    try {
+      final repository = UnifiedScheduleRepository();
+      await repository.forceRefresh();
+      
+      // Show confirmation
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}. Расписание обновлено')));
+      }
+    } catch (e) {
+      print('DEBUG: Ошибка обновления расписания: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}. Ошибка обновления расписания')));
+      }
+    }
   }
 
   @override
@@ -236,8 +366,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 14),
               _SettingsCard(
                 title: 'Обновить расписание',
-                subtitle: 'Последнее обновление: сегодня в 08:30',
+                subtitle: _getLastUpdateText(),
                 icon: Icons.refresh,
+                onTap: _refreshSchedule,
+                isRefreshing: _isRefreshing,
               ),
               const SizedBox(height: 28),
               const _Section(title: 'Обратная связь'),
@@ -524,23 +656,61 @@ class _Section extends StatelessWidget {
   }
 }
 
-class _SettingsCard extends StatelessWidget {
+class _SettingsCard extends StatefulWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback? onTap;
+  final bool isRefreshing;
 
   const _SettingsCard({
     required this.title,
     required this.subtitle,
     required this.icon,
     this.onTap,
+    this.isRefreshing = false,
   });
+
+  @override
+  State<_SettingsCard> createState() => _SettingsCardState();
+}
+
+class _SettingsCardState extends State<_SettingsCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _rotationAnimation = Tween<double>(begin: 0, end: 360).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.linear),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SettingsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isRefreshing && !oldWidget.isRefreshing) {
+      _controller.repeat();
+    } else if (!widget.isRefreshing && oldWidget.isRefreshing) {
+      _controller.stop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
@@ -556,7 +726,12 @@ class _SettingsCard extends StatelessWidget {
                 color: const Color(0xFFFF8C00).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: const Color(0xFFFF8C00)),
+              child: widget.isRefreshing
+                  ? RotationTransition(
+                      turns: _rotationAnimation,
+                      child: Icon(widget.icon, color: const Color(0xFFFF8C00)),
+                    )
+                  : Icon(widget.icon, color: const Color(0xFFFF8C00)),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -564,7 +739,7 @@ class _SettingsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -573,17 +748,26 @@ class _SettingsCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    subtitle,
+                    widget.subtitle,
                     style: const TextStyle(fontSize: 13, color: Colors.white70),
                   ),
                 ],
               ),
             ),
-            Icon(
-              onTap != null ? Icons.arrow_forward_ios : null,
-              size: 16,
-              color: Colors.white54,
-            ),
+            widget.isRefreshing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFFF8C00),
+                    ),
+                  )
+                : Icon(
+                    widget.onTap != null ? Icons.arrow_forward_ios : null,
+                    size: 16,
+                    color: Colors.white54,
+                  ),
           ],
         ),
       ),

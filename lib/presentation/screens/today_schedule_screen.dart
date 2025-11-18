@@ -5,8 +5,7 @@ import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/domain/usecases/get_today_schedule_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_tomorrow_schedule_usecase.dart';
 import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
-import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
-import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
@@ -32,7 +31,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     Color(0xFF111111),
   ];
 
-  late ScheduleRepositoryInterface _repository;
+  late UnifiedScheduleRepository _repository;
   late ScheduleChangesRepository _changesRepository;
   late GetTodayScheduleUseCase _getTodayScheduleUseCase;
   late GetTomorrowScheduleUseCase _getTomorrowScheduleUseCase;
@@ -49,16 +48,67 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = ScheduleRepository();
+    _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
     _weekRepository = WeekRepository();
     _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
     _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
     _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
+    
+    // Слушаем уведомления об обновлении данных
+    _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
+    
     _loadScheduleData();
   }
 
   Future<void> _loadScheduleData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      print('DEBUG: Загружаем информацию о неделе...');
+      final weekInfo = await _weekRepository.getWeekInfo();
+      print('DEBUG: Тип недели: ${weekInfo.weekType}');
+
+      print('DEBUG: Загружаем расписание на сегодня...');
+      final todaySchedule = await _getTodayScheduleUseCase(forceRefresh: true);
+      print('DEBUG: Загружено ${todaySchedule.length} уроков на сегодня');
+
+      print('DEBUG: Загружаем расписание на завтра...');
+      final tomorrowSchedule = await _getTomorrowScheduleUseCase(forceRefresh: true);
+      print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
+
+      print('DEBUG: Загружаем изменения в расписании...');
+      final scheduleChanges = await _getScheduleChangesUseCase();
+      print('DEBUG: Загружено ${scheduleChanges.length} изменений в расписании');
+
+      setState(() {
+        _weekInfo = weekInfo;
+        _todayScheduleData = todaySchedule;
+        _tomorrowScheduleData = tomorrowSchedule;
+        _scheduleChanges = scheduleChanges;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('DEBUG: Ошибка загрузки расписания: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка загрузки расписания')),
+      );
+    }
+  }
+
+  /// Обработчик уведомлений об обновлении данных
+  void _onDataUpdated() {
+    // Перезагружаем данные без forceRefresh, чтобы использовать кэш
+    _loadScheduleDataWithoutForceRefresh();
+  }
+
+  /// Загрузка данных без принудительного обновления
+  Future<void> _loadScheduleDataWithoutForceRefresh() async {
     setState(() {
       _isLoading = true;
     });
@@ -101,6 +151,8 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    // Удаляем слушателя уведомлений
+    _repository.dataUpdatedNotifier.removeListener(_onDataUpdated);
     super.dispose();
   }
 
@@ -419,21 +471,18 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     
     lessonsByPeriod.forEach((period, lessons) {
       // Проверяем, есть ли пары с типом (числитель/знаменатель)
-      // Фильтруем пустые уроки - у которых subject или teacher пустые
+      // Фильтруем пустые уроки - у которых subject пустой
       final numeratorLessons = lessons
           .where((lesson) => lesson.lessonType == 'numerator' && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       final denominatorLessons = lessons
           .where((lesson) => lesson.lessonType == 'denominator' && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       final regularLessons = lessons
           .where((lesson) => lesson.lessonType == null && 
-                 lesson.subject.trim().isNotEmpty && 
-                 lesson.teacher.trim().isNotEmpty)
+                 lesson.subject.trim().isNotEmpty)
           .toList();
       
       if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
