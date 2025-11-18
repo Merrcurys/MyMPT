@@ -7,6 +7,7 @@ class Schedule {
   final String startTime;
   final String endTime;
   final String building;
+  final String? lessonType; // numerator, denominator или null для обычных пар
 
   Schedule({
     required this.id,
@@ -16,6 +17,7 @@ class Schedule {
     required this.startTime,
     required this.endTime,
     required this.building,
+    this.lessonType,
   });
 
   @override

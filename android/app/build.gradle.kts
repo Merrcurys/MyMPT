@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.my_mpt"
+    namespace = "com.example.my_mpt" //! В продакщене исправить
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

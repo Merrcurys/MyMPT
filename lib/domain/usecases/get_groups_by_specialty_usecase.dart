@@ -10,6 +10,9 @@ class GetGroupsBySpecialtyUseCase {
 
   /// Выполнить получение списка групп по коду специальности
   Future<List<Group>> call(String specialtyCode) async {
-    return await repository.getGroupsBySpecialty(specialtyCode);
+    print('DEBUG: Use case получает запрос для специальности: $specialtyCode');
+    final result = await repository.getGroupsBySpecialty(specialtyCode);
+    print('DEBUG: Use case возвращает ${result.length} групп');
+    return result;
   }
 }

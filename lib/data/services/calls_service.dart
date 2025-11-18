@@ -1,6 +1,5 @@
 import 'package:my_mpt/data/models/call.dart';
 
-/// Service for providing calls data
 class CallsService {
   static final List<Call> _callsData = [
     Call(
@@ -47,15 +46,12 @@ class CallsService {
     ),
   ];
 
-  /// Get all calls data
   static List<Call> getCalls() {
     return List<Call>.from(_callsData);
   }
 
-  /// Get break duration between two lesson times
   static String getBreakDuration(String lessonEndTime, String nextLessonStartTime) {
     try {
-      // Parse times
       final endParts = lessonEndTime.split(':');
       final startParts = nextLessonStartTime.split(':');
       
@@ -64,12 +60,10 @@ class CallsService {
       final startHour = int.parse(startParts[0]);
       final startMinute = int.parse(startParts[1]);
       
-      // Calculate difference in minutes
       final endTotalMinutes = endHour * 60 + endMinute;
       final startTotalMinutes = startHour * 60 + startMinute;
       final breakMinutes = startTotalMinutes - endTotalMinutes;
       
-      // Format duration string
       if (breakMinutes < 0) return '0 минут';
       if (breakMinutes < 60) return '$breakMinutes минут';
       
@@ -82,7 +76,6 @@ class CallsService {
         return '$hours ${hours == 1 ? 'час' : 'часа'} $minutes минут';
       }
     } catch (e) {
-      // Return default if parsing fails
       return '20 минут';
     }
   }

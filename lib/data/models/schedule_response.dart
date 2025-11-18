@@ -10,8 +10,6 @@ class ScheduleResponse {
   });
 
   factory ScheduleResponse.fromJson(Map<String, dynamic> json) {
-    // In a real implementation, we would parse the JSON data here
-    // For now, we'll return the mock data
     return ScheduleResponse(
       weeklySchedule: _getMockWeeklySchedule(),
       todaySchedule: _getMockTodaySchedule(),
