@@ -85,7 +85,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         try {
           // Проверяем, является ли строка числом (новый формат)
           if (RegExp(r'^\d+$').hasMatch(lastUpdateMillis)) {
-            _lastUpdate = DateTime.fromMillisecondsSinceEpoch(int.parse(lastUpdateMillis));
+            _lastUpdate = DateTime.fromMillisecondsSinceEpoch(
+              int.parse(lastUpdateMillis),
+            );
           } else {
             // Старый формат - игнорируем
             print('DEBUG: Старый формат даты, игнорируем');
@@ -120,9 +122,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _selectedSpecialty = selectedSpecialty;
             }
           }
-          
+
           // Загружаем группы для выбранной специальности
-          if (_selectedSpecialty != null && _selectedSpecialty!.code.isNotEmpty) {
+          if (_selectedSpecialty != null &&
+              _selectedSpecialty!.code.isNotEmpty) {
             // Добавляем небольшую задержку для корректной инициализации
             Future.delayed(const Duration(milliseconds: 100), () {
               _loadGroups(_selectedSpecialty!.code);
@@ -140,10 +143,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_lastUpdate == null) {
       return 'Расписание еще не обновлялось';
     }
-    
+
     final now = DateTime.now();
     final difference = now.difference(_lastUpdate!);
-    
+
     if (difference.inDays > 0) {
       return 'Последнее обновление: ${_lastUpdate!.day}.${_lastUpdate!.month.toString().padLeft(2, '0')} в ${_lastUpdate!.hour.toString().padLeft(2, '0')}:${_lastUpdate!.minute.toString().padLeft(2, '0')}';
     } else if (difference.inHours > 0) {
@@ -159,7 +162,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getHoursText(int hours) {
     if (hours % 10 == 1 && hours % 100 != 11) {
       return 'час';
-    } else if (hours % 10 >= 2 && hours % 10 <= 4 && (hours % 100 < 10 || hours % 100 >= 20)) {
+    } else if (hours % 10 >= 2 &&
+        hours % 10 <= 4 &&
+        (hours % 100 < 10 || hours % 100 >= 20)) {
       return 'часа';
     } else {
       return 'часов';
@@ -170,7 +175,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getMinutesText(int minutes) {
     if (minutes % 10 == 1 && minutes % 100 != 11) {
       return 'минуту';
-    } else if (minutes % 10 >= 2 && minutes % 10 <= 4 && (minutes % 100 < 10 || minutes % 100 >= 20)) {
+    } else if (minutes % 10 >= 2 &&
+        minutes % 10 <= 4 &&
+        (minutes % 100 < 10 || minutes % 100 >= 20)) {
       return 'минуты';
     } else {
       return 'минут';
@@ -187,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Проверяем, выбрана ли группа
       final prefs = await SharedPreferences.getInstance();
       final selectedGroupCode = prefs.getString(_selectedGroupKey);
-      
+
       if (selectedGroupCode == null || selectedGroupCode.isEmpty) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -203,16 +210,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Обновляем расписание через unified repository
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
-      
+
       // Сохраняем время обновления
       final now = DateTime.now();
-      await prefs.setString('last_schedule_update', now.millisecondsSinceEpoch.toString());
-      
+      await prefs.setString(
+        'last_schedule_update',
+        now.millisecondsSinceEpoch.toString(),
+      );
+
       setState(() {
         _lastUpdate = now;
         _isRefreshing = false;
       });
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Расписание успешно обновлено')),
@@ -223,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isRefreshing = false;
       });
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ошибка обновления расписания')),
@@ -247,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final groups = await _getGroupsBySpecialtyUseCase(specialtyCode);
       print('DEBUG: Получено групп: ${groups.length}');
-      
+
       // Загружаем выбранную группу, если она была сохранена
       Group? selectedGroup;
       if (_selectedGroup != null) {
@@ -256,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           (group) => group.code == _selectedGroup!.code,
           orElse: () => Group(code: '', specialtyCode: ''),
         );
-        
+
         // Если группа не найдена, сбрасываем выбор
         if (selectedGroup.code.isEmpty) {
           selectedGroup = null;
@@ -270,14 +280,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             (group) => group.code == savedGroupCode,
             orElse: () => Group(code: '', specialtyCode: ''),
           );
-          
+
           // Если группа не найдена, сбрасываем выбор
           if (selectedGroup.code.isEmpty) {
             selectedGroup = null;
           }
         }
       }
-      
+
       setState(() {
         _groups = groups;
         _isLoading = false;
@@ -355,19 +365,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
-      
+
       // Show confirmation
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}. Расписание обновлено')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Выбрана группа: ${group.code}. Расписание обновлено',
+            ),
+          ),
+        );
       }
     } catch (e) {
       print('DEBUG: Ошибка обновления расписания: $e');
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Выбрана группа: ${group.code}. Ошибка обновления расписания')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Выбрана группа: ${group.code}. Ошибка обновления расписания',
+            ),
+          ),
+        );
       }
     }
   }
@@ -463,9 +481,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'О приложении',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          content: const Text(
-            'Приложение создано студентами группы П50-1-22',
-            style: TextStyle(color: Colors.white70),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Мой МПТ - Мобильное приложение для студентов Московского приборостроительного техникума, позволяющее просматривать расписание занятий, звонки и другую полезную информацию.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Разработчики:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Студенты группы П50-1-22:',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '• Себежко Александр Андреевич',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '• Симернин Матвей Александрович',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Версия: 0.1.0',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -714,7 +774,8 @@ class _SettingsCard extends StatefulWidget {
   State<_SettingsCard> createState() => _SettingsCardState();
 }
 
-class _SettingsCardState extends State<_SettingsCard> with SingleTickerProviderStateMixin {
+class _SettingsCardState extends State<_SettingsCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
 
@@ -725,9 +786,10 @@ class _SettingsCardState extends State<_SettingsCard> with SingleTickerProviderS
       duration: const Duration(seconds: 1),
       vsync: this,
     );
-    _rotationAnimation = Tween<double>(begin: 0, end: 360).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.linear),
-    );
+    _rotationAnimation = Tween<double>(
+      begin: 0,
+      end: 360,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
   }
 
   @override
