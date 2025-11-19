@@ -2,10 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:my_mpt/data/models/call.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 
+/// Экран отображения расписания звонков техникума
+///
+/// Этот экран показывает расписание звонков на учебный день
+/// с детализацией по периодам и времени начала/окончания каждого звона
+
+/// Основной экран расписания звонков
 class CallsScreen extends StatelessWidget {
   const CallsScreen({super.key});
 
+  /// Цвет фона экрана
   static const _backgroundColor = Color(0xFF000000);
+
+  /// Градиент для заголовка экрана
   static const List<Color> _headerGradient = [
     Color(0xFF333333),
     Color(0xFF111111),
@@ -63,6 +72,7 @@ class CallsScreen extends StatelessWidget {
   }
 }
 
+/// Виджет заголовка экрана звонков
 class _CallsHeader extends StatelessWidget {
   const _CallsHeader();
 
@@ -104,11 +114,21 @@ class _CallsHeader extends StatelessWidget {
   }
 }
 
+/// Виджет элемента временной шкалы звонков
 class _CallTimelineTile extends StatelessWidget {
+  /// Номер периода/пары
   final String period;
+
+  /// Время начала периода
   final String startTime;
+
+  /// Время окончания периода
   final String endTime;
+
+  /// Описание периода
   final String description;
+
+  /// Флаг отображения соединительной линии
   final bool showConnector;
 
   const _CallTimelineTile({

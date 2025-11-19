@@ -90,11 +90,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             );
           } else {
             // Старый формат - игнорируем
-            print('DEBUG: Старый формат даты, игнорируем');
           }
-        } catch (e) {
-          print('DEBUG: Ошибка парсинга времени последнего обновления: $e');
-        }
+        } catch (e) {}
       }
 
       setState(() {
@@ -133,9 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
         }
       });
-    } catch (e) {
-      print('DEBUG: Ошибка загрузки выбранных настроек: $e');
-    }
+    } catch (e) {}
   }
 
   /// Получает текст для отображения времени последнего обновления
@@ -229,7 +224,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      print('DEBUG: Ошибка обновления расписания: $e');
       setState(() {
         _isRefreshing = false;
       });
@@ -243,11 +237,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadGroups(String specialtyCode) async {
-    print('DEBUG: Начинаем загрузку групп для специальности: $specialtyCode');
-    print('DEBUG: Длина кода специальности: ${specialtyCode.length}');
-    print('DEBUG: Код специальности в байтах: ${specialtyCode.codeUnits}');
-    print('DEBUG: Начинается с #: ${specialtyCode.startsWith('#')}');
-    print('DEBUG: Тип кода специальности: ${specialtyCode.runtimeType}');
     setState(() {
       _isLoading = true;
       _groups = [];
@@ -256,7 +245,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final groups = await _getGroupsBySpecialtyUseCase(specialtyCode);
-      print('DEBUG: Получено групп: ${groups.length}');
 
       // Загружаем выбранную группу, если она была сохранена
       Group? selectedGroup;
@@ -291,21 +279,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _groups = groups;
         _isLoading = false;
-        _selectedGroup = selectedGroup;
+        // Обновляем выбранную группу только если она существует в новом списке
+        if (selectedGroup != null) {
+          _selectedGroup = selectedGroup;
+        }
       });
 
-      // Обновляем состояние модального окна, если оно открыто
-      _modalStateSetter?.call(() {});
-
-      // Show message if no groups found
-      if (groups.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Для выбранной специальности группы не найдены'),
-          ),
-        );
-      } else {
-        // Show success message
+      // Показываем уведомление о количестве загруженных групп
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Загружено ${groups.length} групп')),
         );
@@ -314,7 +295,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Force refresh the UI
       setState(() {});
     } catch (e) {
-      print('DEBUG: Ошибка загрузки групп: $e');
       setState(() {
         _isLoading = false;
       });
@@ -326,9 +306,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _onSpecialtySelected(Specialty specialty) async {
-    print(
-      'DEBUG: Выбрана специальность: ${specialty.code} - ${specialty.name}',
-    );
     setState(() {
       _selectedSpecialty = specialty;
       _selectedSpecialtyCode = specialty.code; // Also store the code
@@ -341,9 +318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setString(_selectedSpecialtyKey, specialty.code);
       // Also save the specialty name for immediate display
       await prefs.setString('${_selectedSpecialtyKey}_name', specialty.name);
-    } catch (e) {
-      print('DEBUG: Ошибка сохранения выбранной специальности: $e');
-    }
+    } catch (e) {}
 
     _loadGroups(specialty.code);
   }
@@ -357,9 +332,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_selectedGroupKey, group.code);
-    } catch (e) {
-      print('DEBUG: Ошибка сохранения выбранной группы: $e');
-    }
+    } catch (e) {}
 
     // Принудительно обновляем расписание
     try {
@@ -377,7 +350,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      print('DEBUG: Ошибка обновления расписания: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

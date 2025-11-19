@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 
+/// Виджет карточки изменения в расписании
+///
+/// Этот виджет отображает информацию об изменениях в расписании,
+/// таких как замены предметов или дополнительные занятия
 class ScheduleChangeCard extends StatelessWidget {
+  /// Номер пары, к которой применяется изменение
   final String lessonNumber;
+
+  /// Исходный предмет (до изменения)
   final String replaceFrom;
+
+  /// Новый предмет (после изменения)
   final String replaceTo;
+
+  /// Время добавления изменения
   final String updatedAt;
+
+  /// Дата применения изменения
   final String changeDate;
 
   const ScheduleChangeCard({
@@ -19,8 +32,10 @@ class ScheduleChangeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Проверяем, является ли это дополнительным занятием (нет оригинального предмета)
-    final isAdditionalClass = replaceFrom.isEmpty || replaceFrom == '\u00A0'; // \u00A0 is &nbsp; in HTML
-    
+    final isAdditionalClass =
+        replaceFrom.isEmpty ||
+        replaceFrom == '\u00A0'; // \u00A0 is &nbsp; in HTML
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF111111),
@@ -45,7 +60,9 @@ class ScheduleChangeCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isAdditionalClass ? 'Дополнительное занятие' : 'Замена в расписании',
+                    isAdditionalClass
+                        ? 'Дополнительное занятие'
+                        : 'Замена в расписании',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -85,7 +102,9 @@ class ScheduleChangeCard extends StatelessWidget {
   }
 }
 
+/// Виджет бейджа с номером пары
 class _NumberBadge extends StatelessWidget {
+  /// Номер пары
   final String number;
 
   const _NumberBadge({required this.number});
@@ -117,9 +136,15 @@ class _NumberBadge extends StatelessWidget {
   }
 }
 
+/// Виджет строки изменения
 class _ChangeRow extends StatelessWidget {
+  /// Метка строки (например, "Было:" или "Стало:")
   final String label;
+
+  /// Значение строки
   final String value;
+
+  /// Флаг, указывающий является ли это заменой
   final bool isReplacement;
 
   const _ChangeRow({

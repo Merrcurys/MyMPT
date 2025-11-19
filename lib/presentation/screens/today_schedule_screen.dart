@@ -41,7 +41,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   List<Schedule> _tomorrowScheduleData = [];
   List<ScheduleChangeEntity> _scheduleChanges = [];
   WeekInfo? _weekInfo;
-  bool _isLoading = true;
+  bool _isLoading = false;
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
 
@@ -54,98 +54,77 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
     _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
     _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
-    
+
     // Слушаем уведомления об обновлении данных
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
-    
-    _loadScheduleData();
+
+    _initializeSchedule();
   }
 
-  Future<void> _loadScheduleData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      print('DEBUG: Загружаем информацию о неделе...');
-      final weekInfo = await _weekRepository.getWeekInfo();
-      print('DEBUG: Тип недели: ${weekInfo.weekType}');
-
-      print('DEBUG: Загружаем расписание на сегодня...');
-      final todaySchedule = await _getTodayScheduleUseCase(forceRefresh: true);
-      print('DEBUG: Загружено ${todaySchedule.length} уроков на сегодня');
-
-      print('DEBUG: Загружаем расписание на завтра...');
-      final tomorrowSchedule = await _getTomorrowScheduleUseCase(forceRefresh: true);
-      print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
-
-      print('DEBUG: Загружаем изменения в расписании...');
-      final scheduleChanges = await _getScheduleChangesUseCase();
-      print('DEBUG: Загружено ${scheduleChanges.length} изменений в расписании');
-
-      setState(() {
-        _weekInfo = weekInfo;
-        _todayScheduleData = todaySchedule;
-        _tomorrowScheduleData = tomorrowSchedule;
-        _scheduleChanges = scheduleChanges;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('DEBUG: Ошибка загрузки расписания: $e');
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка загрузки расписания')),
-      );
-    }
+  Future<void> _initializeSchedule() async {
+    await _fetchScheduleData(forceRefresh: false, showLoader: false);
+    _fetchScheduleData(forceRefresh: true, showLoader: false);
   }
 
   /// Обработчик уведомлений об обновлении данных
   void _onDataUpdated() {
-    // Перезагружаем данные без forceRefresh, чтобы использовать кэш
-    _loadScheduleDataWithoutForceRefresh();
+    _fetchScheduleData(forceRefresh: false, showLoader: false);
   }
 
-  /// Загрузка данных без принудительного обновления
-  Future<void> _loadScheduleDataWithoutForceRefresh() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _fetchScheduleData({
+    required bool forceRefresh,
+    bool showLoader = true,
+  }) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
-      print('DEBUG: Загружаем информацию о неделе...');
-      final weekInfo = await _weekRepository.getWeekInfo();
-      print('DEBUG: Тип недели: ${weekInfo.weekType}');
+      if (forceRefresh) {
+        await _repository.forceRefresh();
+      }
 
-      print('DEBUG: Загружаем расписание на сегодня...');
-      final todaySchedule = await _getTodayScheduleUseCase();
-      print('DEBUG: Загружено ${todaySchedule.length} уроков на сегодня');
+      final scheduleResults = await Future.wait([
+        _getTodayScheduleUseCase(),
+        _getTomorrowScheduleUseCase(),
+      ]);
 
-      print('DEBUG: Загружаем расписание на завтра...');
-      final tomorrowSchedule = await _getTomorrowScheduleUseCase();
-      print('DEBUG: Загружено ${tomorrowSchedule.length} уроков на завтра');
-
-      print('DEBUG: Загружаем изменения в расписании...');
-      final scheduleChanges = await _getScheduleChangesUseCase();
-      print('DEBUG: Загружено ${scheduleChanges.length} изменений в расписании');
-
+      if (!mounted) return;
       setState(() {
-        _weekInfo = weekInfo;
-        _todayScheduleData = todaySchedule;
-        _tomorrowScheduleData = tomorrowSchedule;
-        _scheduleChanges = scheduleChanges;
-        _isLoading = false;
+        _todayScheduleData = scheduleResults[0] as List<Schedule>;
+        _tomorrowScheduleData = scheduleResults[1] as List<Schedule>;
+        if (showLoader) {
+          _isLoading = false;
+        }
       });
     } catch (e) {
-      print('DEBUG: Ошибка загрузки расписания: $e');
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ошибка загрузки расписания')),
-      );
+      if (showLoader) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки расписания')),
+        );
+      }
+      return;
     }
+
+    try {
+      final extras = await Future.wait([
+        _weekRepository.getWeekInfo(),
+        _getScheduleChangesUseCase(),
+      ]);
+
+      if (!mounted) return;
+      setState(() {
+        _weekInfo = extras[0] as WeekInfo;
+        _scheduleChanges = extras[1] as List<ScheduleChangeEntity>;
+      });
+    } catch (e) {}
   }
 
   @override
@@ -158,10 +137,14 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasCachedData =
+        _todayScheduleData.isNotEmpty || _tomorrowScheduleData.isNotEmpty;
+    final isInitialLoading = _isLoading && !hasCachedData;
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: _isLoading
+        child: isInitialLoading
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
               )
@@ -174,11 +157,11 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                 },
                 children: [
                   RefreshIndicator(
-                    onRefresh: _loadScheduleData,
+                    onRefresh: () => _fetchScheduleData(forceRefresh: true),
                     child: _buildSchedulePage(_todayScheduleData, 'Сегодня'),
                   ),
                   RefreshIndicator(
-                    onRefresh: _loadScheduleData,
+                    onRefresh: () => _fetchScheduleData(forceRefresh: true),
                     child: _buildSchedulePage(_tomorrowScheduleData, 'Завтра'),
                   ),
                 ],
@@ -189,19 +172,19 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
   Widget _buildSchedulePage(List<Schedule> scheduleData, String pageTitle) {
     // Определяем дату для которой отображаем расписание
-    final targetDate = pageTitle == 'Сегодня' 
-        ? DateTime.now() 
+    final targetDate = pageTitle == 'Сегодня'
+        ? DateTime.now()
         : DateTime.now().add(const Duration(days: 1));
-    
+
     // Определяем тип недели для целевой даты
     final weekType = _getWeekTypeForDate(targetDate);
-    
+
     // Фильтруем пары в зависимости от типа недели
-    final filteredScheduleData = _filterScheduleByWeekType(scheduleData, weekType);
-    
-    print(
-      'DEBUG: Отображаем страницу "$pageTitle" с ${filteredScheduleData.length} уроками (изначально ${scheduleData.length})',
+    final filteredScheduleData = _filterScheduleByWeekType(
+      scheduleData,
+      weekType,
     );
+
     final building = _primaryBuilding(filteredScheduleData);
     final dateLabel = _formatDate(targetDate);
 
@@ -302,9 +285,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                       // Отображаем основное расписание
                       ...List.generate(filteredScheduleData.length, (index) {
                         final item = filteredScheduleData[index];
-                        print(
-                          'DEBUG: Отображаем урок: ${item.number}. ${item.subject}',
-                        );
 
                         String lessonStartTime = item.startTime;
                         String lessonEndTime = item.endTime;
@@ -314,9 +294,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                           if (periodInt != null &&
                               periodInt > 0 &&
                               periodInt <= callsData.length) {
-                            final call =
-                                callsData[periodInt -
-                                    1];
+                            final call = callsData[periodInt - 1];
                             lessonStartTime = call.startTime;
                             lessonEndTime = call.endTime;
                           }
@@ -346,9 +324,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                             if (nextPeriodInt != null &&
                                 nextPeriodInt > 0 &&
                                 nextPeriodInt <= callsData.length) {
-                              final nextCall =
-                                  callsData[nextPeriodInt -
-                                      1];
+                              final nextCall = callsData[nextPeriodInt - 1];
                               nextLessonStartTime = nextCall.startTime;
                             }
                           } catch (e) {
@@ -357,55 +333,59 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
                           widgets.add(
                             BreakIndicator(
-                              startTime:
-                                  lessonEndTime,
-                              endTime:
-                                  nextLessonStartTime,
+                              startTime: lessonEndTime,
+                              endTime: nextLessonStartTime,
                             ),
                           );
                         }
 
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom: index == filteredScheduleData.length - 1 ? 0 : 14,
+                            bottom: index == filteredScheduleData.length - 1
+                                ? 0
+                                : 14,
                           ),
                           child: Column(children: widgets),
                         );
                       }),
                       // Отображаем изменения в расписании, если они есть (только для соответствующего дня)
                       ...() {
-                        final filteredChanges = _getFilteredScheduleChanges(pageTitle);
+                        final filteredChanges = _getFilteredScheduleChanges(
+                          pageTitle,
+                        );
                         if (filteredChanges.isNotEmpty) {
                           return [
-                            const SizedBox(height: 30),
-                            const Divider(
-                              color: Color(0xFF333333),
-                              thickness: 1,
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              'Изменения в расписании',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                              const SizedBox(height: 30),
+                              const Divider(
+                                color: Color(0xFF333333),
+                                thickness: 1,
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                          ]..addAll(
-                            filteredChanges.map((change) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: ScheduleChangeCard(
-                                  lessonNumber: change!.lessonNumber,
-                                  replaceFrom: change.replaceFrom,
-                                  replaceTo: change.replaceTo,
-                                  updatedAt: change.updatedAt,
-                                  changeDate: change.changeDate,
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Изменения в расписании',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
-                              );
-                            }).toList(),
-                          )..add(const SizedBox(height: 20));
+                              ),
+                              const SizedBox(height: 12),
+                            ]
+                            ..addAll(
+                              filteredChanges.map((change) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: ScheduleChangeCard(
+                                    lessonNumber: change!.lessonNumber,
+                                    replaceFrom: change.replaceFrom,
+                                    replaceTo: change.replaceTo,
+                                    updatedAt: change.updatedAt,
+                                    changeDate: change.changeDate,
+                                  ),
+                                );
+                              }).toList(),
+                            )
+                            ..add(const SizedBox(height: 20));
                         }
                         return [];
                       }(),
@@ -430,9 +410,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     // Получаем текущую дату из информации о неделе
     // Для простоты предполагаем, что _weekInfo.date содержит текущую дату
     // В реальной реализации может потребоваться более сложная логика
-    
+
     // Если дата - понедельник и это завтра, то это может быть новая неделя
-    if (date.weekday == DateTime.monday && 
+    if (date.weekday == DateTime.monday &&
         date.difference(DateTime.now()).inDays == 1) {
       // Если сегодня воскресенье, то завтра будет новая неделя
       if (DateTime.now().weekday == DateTime.sunday) {
@@ -444,13 +424,16 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         }
       }
     }
-    
+
     // В остальных случаях возвращаем текущий тип недели
     return _weekInfo!.weekType;
   }
 
   /// Фильтрует пары в зависимости от типа недели
-  List<Schedule> _filterScheduleByWeekType(List<Schedule> schedule, String? weekType) {
+  List<Schedule> _filterScheduleByWeekType(
+    List<Schedule> schedule,
+    String? weekType,
+  ) {
     // Если информация о неделе недоступна, возвращаем все пары
     if (weekType == null) {
       return schedule;
@@ -468,23 +451,31 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
     // Фильтруем пары
     final List<Schedule> filteredSchedule = [];
-    
+
     lessonsByPeriod.forEach((period, lessons) {
       // Проверяем, есть ли пары с типом (числитель/знаменатель)
       // Фильтруем пустые уроки - у которых subject пустой
       final numeratorLessons = lessons
-          .where((lesson) => lesson.lessonType == 'numerator' && 
-                 lesson.subject.trim().isNotEmpty)
+          .where(
+            (lesson) =>
+                lesson.lessonType == 'numerator' &&
+                lesson.subject.trim().isNotEmpty,
+          )
           .toList();
       final denominatorLessons = lessons
-          .where((lesson) => lesson.lessonType == 'denominator' && 
-                 lesson.subject.trim().isNotEmpty)
+          .where(
+            (lesson) =>
+                lesson.lessonType == 'denominator' &&
+                lesson.subject.trim().isNotEmpty,
+          )
           .toList();
       final regularLessons = lessons
-          .where((lesson) => lesson.lessonType == null && 
-                 lesson.subject.trim().isNotEmpty)
+          .where(
+            (lesson) =>
+                lesson.lessonType == null && lesson.subject.trim().isNotEmpty,
+          )
           .toList();
-      
+
       if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
         // Если есть пары с типом, выбираем только те, которые соответствуют текущей неделе
         if (weekType == 'Числитель' && numeratorLessons.isNotEmpty) {
@@ -498,7 +489,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         filteredSchedule.addAll(regularLessons);
       }
     });
-    
+
     return filteredSchedule;
   }
 
@@ -529,11 +520,13 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   List<ScheduleChangeEntity?> _getFilteredScheduleChanges(String pageTitle) {
     final today = DateTime.now();
     final tomorrow = DateTime.now().add(Duration(days: 1));
-    
+
     // Форматируем даты в строку для сравнения с changeDate
-    final String todayDate = '${today.day}.${today.month.toString().padLeft(2, '0')}.${today.year}';
-    final String tomorrowDate = '${tomorrow.day}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
-    
+    final String todayDate =
+        '${today.day}.${today.month.toString().padLeft(2, '0')}.${today.year}';
+    final String tomorrowDate =
+        '${tomorrow.day}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
+
     // Определяем, какие изменения показывать на текущей странице
     String targetDate = '';
     if (pageTitle == 'Сегодня') {
@@ -541,7 +534,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     } else if (pageTitle == 'Завтра') {
       targetDate = tomorrowDate;
     }
-    
+
     // Фильтруем изменения по дате применения (changeDate)
     return _scheduleChanges
         .where((change) => change.changeDate == targetDate)

@@ -7,7 +7,12 @@ import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Экран приветствия и настройки приложения
+///
+/// Этот экран отображается при первом запуске приложения и позволяет
+/// пользователю выбрать свою специальность и группу
 class WelcomeScreen extends StatefulWidget {
+  /// Обратный вызов при завершении настройки
   final VoidCallback onSetupComplete;
 
   const WelcomeScreen({super.key, required this.onSetupComplete});
@@ -16,21 +21,45 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
+/// Состояние экрана приветствия
 class _WelcomeScreenState extends State<WelcomeScreen> {
+  /// Репозиторий для работы со специальностями и группами
   late SpecialtyRepositoryInterface _repository;
+
+  /// Use case для получения списка специальностей
   late GetSpecialtiesUseCase _getSpecialtiesUseCase;
+
+  /// Use case для получения списка групп по специальности
   late GetGroupsBySpecialtyUseCase _getGroupsBySpecialtyUseCase;
 
+  /// Список специальностей
   List<Specialty> _specialties = [];
-  List<Group> _groups = [];
-  Specialty? _selectedSpecialty;
-  Group? _selectedGroup;
-  bool _isLoading = false;
-  bool _isGroupsLoading = false;
-  int _currentPage = 0; // 0: welcome, 1: specialty, 2: group
 
+  /// Список групп
+  List<Group> _groups = [];
+
+  /// Выбранная специальность
+  Specialty? _selectedSpecialty;
+
+  /// Выбранная группа
+  Group? _selectedGroup;
+
+  /// Флаг загрузки специальностей
+  bool _isLoading = false;
+
+  /// Флаг загрузки групп
+  bool _isGroupsLoading = false;
+
+  /// Текущая страница (0: приветствие, 1: выбор специальности, 2: выбор группы)
+  int _currentPage = 0;
+
+  /// Ключ для хранения выбранной группы в настройках
   static const String _selectedGroupKey = 'selected_group';
+
+  /// Ключ для хранения выбранной специальности в настройках
   static const String _selectedSpecialtyKey = 'selected_specialty';
+
+  /// Ключ для определения первого запуска приложения
   static const String _firstLaunchKey = 'first_launch';
 
   @override
@@ -41,6 +70,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     _getGroupsBySpecialtyUseCase = GetGroupsBySpecialtyUseCase(_repository);
   }
 
+  /// Загрузка списка специальностей
   Future<void> _loadSpecialties() async {
     setState(() {
       _isLoading = true;
@@ -64,6 +94,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  /// Загрузка списка групп по коду специальности
+  ///
+  /// Параметры:
+  /// - [specialtyCode]: Код специальности
   Future<void> _loadGroups(String specialtyCode) async {
     setState(() {
       _isGroupsLoading = true;
@@ -88,6 +122,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  /// Сохранение выбранной специальности и группы и переход к основному приложению
   Future<void> _saveSelectionAndProceed() async {
     if (_selectedSpecialty == null || _selectedGroup == null) {
       if (mounted) {
@@ -138,6 +173,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
+  /// Создание содержимого страницы в зависимости от текущего состояния
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет содержимого страницы
   Widget _buildPageContent() {
     switch (_currentPage) {
       case 0:
@@ -151,6 +190,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  /// Создание страницы приветствия
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет страницы приветствия
   Widget _buildWelcomePage() {
     return Center(
       child: Column(
@@ -234,6 +277,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
+  /// Создание страницы выбора специальности
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет страницы выбора специальности
   Widget _buildSpecialtySelectionPage() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -345,6 +392,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
+  /// Создание страницы выбора группы
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет страницы выбора группы
   Widget _buildGroupSelectionPage() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

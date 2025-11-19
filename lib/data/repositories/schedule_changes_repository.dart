@@ -1,5 +1,4 @@
 import 'package:my_mpt/data/services/schedule_changes_service.dart';
-import 'package:my_mpt/data/models/schedule_change.dart';
 import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/domain/repositories/schedule_changes_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,11 +19,9 @@ class ScheduleChangesRepository implements ScheduleChangesRepositoryInterface {
         return [];
       }
 
-      print('DEBUG: Получаем изменения в расписании для группы: $groupCode');
       final changes = await _changesService.parseScheduleChangesForGroup(
         groupCode,
       );
-      print('DEBUG: Изменения получены, количество: ${changes.length}');
 
       // Преобразуем ScheduleChange в ScheduleChangeEntity
       return changes.map((change) {
@@ -37,7 +34,6 @@ class ScheduleChangesRepository implements ScheduleChangesRepositoryInterface {
         );
       }).toList();
     } catch (e) {
-      print('DEBUG: Ошибка получения изменений в расписании: $e');
       return [];
     }
   }
@@ -50,12 +46,11 @@ class ScheduleChangesRepository implements ScheduleChangesRepositoryInterface {
       if (envGroup.isNotEmpty) {
         return envGroup;
       }
-      
+
       // Если переменная окружения не задана, используем SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_selectedGroupKey) ?? '';
     } catch (e) {
-      print('DEBUG: Ошибка получения выбранной группы из настроек: $e');
       return '';
     }
   }

@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 
+/// Виджет карточки урока
+///
+/// Этот виджет отображает информацию об одном уроке в расписании,
+/// включая номер пары, название предмета, преподавателя и время проведения
 class LessonCard extends StatelessWidget {
+  /// Номер пары
   final String number;
+
+  /// Название предмета
   final String subject;
+
+  /// Преподаватель
   final String teacher;
+
+  /// Время начала пары
   final String startTime;
+
+  /// Время окончания пары
   final String endTime;
+
+  /// Акцентный цвет для номера пары
   final Color accentColor;
 
   const LessonCard({
@@ -91,8 +106,12 @@ class LessonCard extends StatelessWidget {
   }
 }
 
+/// Виджет бейджа с номером пары
 class _NumberBadge extends StatelessWidget {
+  /// Номер пары
   final String number;
+
+  /// Акцентный цвет бейджа
   final Color accentColor;
 
   const _NumberBadge({required this.number, required this.accentColor});

@@ -1,11 +1,31 @@
 /// Сущность, представляющая изменение в расписании
+///
+/// Этот класс представляет собой изменение в расписании,
+/// например, замену одного предмета на другой
 class ScheduleChangeEntity {
+  /// Номер пары, к которой применяется изменение
   final String lessonNumber;
-  final String replaceFrom;
-  final String replaceTo;
-  final String updatedAt; // Timestamp when change was added
-  final String changeDate; // Actual date when change applies
 
+  /// Исходный предмет (до изменения)
+  final String replaceFrom;
+
+  /// Новый предмет (после изменения)
+  final String replaceTo;
+
+  /// Время добавления изменения (timestamp)
+  final String updatedAt;
+
+  /// Дата применения изменения
+  final String changeDate;
+
+  /// Конструктор изменения в расписании
+  ///
+  /// Параметры:
+  /// - [lessonNumber]: Номер пары (обязательный)
+  /// - [replaceFrom]: Исходный предмет (обязательный)
+  /// - [replaceTo]: Новый предмет (обязательный)
+  /// - [updatedAt]: Время добавления изменения (обязательный)
+  /// - [changeDate]: Дата применения изменения (обязательный)
   ScheduleChangeEntity({
     required this.lessonNumber,
     required this.replaceFrom,

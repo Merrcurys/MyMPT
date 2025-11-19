@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 
+/// Виджет карточки пары с числителем и знаменателем
+///
+/// Этот виджет отображает информацию о паре, которая может отличаться
+/// в зависимости от типа недели (числитель или знаменатель)
 class NumeratorDenominatorCard extends StatelessWidget {
+  /// Урок числителя (может быть null)
   final Schedule? numeratorLesson;
+
+  /// Урок знаменателя (может быть null)
   final Schedule? denominatorLesson;
+
+  /// Номер пары
   final String lessonNumber;
+
+  /// Время начала пары
   final String startTime;
+
+  /// Время окончания пары
   final String endTime;
 
   const NumeratorDenominatorCard({
@@ -39,11 +52,9 @@ class NumeratorDenominatorCard extends StatelessWidget {
           Container(
             width: 60,
             height: 120,
-            child: Center(
-              child: _NumberBadge(number: lessonNumber),
-            ),
+            child: Center(child: _NumberBadge(number: lessonNumber)),
           ),
-          
+
           // Центральная часть - пары с разделителем
           Expanded(
             child: Container(
@@ -57,14 +68,14 @@ class NumeratorDenominatorCard extends StatelessWidget {
                     _buildLessonItem(numeratorLesson!, true)
                   else
                     _buildEmptyLessonItem(true),
-                  
+
                   // Разделитель
                   Container(
                     height: 1,
                     color: const Color(0xFF333333),
                     margin: const EdgeInsets.symmetric(vertical: 4),
                   ),
-                  
+
                   // Знаменатель
                   if (denominatorLesson != null)
                     _buildLessonItem(denominatorLesson!, false)
@@ -74,7 +85,7 @@ class NumeratorDenominatorCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Правая часть - время
           Container(
             width: 60,
@@ -108,11 +119,19 @@ class NumeratorDenominatorCard extends StatelessWidget {
     );
   }
 
+  /// Создает виджет для отображения урока
+  ///
+  /// Параметры:
+  /// - [lesson]: Урок для отображения
+  /// - [isNumerator]: Флаг, указывающий является ли урок числителем
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет урока
   Widget _buildLessonItem(Schedule lesson, bool isNumerator) {
-    final color = isNumerator 
+    final color = isNumerator
         ? const Color(0xFFFF8C00) // Оранжевый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
-    
+
     return Expanded(
       child: Row(
         children: [
@@ -120,13 +139,10 @@ class NumeratorDenominatorCard extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          
+
           // Основной контент
           Expanded(
             child: Column(
@@ -161,11 +177,18 @@ class NumeratorDenominatorCard extends StatelessWidget {
     );
   }
 
+  /// Создает виджет для отображения пустого урока
+  ///
+  /// Параметры:
+  /// - [isNumerator]: Флаг, указывающий является ли урок числителем
+  ///
+  /// Возвращает:
+  /// - Widget: Виджет пустого урока
   Widget _buildEmptyLessonItem(bool isNumerator) {
-    final color = isNumerator 
+    final color = isNumerator
         ? const Color(0xFFFF8C00) // Оранжевый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
-    
+
     return Expanded(
       child: Row(
         children: [
@@ -173,13 +196,10 @@ class NumeratorDenominatorCard extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          
+
           // Основной контент
           Expanded(
             child: Column(
@@ -205,7 +225,9 @@ class NumeratorDenominatorCard extends StatelessWidget {
   }
 }
 
+/// Виджет бейджа с номером пары
 class _NumberBadge extends StatelessWidget {
+  /// Номер пары
   final String number;
 
   const _NumberBadge({required this.number});

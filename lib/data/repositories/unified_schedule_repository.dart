@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/data/services/schedule_parser_service.dart';
-import 'package:my_mpt/data/models/lesson.dart';
+import 'package:my_mpt/data/datasources/schedule_cache_data_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Единое хранилище для всех данных расписания
 class UnifiedScheduleRepository {
   final ScheduleParserService _parserService = ScheduleParserService();
+  final ScheduleCacheDataSource _cacheDataSource = ScheduleCacheDataSource();
   static const String _selectedGroupKey = 'selected_group';
 
   // Кэшированные данные
@@ -15,6 +15,7 @@ class UnifiedScheduleRepository {
   List<Schedule>? _cachedTodaySchedule;
   List<Schedule>? _cachedTomorrowSchedule;
   DateTime? _lastUpdate;
+  bool _cacheInitialized = false;
 
   // Уведомление об изменении данных
   final ValueNotifier<bool> dataUpdatedNotifier = ValueNotifier<bool>(false);
@@ -25,44 +26,44 @@ class UnifiedScheduleRepository {
 
   /// Получить расписание на неделю
   Future<Map<String, List<Schedule>>> getWeeklySchedule({bool forceRefresh = false}) async {
-    // Проверяем, нужно ли обновить данные
-    if (_shouldRefreshData() || forceRefresh || _cachedWeeklySchedule == null) {
-      await _refreshAllData();
+    await _restoreCacheIfNeeded();
+    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedWeeklySchedule == null;
+    if (needRefresh) {
+      await _refreshAllData(forceRefresh: needRefresh);
     }
-    
     return _cachedWeeklySchedule ?? {};
   }
 
   /// Получить расписание на сегодня
   Future<List<Schedule>> getTodaySchedule({bool forceRefresh = false}) async {
-    // Проверяем, нужно ли обновить данные
-    if (_shouldRefreshData() || forceRefresh || _cachedTodaySchedule == null) {
-      await _refreshAllData();
+    await _restoreCacheIfNeeded();
+    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTodaySchedule == null;
+    if (needRefresh) {
+      await _refreshAllData(forceRefresh: needRefresh);
     }
-    
     return _cachedTodaySchedule ?? [];
   }
 
   /// Получить расписание на завтра
   Future<List<Schedule>> getTomorrowSchedule({bool forceRefresh = false}) async {
-    // Проверяем, нужно ли обновить данные
-    if (_shouldRefreshData() || forceRefresh || _cachedTomorrowSchedule == null) {
-      await _refreshAllData();
+    await _restoreCacheIfNeeded();
+    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTomorrowSchedule == null;
+    if (needRefresh) {
+      await _refreshAllData(forceRefresh: needRefresh);
     }
-    
     return _cachedTomorrowSchedule ?? [];
   }
 
   /// Обновить все данные
   Future<void> refreshAllData() async {
-    await _refreshAllData();
+    await _refreshAllData(forceRefresh: true);
   }
 
   /// Принудительно обновить все данные и уведомить слушателей
   Future<void> forceRefresh() async {
     // Очищаем кэш перед обновлением
-    _clearCache();
-    await _refreshAllData();
+    await _clearCache();
+    await _refreshAllData(forceRefresh: true);
     // Уведомляем слушателей об обновлении данных
     dataUpdatedNotifier.value = !dataUpdatedNotifier.value;
   }
@@ -75,17 +76,20 @@ class UnifiedScheduleRepository {
   }
 
   /// Обновить все данные из источника
-  Future<void> _refreshAllData() async {
+  Future<void> _refreshAllData({bool forceRefresh = false}) async {
     try {
       // Получаем выбранную группу
       final groupCode = await _getSelectedGroupCode();
       if (groupCode.isEmpty) {
-        _clearCache();
+        await _clearCache();
         return;
       }
 
       // Получаем расписание с парсера
-      final parsedSchedule = await _parserService.parseScheduleForGroup(groupCode);
+      final parsedSchedule = await _parserService.parseScheduleForGroup(
+        groupCode,
+        forceRefresh: forceRefresh,
+      );
       
       // Преобразуем данные в Schedule
       final Map<String, List<Schedule>> weeklySchedule = {};
@@ -117,19 +121,31 @@ class UnifiedScheduleRepository {
       _cachedTomorrowSchedule = weeklySchedule[tomorrow] ?? [];
       
       _lastUpdate = DateTime.now();
+
+      await _cacheDataSource.save(
+        ScheduleCache(
+          weeklySchedule: _cachedWeeklySchedule ?? {},
+          todaySchedule: _cachedTodaySchedule ?? [],
+          tomorrowSchedule: _cachedTomorrowSchedule ?? [],
+          lastUpdate: _lastUpdate!,
+        ),
+      );
     } catch (e) {
       debugPrint('Ошибка при обновлении данных расписания: $e');
       // Очищаем кэш в случае ошибки
-      _clearCache();
+      await _clearCache();
     }
   }
 
   /// Очистить кэш
-  void _clearCache() {
+  Future<void> _clearCache() async {
     _cachedWeeklySchedule = null;
     _cachedTodaySchedule = null;
     _cachedTomorrowSchedule = null;
     _lastUpdate = null;
+    _parserService.clearCache();
+    _cacheInitialized = false;
+    await _cacheDataSource.clear();
   }
 
   /// Получает код выбранной группы из настроек
@@ -178,5 +194,25 @@ class UnifiedScheduleRepository {
       'ВОСКРЕСЕНЬЕ',
     ];
     return weekdays[now.weekday - 1];
+  }
+
+  Future<void> _restoreCacheIfNeeded() async {
+    if (_cacheInitialized) return;
+    _cacheInitialized = true;
+
+    try {
+      final cache = await _cacheDataSource.load();
+      if (cache == null) return;
+
+      _cachedWeeklySchedule = cache.weeklySchedule;
+      _cachedTodaySchedule = cache.todaySchedule;
+      _cachedTomorrowSchedule = cache.tomorrowSchedule;
+      _lastUpdate = cache.lastUpdate;
+    } catch (_) {
+      _cachedWeeklySchedule = null;
+      _cachedTodaySchedule = null;
+      _cachedTomorrowSchedule = null;
+      _lastUpdate = null;
+    }
   }
 }

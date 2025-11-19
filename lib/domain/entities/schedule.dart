@@ -1,14 +1,43 @@
 /// Сущность, представляющая элемент расписания
+///
+/// Этот класс представляет собой элемент расписания с полной информацией
+/// о времени, предмете, преподавателе и других деталях
 class Schedule {
+  /// Уникальный идентификатор элемента расписания
   final String id;
-  final String number;
-  final String subject;
-  final String teacher;
-  final String startTime;
-  final String endTime;
-  final String building;
-  final String? lessonType; // numerator, denominator или null для обычных пар
 
+  /// Номер пары
+  final String number;
+
+  /// Название предмета
+  final String subject;
+
+  /// Преподаватель
+  final String teacher;
+
+  /// Время начала пары
+  final String startTime;
+
+  /// Время окончания пары
+  final String endTime;
+
+  /// Корпус проведения пары
+  final String building;
+
+  /// Тип пары (numerator, denominator или null для обычных пар)
+  final String? lessonType;
+
+  /// Конструктор элемента расписания
+  ///
+  /// Параметры:
+  /// - [id]: Уникальный идентификатор (обязательный)
+  /// - [number]: Номер пары (обязательный)
+  /// - [subject]: Название предмета (обязательный)
+  /// - [teacher]: Преподаватель (обязательный)
+  /// - [startTime]: Время начала пары (обязательный)
+  /// - [endTime]: Время окончания пары (обязательный)
+  /// - [building]: Корпус проведения пары (обязательный)
+  /// - [lessonType]: Тип пары (опциональный)
   Schedule({
     required this.id,
     required this.number,

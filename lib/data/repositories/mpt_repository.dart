@@ -1,6 +1,5 @@
 import 'package:my_mpt/data/services/mpt_parser_service.dart';
 import 'package:my_mpt/data/models/tab_info.dart';
-import 'package:my_mpt/data/models/group_info.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
 import 'package:my_mpt/domain/entities/group.dart';

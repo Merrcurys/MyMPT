@@ -1,5 +1,4 @@
 import 'package:my_mpt/data/services/schedule_parser_service.dart';
-import 'package:my_mpt/data/models/lesson.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,7 +45,6 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
 
       return weeklySchedule;
     } catch (e) {
-      print('DEBUG: Ошибка получения расписания на неделю: $e');
       return {};
     }
   }
@@ -59,28 +57,23 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
       final groupCode = await _getSelectedGroupCode();
 
       if (groupCode.isEmpty) {
-        print('DEBUG: Группа не выбрана');
         return [];
       }
 
-      print('DEBUG: Получаем расписание для группы: $groupCode');
       final parsedSchedule = await _parserService.parseScheduleForGroup(
         groupCode,
       );
-      print('DEBUG: Расписание получено, дней: ${parsedSchedule.length}');
 
       // Получаем текущий день недели
       final today = _getTodayInRussian();
-      print('DEBUG: Сегодня: $today');
 
       // Показываем все доступные дни для отладки
-      parsedSchedule.forEach((day, lessons) {
-        print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
-      });
+      // parsedSchedule.forEach((day, lessons) {
+      //   print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
+      // });
 
       if (parsedSchedule.containsKey(today)) {
         final lessons = parsedSchedule[today]!;
-        print('DEBUG: Найдено ${lessons.length} уроков на сегодня');
 
         // Преобразуем Lesson в Schedule
         return lessons.map((lesson) {
@@ -95,13 +88,10 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
             lessonType: lesson.lessonType,
           );
         }).toList();
-      } else {
-        print('DEBUG: Расписание на сегодня не найдено');
       }
 
       return [];
     } catch (e) {
-      print('DEBUG: Ошибка получения расписания на сегодня: $e');
       return [];
     }
   }
@@ -114,28 +104,23 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
       final groupCode = await _getSelectedGroupCode();
 
       if (groupCode.isEmpty) {
-        print('DEBUG: Группа не выбрана');
         return [];
       }
 
-      print('DEBUG: Получаем расписание для группы: $groupCode');
       final parsedSchedule = await _parserService.parseScheduleForGroup(
         groupCode,
       );
-      print('DEBUG: Расписание получено, дней: ${parsedSchedule.length}');
 
       // Получаем завтрашний день недели
       final tomorrow = _getTomorrowInRussian();
-      print('DEBUG: Завтра: $tomorrow');
 
       // Показываем все доступные дни для отладки
-      parsedSchedule.forEach((day, lessons) {
-        print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
-      });
+      // parsedSchedule.forEach((day, lessons) {
+      //   print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
+      // });
 
       if (parsedSchedule.containsKey(tomorrow)) {
         final lessons = parsedSchedule[tomorrow]!;
-        print('DEBUG: Найдено ${lessons.length} уроков на завтра');
 
         // Преобразуем Lesson в Schedule
         return lessons.map((lesson) {
@@ -150,13 +135,10 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
             lessonType: lesson.lessonType,
           );
         }).toList();
-      } else {
-        print('DEBUG: Расписание на завтра не найдено');
       }
 
       return [];
     } catch (e) {
-      print('DEBUG: Ошибка получения расписания на завтра: $e');
       return [];
     }
   }
@@ -169,12 +151,11 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
       if (envGroup.isNotEmpty) {
         return envGroup;
       }
-      
+
       // Если переменная окружения не задана, используем SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_selectedGroupKey) ?? '';
     } catch (e) {
-      print('DEBUG: Ошибка получения выбранной группы из настроек: $e');
       return '';
     }
   }
