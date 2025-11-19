@@ -151,7 +151,7 @@ class _CallTimelineTile extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFF8C00), Color(0xFFFFA500)],
+                  colors: [Color(0xFF333333), Color(0xFF111111)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -172,7 +172,7 @@ class _CallTimelineTile extends StatelessWidget {
                 width: 2,
                 height: 48,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                color: const Color(0xFFFF8C00).withOpacity(0.3),
+                color: const Color(0xFFFFFFFF).withOpacity(0.3),
               ),
           ],
         ),

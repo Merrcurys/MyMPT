@@ -26,7 +26,7 @@ class TodayScheduleScreen extends StatefulWidget {
 
 class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   static const _backgroundColor = Color(0xFF000000);
-  static const Color _lessonAccent = Color(0xFFFF8C00);
+  static const Color _lessonAccent = Colors.grey;
   static const List<Color> _headerGradient = [
     Color(0xFF333333),
     Color(0xFF111111),
@@ -146,9 +146,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: isInitialLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
-              )
+            ? const Center(child: CircularProgressIndicator(color: Colors.grey))
             : PageView(
                 controller: _pageController,
                 onPageChanged: (index) {
@@ -354,10 +352,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                       ],
                       if (filteredChanges.isNotEmpty) ...[
                         const SizedBox(height: 30),
-                        const Divider(
-                          color: Color(0xFF333333),
-                          thickness: 1,
-                        ),
+                        const Divider(color: Color(0xFF333333), thickness: 1),
                         const SizedBox(height: 20),
                         const Text(
                           'Изменения в расписании',
@@ -368,18 +363,18 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...filteredChanges.whereType<ScheduleChangeEntity>().map(
-                          (change) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: ScheduleChangeCard(
-                                lessonNumber: change.lessonNumber,
-                                replaceFrom: change.replaceFrom,
-                                replaceTo: change.replaceTo,
-                              ),
-                            );
-                          },
-                        ),
+                        ...filteredChanges
+                            .whereType<ScheduleChangeEntity>()
+                            .map((change) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: ScheduleChangeCard(
+                                  lessonNumber: change.lessonNumber,
+                                  replaceFrom: change.replaceFrom,
+                                  replaceTo: change.replaceTo,
+                                ),
+                              );
+                            }),
                         const SizedBox(height: 20),
                       ],
                     ],
@@ -505,11 +500,13 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       final lessonNumber = change.lessonNumber.trim();
       if (lessonNumber.isEmpty) continue;
 
-      final normalizedReplaceTo =
-          change.replaceTo.replaceAll('\u00A0', ' ').trim();
+      final normalizedReplaceTo = change.replaceTo
+          .replaceAll('\u00A0', ' ')
+          .trim();
       final shouldHide = _shouldHideLessonFromOverview(normalizedReplaceTo);
-      final existingIndex =
-          result.indexWhere((lesson) => lesson.number.trim() == lessonNumber);
+      final existingIndex = result.indexWhere(
+        (lesson) => lesson.number.trim() == lessonNumber,
+      );
 
       if (shouldHide) {
         if (existingIndex != -1) {
@@ -543,8 +540,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
           teacher: teacher.isNotEmpty ? teacher : existing.teacher,
           startTime: existing.startTime,
           endTime: existing.endTime,
-          building:
-              updatedBuilding.isNotEmpty ? updatedBuilding : existing.building,
+          building: updatedBuilding.isNotEmpty
+              ? updatedBuilding
+              : existing.building,
           lessonType: existing.lessonType,
         );
       } else {
@@ -557,8 +555,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
             teacher: teacher,
             startTime: timing.start,
             endTime: timing.end,
-            building:
-                updatedBuilding.isNotEmpty ? updatedBuilding : 'Дистанционно',
+            building: updatedBuilding.isNotEmpty
+                ? updatedBuilding
+                : 'Дистанционно',
             lessonType: null,
           ),
         );
@@ -589,10 +588,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
         normalized.startsWith('занятие перенесено на');
   }
 
-  String _resolveBuildingFromChange(
-    String replaceTo,
-    String fallbackBuilding,
-  ) {
+  String _resolveBuildingFromChange(String replaceTo, String fallbackBuilding) {
     final upper = replaceTo.toUpperCase();
     if (upper.contains('НЕЖИНСК')) return 'Нежинская';
     if (upper.contains('НАХИМОВ')) return 'Нахимовский';

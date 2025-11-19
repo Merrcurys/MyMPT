@@ -25,15 +25,19 @@ class ScheduleChangeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sanitizedReplaceFrom =
-        (replaceFrom == '\u00A0' ? '' : replaceFrom).trim();
+    final sanitizedReplaceFrom = (replaceFrom == '\u00A0' ? '' : replaceFrom)
+        .trim();
     final sanitizedReplaceTo = replaceTo.replaceAll('\u00A0', ' ').trim();
-    final LessonDetails newLessonDetails = parseLessonDetails(sanitizedReplaceTo);
-    final LessonDetails previousLessonDetails =
-        parseLessonDetails(sanitizedReplaceFrom);
+    final LessonDetails newLessonDetails = parseLessonDetails(
+      sanitizedReplaceTo,
+    );
+    final LessonDetails previousLessonDetails = parseLessonDetails(
+      sanitizedReplaceFrom,
+    );
     final bool hasPreviousLesson = previousLessonDetails.hasData;
 
-    final bool isAdditionalClass = sanitizedReplaceFrom.isEmpty ||
+    final bool isAdditionalClass =
+        sanitizedReplaceFrom.isEmpty ||
         sanitizedReplaceTo.toLowerCase().startsWith('дополнительное занятие');
 
     final _LessonTimes lessonTimes = _lessonTimesForNumber(lessonNumber);
@@ -43,7 +47,9 @@ class ScheduleChangeCard extends StatelessWidget {
 
     final String subjectText = newLessonDetails.subject.isNotEmpty
         ? newLessonDetails.subject
-        : (isAdditionalClass ? 'Дополнительное занятие' : 'Замена в расписании');
+        : (isAdditionalClass
+              ? 'Дополнительное занятие'
+              : 'Замена в расписании');
 
     return Container(
       decoration: BoxDecoration(
@@ -147,8 +153,8 @@ class _NumberBadge extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [accentColor, accentColor.withOpacity(0.8)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF333333), Color(0xFF111111)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -188,8 +194,9 @@ class _PreviousLessonInfo extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               color: Colors.white.withOpacity(0.5),
-              decoration:
-                  _isAdditionalLesson ? TextDecoration.none : TextDecoration.lineThrough,
+              decoration: _isAdditionalLesson
+                  ? TextDecoration.none
+                  : TextDecoration.lineThrough,
             ),
           ),
         if (details.teacher.isNotEmpty) ...[
@@ -199,8 +206,9 @@ class _PreviousLessonInfo extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               color: Colors.white.withOpacity(0.4),
-              decoration:
-                  _isAdditionalLesson ? TextDecoration.none : TextDecoration.lineThrough,
+              decoration: _isAdditionalLesson
+                  ? TextDecoration.none
+                  : TextDecoration.lineThrough,
             ),
           ),
         ],

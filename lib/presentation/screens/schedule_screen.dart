@@ -61,7 +61,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isLoading = false;
 
   /// Акцентный цвет для элементов расписания
-  static const Color _lessonAccent = Color(0xFFFF8C00);
+  static const Color _lessonAccent = Colors.grey;
 
   @override
   void initState() {
@@ -155,9 +155,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: isInitialLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
-              )
+            ? const Center(child: CircularProgressIndicator(color: Colors.grey))
             : RefreshIndicator(
                 onRefresh: () => _loadScheduleData(forceRefresh: true),
                 child: CustomScrollView(

@@ -129,7 +129,8 @@ class NumeratorDenominatorCard extends StatelessWidget {
   /// - Widget: Виджет урока
   Widget _buildLessonItem(Schedule lesson, bool isNumerator) {
     final color = isNumerator
-        ? const Color(0xFFFF8C00) // Оранжевый для числителя
+        ? Colors
+              .grey // Серый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
 
     return Expanded(
@@ -186,7 +187,8 @@ class NumeratorDenominatorCard extends StatelessWidget {
   /// - Widget: Виджет пустого урока
   Widget _buildEmptyLessonItem(bool isNumerator) {
     final color = isNumerator
-        ? const Color(0xFFFF8C00) // Оранжевый для числителя
+        ? Colors
+              .grey // Серый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
 
     return Expanded(
@@ -239,7 +241,7 @@ class _NumberBadge extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFF8C00), Color(0xFFFF8C00)],
+          colors: [Color(0xFF333333), Color(0xFF111111)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

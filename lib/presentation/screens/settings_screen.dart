@@ -420,7 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const ListTile(
-                    leading: Icon(Icons.info_outline, color: Color(0xFFFF8C00)),
+                    leading: Icon(Icons.info_outline, color: Colors.white),
                     title: Text(
                       'О приложении',
                       style: TextStyle(
@@ -563,9 +563,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFFF8C00),
-                        ),
+                        child: CircularProgressIndicator(color: Colors.white),
                       )
                     : ListView.builder(
                         itemCount: _specialties.length,
@@ -633,7 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: _isLoading
                         ? const Center(
                             child: CircularProgressIndicator(
-                              color: Color(0xFFFF8C00),
+                              color: Colors.white,
                             ),
                           )
                         : _groups.isEmpty
@@ -796,15 +794,15 @@ class _SettingsCardState extends State<_SettingsCard>
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF8C00).withOpacity(0.1),
+                color: const Color(0xFFFFFFFF).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: widget.isRefreshing
                   ? RotationTransition(
                       turns: _rotationAnimation,
-                      child: Icon(widget.icon, color: const Color(0xFFFF8C00)),
+                      child: Icon(widget.icon, color: Colors.white),
                     )
-                  : Icon(widget.icon, color: const Color(0xFFFF8C00)),
+                  : Icon(widget.icon, color: Colors.white),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -833,7 +831,7 @@ class _SettingsCardState extends State<_SettingsCard>
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFFFF8C00),
+                      color: Colors.white,
                     ),
                   )
                 : Icon(

@@ -123,8 +123,8 @@ class _NumberBadge extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [accentColor, accentColor.withOpacity(0.8)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF333333), Color(0xFF111111)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

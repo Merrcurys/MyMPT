@@ -41,24 +41,27 @@ class MyApp extends StatelessWidget {
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: const Color(0xFF111111),
-          indicatorColor: const Color(0x33FF8C00),
+          indicatorColor: const Color(0x33FFFFFF),
           height: 80,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           elevation: 0,
           iconTheme: MaterialStateProperty.resolveWith<IconThemeData>(
             (states) => IconThemeData(
               color: states.contains(MaterialState.selected)
-                  ? const Color(0xFFFF8C00)
+                  ? Colors.white
                   : Colors.white70,
             ),
           ),
           labelTextStyle: MaterialStateProperty.resolveWith<TextStyle>(
             (states) => TextStyle(
               fontSize: 11,
-              fontWeight:
-                  states.contains(MaterialState.selected) ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: states.contains(MaterialState.selected)
+                  ? FontWeight.w600
+                  : FontWeight.w500,
               letterSpacing: 0.1,
-              color: states.contains(MaterialState.selected) ? Colors.white : Colors.white60,
+              color: states.contains(MaterialState.selected)
+                  ? Colors.white
+                  : Colors.white60,
             ),
           ),
         ),
@@ -104,7 +107,7 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _checkFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
     final isFirstLaunch = prefs.getBool('first_launch') ?? true;
-    
+
     setState(() {
       _isFirstLaunch = isFirstLaunch;
       _isLoading = false;
@@ -122,9 +125,7 @@ class _MainScreenState extends State<MainScreen> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFFF8C00),
-          ),
+          child: CircularProgressIndicator(color: Color(0xFFFF8C00)),
         ),
       );
     }
@@ -140,14 +141,12 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+          onDestinationSelected: (index) =>
+              setState(() => _currentIndex = index),
           surfaceTintColor: Colors.transparent,
           destinations: [
             for (final item in _navItems)
-              NavigationDestination(
-                icon: Icon(item.icon),
-                label: item.label,
-              ),
+              NavigationDestination(icon: Icon(item.icon), label: item.label),
           ],
         ),
       ),
