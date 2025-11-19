@@ -39,9 +39,28 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFF1A1A1A),
-          indicatorColor: Colors.transparent,
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: const Color(0xFF111111),
+          indicatorColor: const Color(0x33FF8C00),
+          height: 80,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          elevation: 0,
+          iconTheme: MaterialStateProperty.resolveWith<IconThemeData>(
+            (states) => IconThemeData(
+              color: states.contains(MaterialState.selected)
+                  ? const Color(0xFFFF8C00)
+                  : Colors.white70,
+            ),
+          ),
+          labelTextStyle: MaterialStateProperty.resolveWith<TextStyle>(
+            (states) => TextStyle(
+              fontSize: 11,
+              fontWeight:
+                  states.contains(MaterialState.selected) ? FontWeight.w600 : FontWeight.w500,
+              letterSpacing: 0.1,
+              color: states.contains(MaterialState.selected) ? Colors.white : Colors.white60,
+            ),
+          ),
         ),
       ),
       home: const MainScreen(),
@@ -70,10 +89,10 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   final List<_NavItemData> _navItems = const [
-    _NavItemData(icon: Icons.flash_on_outlined, label: 'Сегодня'),
+    _NavItemData(icon: Icons.flash_on_outlined, label: 'Обзор'),
     _NavItemData(icon: Icons.view_week_outlined, label: 'Неделя'),
     _NavItemData(icon: Icons.notifications_none_outlined, label: 'Звонки'),
-    _NavItemData(icon: Icons.settings_outlined, label: 'Профиль'),
+    _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
   ];
 
   @override
@@ -117,99 +136,18 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: _AuroraNavBar(
-          items: _navItems,
-          currentIndex: _currentIndex,
-          onChanged: (index) => setState(() => _currentIndex = index),
-        ),
-      ),
-    );
-  }
-}
-
-class _AuroraNavBar extends StatelessWidget {
-  final List<_NavItemData> items;
-  final int currentIndex;
-  final ValueChanged<int> onChanged;
-
-  const _AuroraNavBar({
-    required this.items,
-    required this.currentIndex,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        color: const Color(0xFF1A1A1A),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.45),
-            blurRadius: 24,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Row(
-        children: List.generate(items.length, (index) {
-          final item = items[index];
-          final isActive = index == currentIndex;
-          return Expanded(
-            flex: isActive ? 3 : 2,
-            child: _NavButton(
-              data: item,
-              isActive: isActive,
-              onTap: () => onChanged(index),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _NavButton extends StatelessWidget {
-  final _NavItemData data;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _NavButton({
-    required this.data,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFFFF8C00).withOpacity(0.3)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? const Color(0xFFFF8C00) : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              data.icon,
-              color: isActive ? const Color(0xFFFF8C00) : Colors.white70,
-            ),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) => setState(() => _currentIndex = index),
+          surfaceTintColor: Colors.transparent,
+          destinations: [
+            for (final item in _navItems)
+              NavigationDestination(
+                icon: Icon(item.icon),
+                label: item.label,
+              ),
           ],
         ),
       ),
