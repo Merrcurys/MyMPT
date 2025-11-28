@@ -282,7 +282,7 @@ class _Header extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: borderColor.withOpacity(0.4)),
+
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.45),
