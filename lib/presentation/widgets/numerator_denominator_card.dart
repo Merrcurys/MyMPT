@@ -54,13 +54,7 @@ class NumeratorDenominatorCard extends StatelessWidget {
             Container(
               width: 60,
               margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Center(
-                child: _NumberBadge(
-                  number: lessonNumber,
-                  showGradient:
-                      numeratorLesson == null || denominatorLesson == null,
-                ),
-              ),
+              child: Center(child: _NumberBadge(number: lessonNumber)),
             ),
 
             // Центральная часть - пары с разделителем
@@ -238,10 +232,7 @@ class _NumberBadge extends StatelessWidget {
   /// Номер пары
   final String number;
 
-  /// Показывать ли градиент
-  final bool showGradient;
-
-  const _NumberBadge({required this.number, this.showGradient = true});
+  const _NumberBadge({required this.number});
 
   @override
   Widget build(BuildContext context) {
@@ -249,14 +240,7 @@ class _NumberBadge extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        gradient: showGradient
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF333333), Color(0xFF111111)],
-              )
-            : null,
-        color: showGradient ? null : const Color(0xFF333333),
+        color: const Color(0xFF333333),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
