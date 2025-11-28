@@ -300,9 +300,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                                 color: Colors.white.withOpacity(0.3),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
-                                'Сегодня выходной',
-                                style: TextStyle(
+                              Text(
+                                '$pageTitle выходной',
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white70,
