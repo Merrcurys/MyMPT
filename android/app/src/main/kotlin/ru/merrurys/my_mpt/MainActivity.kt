@@ -1,4 +1,4 @@
-package ru.merrurys.my_mpt
+package ru.merrcurys.my_mpt
 
 import io.flutter.embedding.android.FlutterActivity
 

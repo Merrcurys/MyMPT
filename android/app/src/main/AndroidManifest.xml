@@ -6,7 +6,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
-            android:name="ru.merrurys.my_mpt.MainActivity"
+            android:name="ru.merrcurys.my_mpt.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
