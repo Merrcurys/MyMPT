@@ -6,9 +6,17 @@ import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/today_schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 void main() {
-  runApp(const MyApp());
+  runZonedGuarded(
+    () {
+      runApp(const MyApp());
+    },
+    (e, st) {
+      print("Error catched in main thread $e");
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
