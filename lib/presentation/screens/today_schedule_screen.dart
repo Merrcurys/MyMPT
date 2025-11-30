@@ -276,7 +276,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: scheduleWithChanges.isEmpty ? 50.0 : 12.0),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
