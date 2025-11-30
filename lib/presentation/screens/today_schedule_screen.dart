@@ -642,10 +642,11 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     final tomorrow = DateTime.now().add(Duration(days: 1));
 
     // Форматируем даты в строку для сравнения с changeDate
+    // Используем padLeft(2, '0') для дня, чтобы соответствовать формату в ScheduleChangesService
     final String todayDate =
-        '${today.day}.${today.month.toString().padLeft(2, '0')}.${today.year}';
+        '${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year}';
     final String tomorrowDate =
-        '${tomorrow.day}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
+        '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
 
     // Определяем, какие изменения показывать на текущей странице
     String targetDate = '';
