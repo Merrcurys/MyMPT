@@ -13,8 +13,6 @@ import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
-import 'package:my_mpt/data/repositories/week_repository.dart';
-import 'package:my_mpt/data/models/week_info.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class TodayScheduleScreen extends StatefulWidget {
@@ -50,11 +48,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   late GetTodayScheduleUseCase _getTodayScheduleUseCase;
   late GetTomorrowScheduleUseCase _getTomorrowScheduleUseCase;
   late GetScheduleChangesUseCase _getScheduleChangesUseCase;
-  late WeekRepository _weekRepository;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
   List<ScheduleChangeEntity> _scheduleChanges = [];
-  WeekInfo? _weekInfo;
   bool _isLoading = false;
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
@@ -64,7 +60,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     super.initState();
     _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
-    _weekRepository = WeekRepository();
     _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
     _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
     _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
@@ -128,15 +123,13 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     }
 
     try {
-      final extras = await Future.wait([
-        _weekRepository.getWeekInfo(),
-        _getScheduleChangesUseCase(),
-      ]);
+      // Updated to only load schedule changes, since we calculate week type locally
+      final scheduleChanges = await _getScheduleChangesUseCase();
 
       if (!mounted) return;
       setState(() {
-        _weekInfo = extras[0] as WeekInfo;
-        _scheduleChanges = extras[1] as List<ScheduleChangeEntity>;
+        // _weekInfo = extras[0] as WeekInfo; - Removed as we calculate week type locally
+        _scheduleChanges = scheduleChanges as List<ScheduleChangeEntity>;
       });
     } catch (e) {}
   }
@@ -243,10 +236,10 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
             dateLabel: dateLabel,
             lessonsCount: scheduleWithChanges.length,
             gradient: _getHeaderGradient(
-              weekType ?? _weekInfo?.weekType ?? 'Неизвестно',
+              weekType ?? DateFormatter.getWeekType(DateTime.now()),
             ),
             pageTitle: pageTitle,
-            weekType: weekType ?? _weekInfo?.weekType ?? 'Неизвестно',
+            weekType: weekType ?? DateFormatter.getWeekType(DateTime.now()),
           ),
         ),
         SliverPadding(
@@ -428,32 +421,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   }
 
   /// Определяет тип недели для заданной даты
-  String? _getWeekTypeForDate(DateTime date) {
-    // Если информация о неделе недоступна, возвращаем null
-    if (_weekInfo == null) {
-      return null;
-    }
-
-    // Получаем текущую дату из информации о неделе
-    // Для простоты предполагаем, что _weekInfo.date содержит текущую дату
-    // В реальной реализации может потребоваться более сложная логика
-
-    // Если дата - понедельник и это завтра, то это может быть новая неделя
-    if (date.weekday == DateTime.monday &&
-        date.difference(DateTime.now()).inDays == 1) {
-      // Если сегодня воскресенье, то завтра будет новая неделя
-      if (DateTime.now().weekday == DateTime.sunday) {
-        // Меняем тип недели
-        if (_weekInfo!.weekType == 'Числитель') {
-          return 'Знаменатель';
-        } else if (_weekInfo!.weekType == 'Знаменатель') {
-          return 'Числитель';
-        }
-      }
-    }
-
-    // В остальных случаях возвращаем текущий тип недели
-    return _weekInfo!.weekType;
+  String _getWeekTypeForDate(DateTime date) {
+    // Updated to calculate week type instead of using _weekInfo
+    return DateFormatter.getWeekType(date);
   }
 
   /// Фильтрует пары в зависимости от типа недели

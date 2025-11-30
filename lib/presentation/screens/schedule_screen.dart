@@ -11,8 +11,6 @@ import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/numerator_denominator_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
-import 'package:my_mpt/data/repositories/week_repository.dart';
-import 'package:my_mpt/data/models/week_info.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
 ///
@@ -45,9 +43,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   /// Use case для получения изменений в расписании
   late GetScheduleChangesUseCase _getScheduleChangesUseCase;
 
-  /// Репозиторий для работы с информацией о неделе
-  late WeekRepository _weekRepository;
-
   /// Недельное расписание
   Map<String, List<Schedule>> _weeklySchedule = {};
 
@@ -55,7 +50,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<ScheduleChangeEntity> _scheduleChanges = [];
 
   /// Информация о текущей неделе
-  WeekInfo? _weekInfo;
+  // WeekInfo? _weekInfo;
 
   /// Флаг загрузки данных
   bool _isLoading = false;
@@ -68,7 +63,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     super.initState();
     _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
-    _weekRepository = WeekRepository();
     _getWeeklyScheduleUseCase = GetWeeklyScheduleUseCase(_repository);
     _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
 
@@ -130,15 +124,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     try {
-      final results = await Future.wait([
-        _weekRepository.getWeekInfo(),
-        _getScheduleChangesUseCase(),
-      ]);
+      // Updated to only load schedule changes, since we calculate week type locally
+      final scheduleChanges = await _getScheduleChangesUseCase();
 
       if (!mounted) return;
       setState(() {
-        _weekInfo = results[0] as WeekInfo;
-        _scheduleChanges = results[1] as List<ScheduleChangeEntity>;
+        // _weekInfo = results[0] as WeekInfo; - Removed as we calculate week type locally
+        _scheduleChanges = scheduleChanges as List<ScheduleChangeEntity>;
       });
     } catch (_) {
       // Если не удалось получить доп. данные, просто оставляем старые
@@ -167,7 +159,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       child: _Header(
                         borderColor: _borderColor,
                         dateLabel: _formatDate(DateTime.now()),
-                        weekType: _weekInfo?.weekType ?? 'Неизвестно',
+                        // Updated to calculate week type instead of using _weekInfo
+                        weekType: DateFormatter.getWeekType(DateTime.now()),
                       ),
                     ),
                     SliverPadding(
@@ -181,7 +174,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             building: building,
                             lessons: day.value,
                             accentColor: _lessonAccent,
-                            weekType: _weekInfo?.weekType,
+                            // Updated to calculate week type instead of using _weekInfo
+                            weekType: DateFormatter.getWeekType(DateTime.now()),
                           );
                         }, childCount: days.length),
                       ),

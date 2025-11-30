@@ -42,4 +42,33 @@ class DateFormatter {
   static String getMonthName(int monthNumber) {
     return _months[(monthNumber - 1) % _months.length];
   }
+
+  /// Определяет тип недели (числитель/знаменатель) на основе даты
+  ///
+  /// Номер недели начинается с первого дня учебы (1 сентября).
+  /// Первый день учебы всегда 1 сентября.
+  ///
+  /// Параметры:
+  /// - [date]: Дата для определения типа недели
+  ///
+  /// Возвращает:
+  /// - String: Тип недели ('Числитель' или 'Знаменатель')
+  static String getWeekType(DateTime date) {
+    // Определяем начало учебного года
+    final startOfYear = DateTime(date.year, 9, 1);
+
+    // Если сейчас до сентября, значит учебный год начался в прошлом году
+    final startDate = date.month < 9
+        ? DateTime(date.year - 1, 9, 1)
+        : startOfYear;
+
+    // Вычисляем количество дней между датой и началом учебного года
+    final difference = date.difference(startDate).inDays;
+
+    // Вычисляем номер недели (начинается с 0)
+    final weekNumber = (difference ~/ 7);
+
+    // Определяем тип недели: четные недели - числитель, нечетные - знаменатель
+    return weekNumber.isEven ? 'Числитель' : 'Знаменатель';
+  }
 }
