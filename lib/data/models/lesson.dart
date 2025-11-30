@@ -52,7 +52,7 @@ class Lesson {
   /// Преобразует объект урока в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление урока в формате JSON
+  /// Представление урока в формате JSON
   Map<String, dynamic> toJson() {
     return {
       'number': number,

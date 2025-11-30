@@ -87,7 +87,7 @@ class ScheduleCacheDataSource {
   /// и десериализует их в объекты приложения
   ///
   /// Возвращает:
-  /// - Future<ScheduleCache?>: Объект кэша или null, если данные не найдены или повреждены
+  /// Объект кэша или null, если данные не найдены или повреждены
   Future<ScheduleCache?> load() async {
     // Получаем экземпляр shared_preferences
     final prefs = await SharedPreferences.getInstance();
@@ -138,24 +138,24 @@ class ScheduleCacheDataSource {
     await prefs.remove(_lastUpdateKey);
   }
 
-  /// Преобразует Map<String, List<Schedule>> в JSON-совместимую структуру
+  /// Преобразует Map в JSON-совместимую структуру
   ///
   /// Параметры:
   /// - [map]: Карта расписания для преобразования
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: JSON-совместимая структура
+  /// JSON-совместимая структура
   Map<String, dynamic> _mapToJson(Map<String, List<Schedule>> map) {
     return map.map((key, value) => MapEntry(key, _listToJson(value)));
   }
 
-  /// Преобразует JSON-совместимую структуру в Map<String, List<Schedule>>
+  /// Преобразует JSON-совместимую структуру в Map
   ///
   /// Параметры:
   /// - [json]: JSON-совместимая структура для преобразования
   ///
   /// Возвращает:
-  /// - Map<String, List<Schedule>>: Карта расписания
+  /// Карта расписания
   Map<String, List<Schedule>> _mapFromJson(dynamic json) {
     if (json is! Map) return {};
     return json.map((key, value) {
@@ -163,24 +163,24 @@ class ScheduleCacheDataSource {
     });
   }
 
-  /// Преобразует List<Schedule> в JSON-совместимую структуру
+  /// Преобразует List в JSON-совместимую структуру
   ///
   /// Параметры:
   /// - [schedules]: Список расписаний для преобразования
   ///
   /// Возвращает:
-  /// - List<Map<String, dynamic>>: JSON-совместимая структура
+  /// JSON-совместимая структура
   List<Map<String, dynamic>> _listToJson(List<Schedule> schedules) {
     return schedules.map(_scheduleToJson).toList();
   }
 
-  /// Преобразует JSON-совместимую структуру в List<Schedule>>
+  /// Преобразует JSON-совместимую структуру в List
   ///
   /// Параметры:
   /// - [json]: JSON-совместимая структура для преобразования
   ///
   /// Возвращает:
-  /// - List<Schedule>: Список расписаний
+  /// Список расписаний
   List<Schedule> _listFromJson(dynamic json) {
     if (json is! List) return [];
     return json
@@ -195,7 +195,7 @@ class ScheduleCacheDataSource {
   /// - [schedule]: Объект расписания для преобразования
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: JSON-совместимая структура
+  /// JSON-совместимая структура
   Map<String, dynamic> _scheduleToJson(Schedule schedule) {
     return {
       'id': schedule.id,

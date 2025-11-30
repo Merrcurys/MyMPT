@@ -21,7 +21,7 @@ class GetScheduleChangesUseCase {
   /// репозиторию изменений в расписании
   ///
   /// Возвращает:
-  /// - Future<List<ScheduleChangeEntity>>: Список изменений в расписании
+  /// Список изменений в расписании
   Future<List<ScheduleChangeEntity>> call() async {
     return await repository.getScheduleChanges();
   }

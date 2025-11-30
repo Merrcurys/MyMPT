@@ -42,7 +42,7 @@ class ScheduleChange {
   /// Преобразует объект изменения в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление изменения в формате JSON
+  /// Представление изменения в формате JSON
   Map<String, dynamic> toJson() {
     return {
       'lessonNumber': lessonNumber,

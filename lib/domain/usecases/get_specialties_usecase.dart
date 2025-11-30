@@ -21,7 +21,7 @@ class GetSpecialtiesUseCase {
   /// репозиторию специальностей
   ///
   /// Возвращает:
-  /// - Future<List<Specialty>>: Список специальностей
+  /// Список специальностей
   Future<List<Specialty>> call() async {
     return await repository.getSpecialties();
   }

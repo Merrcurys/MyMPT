@@ -17,7 +17,7 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   /// репозиторию парсера расписания
   ///
   /// Возвращает:
-  /// - Future<Map<String, List<Schedule>>>: Расписание на неделю, где ключ - день недели
+  /// Расписание на неделю, где ключ - день недели
   Future<Map<String, List<Schedule>>> getWeeklySchedule() async {
     try {
       // Всегда используем парсер для получения реального расписания
@@ -37,7 +37,7 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   /// репозиторию парсера расписания
   ///
   /// Возвращает:
-  /// - Future<List<Schedule>>: Список элементов расписания на сегодня
+  /// Список элементов расписания на сегодня
   Future<List<Schedule>> getTodaySchedule() async {
     try {
       // Всегда используем парсер для получения реального расписания
@@ -56,7 +56,7 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   /// репозиторию парсера расписания
   ///
   /// Возвращает:
-  /// - Future<List<Schedule>>: Список элементов расписания на завтра
+  /// Список элементов расписания на завтра
   Future<List<Schedule>> getTomorrowSchedule() async {
     try {
       // Всегда используем парсер для получения реального расписания

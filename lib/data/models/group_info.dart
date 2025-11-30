@@ -32,7 +32,7 @@ class GroupInfo {
   /// Преобразует объект информации о группе в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление информации о группе в формате JSON
+  /// Представление информации о группе в формате JSON
   Map<String, dynamic> toJson() {
     return {
       'code': code,

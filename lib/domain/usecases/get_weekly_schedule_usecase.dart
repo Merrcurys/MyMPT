@@ -24,7 +24,7 @@ class GetWeeklyScheduleUseCase {
   /// - [forceRefresh]: Принудительное обновление данных (опционально)
   ///
   /// Возвращает:
-  /// - Future<Map<String, List<Schedule>>>: Расписание на неделю, где ключ - день недели
+  /// Расписание на неделю, где ключ - день недели
   Future<Map<String, List<Schedule>>> call({bool forceRefresh = false}) async {
     return await repository.getWeeklySchedule(forceRefresh: forceRefresh);
   }

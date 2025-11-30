@@ -43,7 +43,7 @@ class ScheduleRemoteDataSource {
   /// - [forceRefresh]: Принудительная загрузка без использования кэша
   ///
   /// Возвращает:
-  /// - Future<String>: HTML-страница с расписанием
+  /// HTML-страница с расписанием
   Future<String> fetchSchedulePage({bool forceRefresh = false}) async {
     // Проверяем, действителен ли кэш
     final isCacheValid =
@@ -76,7 +76,7 @@ class ScheduleRemoteDataSource {
   /// Метод выполняет HTTP-запрос к базовому URL и возвращает содержимое страницы
   ///
   /// Возвращает:
-  /// - Future<String>: HTML-страница с расписанием
+  /// HTML-страница с расписанием
   Future<String> _loadFromNetwork() async {
     // Выполняем HTTP-запрос с таймаутом 15 секунд
     final response = await _client

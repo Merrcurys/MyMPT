@@ -56,7 +56,7 @@ class CallsService {
   /// Метод возвращает копию статических данных о расписании звонков
   ///
   /// Возвращает:
-  /// - List<Call>: Список звонков
+  /// Список звонков
   static List<Call> getCalls() {
     return List<Call>.from(_callsData);
   }

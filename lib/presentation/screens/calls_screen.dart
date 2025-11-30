@@ -44,7 +44,7 @@ class CallsScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.45),
+                      color: Colors.black.withValues(alpha: 0.45),
                       blurRadius: 30,
                       offset: const Offset(0, 18),
                     ),
@@ -168,7 +168,7 @@ class _CallTimelineTile extends StatelessWidget {
                 width: 2,
                 height: 48,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                color: const Color(0xFFFFFFFF).withOpacity(0.3),
+                color: const Color(0xFFFFFFFF).withValues(alpha: 0.3),
               ),
           ],
         ),

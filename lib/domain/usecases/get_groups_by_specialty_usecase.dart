@@ -24,7 +24,7 @@ class GetGroupsBySpecialtyUseCase {
   /// - [specialtyCode]: Код специальности
   ///
   /// Возвращает:
-  /// - Future<List<Group>>: Список групп для указанной специальности
+  /// Список групп для указанной специальности
   Future<List<Group>> call(String specialtyCode) async {
     final result = await repository.getGroupsBySpecialty(specialtyCode);
     return result;

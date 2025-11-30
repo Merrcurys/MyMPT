@@ -33,7 +33,7 @@ class ScheduleChangesService {
   /// - [forceRefresh]: Принудительное обновление без использования кэша
   ///
   /// Возвращает:
-  /// - List<ScheduleChange>: Список изменений в расписании для группы
+  /// Список изменений в расписании для группы
   Future<List<ScheduleChange>> parseScheduleChangesForGroup(
     String groupCode, {
     bool forceRefresh = false,

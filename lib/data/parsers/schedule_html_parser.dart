@@ -28,7 +28,7 @@ class ScheduleHtmlParser {
   /// - [groupCode]: Код группы для которой нужно получить расписание
   ///
   /// Возвращает:
-  /// - Map<String, List<Lesson>>: Расписание, где ключ - день недели, значение - список уроков
+  /// Расписание, где ключ - день недели, значение - список уроков
   Map<String, List<Lesson>> parse(String html, String groupCode) {
     // Парсим HTML-документ
     final document = html_parser.parse(html);
@@ -165,7 +165,7 @@ class ScheduleHtmlParser {
   /// - [building]: Корпус (извлекается из заголовка таблицы)
   ///
   /// Возвращает:
-  /// - List<Lesson>: Список уроков
+  /// Список уроков
   List<Lesson> _parseLessons(Element table, String building) {
     // Создаем список для хранения уроков
     final lessons = <Lesson>[];
@@ -189,7 +189,7 @@ class ScheduleHtmlParser {
   /// - [table]: Таблица с расписанием
   ///
   /// Возвращает:
-  /// - List<Element>: Список строк с уроками
+  /// Список строк с уроками
   List<Element> _collectLessonRows(Element table) {
     // Извлекаем все строки из таблицы
     final rows = table.getElementsByTagName('tr');
@@ -209,7 +209,7 @@ class ScheduleHtmlParser {
   /// - [building]: Корпус
   ///
   /// Возвращает:
-  /// - List<Lesson>: Список уроков (может содержать несколько для числителя/знаменателя)
+  /// Список уроков (может содержать несколько для числителя/знаменателя)
   List<Lesson> _parseLessonRow(Element row, String building) {
     // Извлекаем ячейки из строки
     final cells = row.querySelectorAll('td');

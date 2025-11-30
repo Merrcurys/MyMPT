@@ -33,7 +33,7 @@ class Specialty {
   /// Преобразует объект специальности в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление специальности в формате JSON
+  /// Представление специальности в формате JSON
   Map<String, dynamic> toJson() {
     return {'code': code, 'name': name};
   }

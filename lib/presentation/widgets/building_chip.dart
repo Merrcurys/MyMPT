@@ -20,27 +20,27 @@ class BuildingChip extends StatelessWidget {
     // Определяем цвета в зависимости от названия здания
     Color borderColor = const Color(
       0xFFFF8C00,
-    ).withOpacity(0.3); // Оранжевый по умолчанию
+    ).withValues(alpha: 0.3); // Оранжевый по умолчанию
     Color circleColor = const Color(0xFFFF8C00); // Оранжевый по умолчанию
     String displayLabel = label;
 
     if (label == 'Нежинская') {
       borderColor = const Color(
         0xFF2196F3,
-      ).withOpacity(0.3); // Синий для Нежинской
+      ).withValues(alpha: 0.3); // Синий для Нежинской
       circleColor = const Color(0xFF2196F3); // Синий для Нежинской
     } else if (label == 'Нахимовский') {
       // Серый цвет для Наxимовского корпуса
       borderColor = const Color(
         0xFF9E9E9E,
-      ).withOpacity(0.3); // Серый для Наxимовского
+      ).withValues(alpha: 0.3); // Серый для Наxимовского
       circleColor = const Color(0xFF9E9E9E); // Серый для Наxимовского
     } else if (label != 'Нахимовский' && label != 'Нежинская') {
       // Если здание не Наxимовский и не Нежинская, показываем "Дистанционно"
       displayLabel = 'Дистанционно';
       borderColor = const Color(
         0xFFFF8C00,
-      ).withOpacity(0.3); // Оранжевый для дистанционных занятий
+      ).withValues(alpha: 0.3); // Оранжевый для дистанционных занятий
       circleColor = const Color(
         0xFFFF8C00,
       ); // Оранжевый для дистанционных занятий
@@ -54,7 +54,7 @@ class BuildingChip extends StatelessWidget {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

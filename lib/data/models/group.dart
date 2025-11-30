@@ -33,7 +33,7 @@ class Group {
   /// Преобразует объект группы в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление группы в формате JSON
+  /// Представление группы в формате JSON
   Map<String, dynamic> toJson() {
     return {'code': code, 'specialtyCode': specialtyCode};
   }

@@ -67,11 +67,6 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
       // Получаем текущий день недели
       final today = _getTodayInRussian();
 
-      // Показываем все доступные дни для отладки
-      // parsedSchedule.forEach((day, lessons) {
-      //   print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
-      // });
-
       if (parsedSchedule.containsKey(today)) {
         final lessons = parsedSchedule[today]!;
 
@@ -113,11 +108,6 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
 
       // Получаем завтрашний день недели
       final tomorrow = _getTomorrowInRussian();
-
-      // Показываем все доступные дни для отладки
-      // parsedSchedule.forEach((day, lessons) {
-      //   print('DEBUG: День в расписании: "$day", уроков: ${lessons.length}');
-      // });
 
       if (parsedSchedule.containsKey(tomorrow)) {
         final lessons = parsedSchedule[tomorrow]!;

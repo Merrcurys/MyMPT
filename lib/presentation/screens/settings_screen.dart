@@ -21,10 +21,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _backgroundColor = Color(0xFF000000);
-  static const List<Color> _headerGradient = [
-    Color(0xFF333333),
-    Color(0xFF111111),
-  ];
 
   late SpecialtyRepositoryInterface _repository;
   late GetSpecialtiesUseCase _getSpecialtiesUseCase;
@@ -509,7 +505,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Версия: 0.1.1',
+                  'Версия: 0.1.2',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

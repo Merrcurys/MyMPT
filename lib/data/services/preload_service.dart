@@ -13,7 +13,7 @@ class PreloadService {
   /// загружает все группы, сохраняя их в кэш
   ///
   /// Возвращает:
-  /// - Future<void>: Завершается после завершения предзагрузки
+  /// Завершается после завершения предзагрузки
   Future<void> preloadAllData() async {
     try {
       // Загружаем все специальности (сохраняются в кэш автоматически)
@@ -42,7 +42,7 @@ class PreloadService {
   /// Предзагружает только специальности
   ///
   /// Возвращает:
-  /// - Future<void>: Завершается после завершения предзагрузки
+  /// Завершается после завершения предзагрузки
   Future<void> preloadSpecialties() async {
     try {
       await _parserService.parseTabList(forceRefresh: true);

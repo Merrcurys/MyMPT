@@ -24,7 +24,7 @@ class GetTomorrowScheduleUseCase {
   /// - [forceRefresh]: Принудительное обновление данных (опционально)
   ///
   /// Возвращает:
-  /// - Future<List<Schedule>>: Список элементов расписания на завтра
+  /// Список элементов расписания на завтра
   Future<List<Schedule>> call({bool forceRefresh = false}) async {
     return await repository.getTomorrowSchedule(forceRefresh: forceRefresh);
   }

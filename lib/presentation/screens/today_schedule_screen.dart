@@ -32,7 +32,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
   /// - [weekType]: Тип недели (Числитель/Знаменатель)
   ///
   /// Возвращает:
-  /// - List<Color>: Градиент для заголовка
+  /// Градиент для заголовка
   List<Color> _getHeaderGradient(String weekType) {
     if (weekType == 'Знаменатель') {
       return const [Color(0xFF111111), Color(0xFF4FC3F7)];
@@ -102,8 +102,8 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
       if (!mounted) return;
       setState(() {
-        _todayScheduleData = scheduleResults[0] as List<Schedule>;
-        _tomorrowScheduleData = scheduleResults[1] as List<Schedule>;
+        _todayScheduleData = scheduleResults[0];
+        _tomorrowScheduleData = scheduleResults[1];
         if (showLoader) {
           _isLoading = false;
         }
@@ -123,13 +123,12 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     }
 
     try {
-      // Updated to only load schedule changes, since we calculate week type locally
+      // Обновляем только для изменения расписания
       final scheduleChanges = await _getScheduleChangesUseCase();
 
       if (!mounted) return;
       setState(() {
-        // _weekInfo = extras[0] as WeekInfo; - Removed as we calculate week type locally
-        _scheduleChanges = scheduleChanges as List<ScheduleChangeEntity>;
+        _scheduleChanges = scheduleChanges;
       });
     } catch (e) {}
   }
@@ -235,11 +234,9 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
           child: _TodayHeader(
             dateLabel: dateLabel,
             lessonsCount: scheduleWithChanges.length,
-            gradient: _getHeaderGradient(
-              weekType ?? DateFormatter.getWeekType(DateTime.now()),
-            ),
+            gradient: _getHeaderGradient(weekType),
             pageTitle: pageTitle,
-            weekType: weekType ?? DateFormatter.getWeekType(DateTime.now()),
+            weekType: weekType,
           ),
         ),
         SliverPadding(
@@ -293,7 +290,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                               Icon(
                                 Icons.weekend_outlined,
                                 size: 64,
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -331,9 +328,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                               lessonStartTime = call.startTime;
                               lessonEndTime = call.endTime;
                             }
-                          } catch (e) {
-                            // Потом
-                          }
+                          } catch (e) {}
 
                           final widgets = <Widget>[
                             LessonCard(
@@ -360,9 +355,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
                                 final nextCall = callsData[nextPeriodInt - 1];
                                 nextLessonStartTime = nextCall.startTime;
                               }
-                            } catch (e) {
-                              // Потом
-                            }
+                            } catch (e) {}
 
                             widgets.add(
                               BreakIndicator(
@@ -697,7 +690,7 @@ class _TodayHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 30,
             offset: const Offset(0, 18),
           ),
@@ -711,9 +704,9 @@ class _TodayHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Text(
                 weekType,
@@ -757,14 +750,14 @@ class _MetricChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.white.withOpacity(0.85)),
+          Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.85)),
           const SizedBox(width: 6),
           Text(
             label,
@@ -822,7 +815,7 @@ class _PageDot extends StatelessWidget {
       width: 8,
       height: 8,
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.white.withOpacity(0.3),
+        color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.3),
         shape: BoxShape.circle,
       ),
     );

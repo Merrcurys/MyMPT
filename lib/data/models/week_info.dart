@@ -28,7 +28,7 @@ class WeekInfo {
   /// Преобразует объект информации о неделе в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление информации о неделе в формате JSON
+  /// Представление информации о неделе в формате JSON
   Map<String, dynamic> toJson() {
     return {'weekType': weekType, 'date': date, 'day': day};
   }

@@ -42,7 +42,7 @@ class LessonCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFF333333)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -72,7 +72,7 @@ class LessonCard extends StatelessWidget {
                     teacher,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -95,7 +95,7 @@ class LessonCard extends StatelessWidget {
                   endTime,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
               ],

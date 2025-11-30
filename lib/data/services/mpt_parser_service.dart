@@ -30,7 +30,7 @@ class MptParserService {
   /// которые представлены в виде ссылок в навигационном меню
   ///
   /// Возвращает:
-  /// - List<TabInfo>: Список информации о вкладках специальностей
+  /// Список информации о вкладках специальностей
   Future<List<TabInfo>> parseTabList({bool forceRefresh = false}) async {
     try {
       // Проверяем кэш
@@ -238,7 +238,7 @@ class MptParserService {
   /// - [forceRefresh]: Принудительное обновление без использования кэша
   ///
   /// Возвращает:
-  /// - List<GroupInfo>: Список информации о группах
+  /// Список информации о группах
   Future<List<GroupInfo>> parseGroups([
     String? specialtyFilter,
     bool forceRefresh = false,
@@ -258,7 +258,7 @@ class MptParserService {
   /// во всех специальностях
   ///
   /// Возвращает:
-  /// - List<GroupInfo>: Список информации о всех группах
+  /// Список информации о всех группах
   Future<List<GroupInfo>> _parseAllGroups({bool forceRefresh = false}) async {
     try {
       // Проверяем кэш
@@ -346,7 +346,7 @@ class MptParserService {
   /// - [specialtyFilter]: Код специальности для фильтрации групп
   ///
   /// Возвращает:
-  /// - List<GroupInfo>: Список информации о группах для указанной специальности
+  /// Список информации о группах для указанной специальности
   Future<List<GroupInfo>> _parseGroupsBySpecialty(
     String specialtyFilter, {
     bool forceRefresh = false,
@@ -488,7 +488,7 @@ class MptParserService {
   /// - [specialtyFromContext]: Опциональная информация о специальности из контекста
   ///
   /// Возвращает:
-  /// - List<GroupInfo>: Список информации о группах (обычно один элемент)
+  /// Список информации о группах (обычно один элемент)
   List<GroupInfo> _parseGroupFromHeader(
     String headerText,
     Document document, [

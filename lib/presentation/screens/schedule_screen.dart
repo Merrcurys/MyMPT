@@ -254,7 +254,7 @@ class _Header extends StatelessWidget {
   /// - [weekType]: Тип недели (Числитель/Знаменатель)
   ///
   /// Возвращает:
-  /// - List<Color>: Градиент для заголовка
+  /// Градиент для заголовка
   List<Color> _getHeaderGradient(String weekType) {
     if (weekType == 'Знаменатель') {
       return const [Color(0xFF111111), Color(0xFF4FC3F7)];
@@ -279,7 +279,7 @@ class _Header extends StatelessWidget {
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 30,
             offset: const Offset(0, 18),
           ),
@@ -293,9 +293,9 @@ class _Header extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Text(
                 weekType,
@@ -384,7 +384,7 @@ class _DaySection extends StatelessWidget {
   /// - [callsData]: Данные о звонках
   ///
   /// Возвращает:
-  /// - List<Widget>: Список виджетов занятий
+  /// Список виджетов занятий
   List<Widget> _buildLessonWidgets(
     List<Schedule> lessons,
     List<dynamic> callsData,
@@ -543,7 +543,7 @@ class _DaySection extends StatelessWidget {
           const SizedBox(height: 20),
           Column(children: _buildLessonWidgets(lessons, callsData)),
           const SizedBox(height: 12),
-          Divider(color: Colors.white.withOpacity(0.05), height: 32),
+          Divider(color: Colors.white.withValues(alpha: 0.05), height: 32),
         ],
       ),
     );

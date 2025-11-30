@@ -48,7 +48,7 @@ class Call {
   /// Преобразует объект звонка в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление звонка в формате JSON
+  /// Представление звонка в формате JSON
   Map<String, dynamic> toJson() {
     return {
       'period': period,

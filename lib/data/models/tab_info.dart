@@ -28,7 +28,7 @@ class TabInfo {
   /// Преобразует объект информации о вкладке в JSON
   ///
   /// Возвращает:
-  /// - Map<String, dynamic>: Представление информации о вкладке в формате JSON
+  /// Представление информации о вкладке в формате JSON
   Map<String, dynamic> toJson() {
     return {'href': href, 'ariaControls': ariaControls, 'name': name};
   }

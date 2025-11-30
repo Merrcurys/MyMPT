@@ -42,7 +42,7 @@ class ScheduleChangeCard extends StatelessWidget {
 
     final _LessonTimes lessonTimes = _lessonTimesForNumber(lessonNumber);
     final Color accentColor = isAdditionalClass
-        ? const Color(0xFFFF8C00).withOpacity(0.5)
+        ? const Color(0xFFFF8C00).withValues(alpha: 0.5)
         : const Color(0xFFFF8C00);
 
     final String subjectText = newLessonDetails.subject.isNotEmpty
@@ -58,7 +58,7 @@ class ScheduleChangeCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFF333333)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -84,7 +84,7 @@ class ScheduleChangeCard extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: isAdditionalClass
-                              ? Colors.white.withOpacity(0.85)
+                              ? Colors.white.withValues(alpha: 0.85)
                               : Colors.white,
                         ),
                       ),
@@ -95,8 +95,8 @@ class ScheduleChangeCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             color: isAdditionalClass
-                                ? Colors.white.withOpacity(0.5)
-                                : Colors.white.withOpacity(0.7),
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                     ],
@@ -119,7 +119,7 @@ class ScheduleChangeCard extends StatelessWidget {
                       lessonTimes.end,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -189,7 +189,7 @@ class _PreviousLessonInfo extends StatelessWidget {
             details.subject,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               decoration: _isAdditionalLesson
                   ? TextDecoration.none
                   : TextDecoration.lineThrough,
@@ -201,7 +201,7 @@ class _PreviousLessonInfo extends StatelessWidget {
             details.teacher,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha: 0.4),
               decoration: _isAdditionalLesson
                   ? TextDecoration.none
                   : TextDecoration.lineThrough,
