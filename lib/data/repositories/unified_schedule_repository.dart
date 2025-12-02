@@ -29,7 +29,7 @@ class UnifiedScheduleRepository {
     await _restoreCacheIfNeeded();
     final needRefresh = forceRefresh || _shouldRefreshData() || _cachedWeeklySchedule == null;
     if (needRefresh) {
-      await _refreshAllData(forceRefresh: needRefresh);
+      await _refreshAllData(forceRefresh: forceRefresh);
     }
     return _cachedWeeklySchedule ?? {};
   }
@@ -39,7 +39,7 @@ class UnifiedScheduleRepository {
     await _restoreCacheIfNeeded();
     final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTodaySchedule == null;
     if (needRefresh) {
-      await _refreshAllData(forceRefresh: needRefresh);
+      await _refreshAllData(forceRefresh: forceRefresh);
     }
     return _cachedTodaySchedule ?? [];
   }
@@ -49,7 +49,7 @@ class UnifiedScheduleRepository {
     await _restoreCacheIfNeeded();
     final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTomorrowSchedule == null;
     if (needRefresh) {
-      await _refreshAllData(forceRefresh: needRefresh);
+      await _refreshAllData(forceRefresh: forceRefresh);
     }
     return _cachedTomorrowSchedule ?? [];
   }
