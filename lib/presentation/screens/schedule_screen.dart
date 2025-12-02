@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
-import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/domain/usecases/get_weekly_schedule_usecase.dart';
-import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
+import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
@@ -31,17 +29,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   /// Цвет границ элементов
   static const _borderColor = Color(0xFF333333);
 
-  /// Репозиторий для работы с расписанием
+  /// Единое хранилище для работы с расписанием
   late UnifiedScheduleRepository _repository;
 
-  /// Репозиторий для работы с изменениями в расписании
+  /// Хранилище для работы с изменениями в расписании
   late ScheduleChangesRepository _changesRepository;
-
-  /// Use case для получения недельного расписания
-  late GetWeeklyScheduleUseCase _getWeeklyScheduleUseCase;
-
-  /// Use case для получения изменений в расписании
-  late GetScheduleChangesUseCase _getScheduleChangesUseCase;
 
   /// Недельное расписание
   Map<String, List<Schedule>> _weeklySchedule = {};
@@ -63,8 +55,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     super.initState();
     _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
-    _getWeeklyScheduleUseCase = GetWeeklyScheduleUseCase(_repository);
-    _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
 
     // Слушаем уведомления об обновлении данных
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
@@ -99,7 +89,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     try {
-      final weeklySchedule = await _getWeeklyScheduleUseCase(
+      final weeklySchedule = await _repository.getWeeklySchedule(
         forceRefresh: forceRefresh,
       );
       if (!mounted) return;
@@ -124,17 +114,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     try {
-      // Updated to only load schedule changes, since we calculate week type locally
-      final scheduleChanges = await _getScheduleChangesUseCase();
+      final scheduleChanges = await _changesRepository.getScheduleChanges();
 
       if (!mounted) return;
       setState(() {
-        // _weekInfo = results[0] as WeekInfo; - Removed as we calculate week type locally
-        _scheduleChanges = scheduleChanges as List<ScheduleChangeEntity>;
+        _scheduleChanges = scheduleChanges;
       });
-    } catch (_) {
-      // Если не удалось получить доп. данные, просто оставляем старые
-    }
+    } catch (_) {}
   }
 
   @override
@@ -159,7 +145,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       child: _Header(
                         borderColor: _borderColor,
                         dateLabel: _formatDate(DateTime.now()),
-                        // Updated to calculate week type instead of using _weekInfo
                         weekType: DateFormatter.getWeekType(DateTime.now()),
                       ),
                     ),
@@ -174,7 +159,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             building: building,
                             lessons: day.value,
                             accentColor: _lessonAccent,
-                            // Updated to calculate week type instead of using _weekInfo
                             weekType: DateFormatter.getWeekType(DateTime.now()),
                           );
                         }, childCount: days.length),

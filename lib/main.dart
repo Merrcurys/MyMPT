@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/core/constants/app_constants.dart';
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
@@ -25,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: AppConstants.collegeName,
+      title: "Мой МПТ",
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,

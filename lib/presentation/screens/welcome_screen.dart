@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/domain/entities/specialty.dart';
-import 'package:my_mpt/domain/entities/group.dart';
-import 'package:my_mpt/domain/usecases/get_specialties_usecase.dart';
-import 'package:my_mpt/domain/usecases/get_groups_by_specialty_usecase.dart';
-import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
+import 'package:my_mpt/domain/entities/group.dart';
+import 'package:my_mpt/domain/entities/specialty.dart';
+import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/services/preload_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,12 +24,6 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   /// Репозиторий для работы со специальностями и группами
   late SpecialtyRepositoryInterface _repository;
-
-  /// Use case для получения списка специальностей
-  late GetSpecialtiesUseCase _getSpecialtiesUseCase;
-
-  /// Use case для получения списка групп по специальности
-  late GetGroupsBySpecialtyUseCase _getGroupsBySpecialtyUseCase;
 
   /// Сервис предзагрузки данных
   final PreloadService _preloadService = PreloadService();
@@ -70,8 +62,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void initState() {
     super.initState();
     _repository = repo_impl.MptRepository();
-    _getSpecialtiesUseCase = GetSpecialtiesUseCase(_repository);
-    _getGroupsBySpecialtyUseCase = GetGroupsBySpecialtyUseCase(_repository);
     // Предзагружаем все данные при первом запуске
     _preloadAllData();
   }
@@ -89,7 +79,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      final specialties = await _getSpecialtiesUseCase();
+      final specialties = await _repository.getSpecialties();
       setState(() {
         _specialties = specialties;
         _isLoading = false;
@@ -117,7 +107,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      final groups = await _getGroupsBySpecialtyUseCase(specialtyCode);
+      final groups = await _repository.getGroupsBySpecialty(specialtyCode);
       setState(() {
         _groups = groups;
         _isGroupsLoading = false;
@@ -421,7 +411,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ),
         const SizedBox(height: 30),
         Container(
-          height: 50, // Уменьшена высота контейнера
+          height: 50,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: const Color(0xFF111111),

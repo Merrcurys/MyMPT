@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
-import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/domain/usecases/get_today_schedule_usecase.dart';
-import 'package:my_mpt/domain/usecases/get_tomorrow_schedule_usecase.dart';
-import 'package:my_mpt/domain/usecases/get_schedule_changes_usecase.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
+import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/domain/entities/schedule_change.dart';
 import 'package:my_mpt/presentation/widgets/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class TodayScheduleScreen extends StatefulWidget {
@@ -45,9 +42,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
   late UnifiedScheduleRepository _repository;
   late ScheduleChangesRepository _changesRepository;
-  late GetTodayScheduleUseCase _getTodayScheduleUseCase;
-  late GetTomorrowScheduleUseCase _getTomorrowScheduleUseCase;
-  late GetScheduleChangesUseCase _getScheduleChangesUseCase;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
   List<ScheduleChangeEntity> _scheduleChanges = [];
@@ -60,11 +54,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
     super.initState();
     _repository = UnifiedScheduleRepository();
     _changesRepository = ScheduleChangesRepository();
-    _getTodayScheduleUseCase = GetTodayScheduleUseCase(_repository);
-    _getTomorrowScheduleUseCase = GetTomorrowScheduleUseCase(_repository);
-    _getScheduleChangesUseCase = GetScheduleChangesUseCase(_changesRepository);
-
-    // Слушаем уведомления об обновлении данных
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
 
     _initializeSchedule();
@@ -96,8 +85,8 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
       }
 
       final scheduleResults = await Future.wait([
-        _getTodayScheduleUseCase(),
-        _getTomorrowScheduleUseCase(),
+        _repository.getTodaySchedule(),
+        _repository.getTomorrowSchedule(),
       ]);
 
       if (!mounted) return;
@@ -124,7 +113,7 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
     try {
       // Обновляем только для изменения расписания
-      final scheduleChanges = await _getScheduleChangesUseCase();
+      final scheduleChanges = await _changesRepository.getScheduleChanges();
 
       if (!mounted) return;
       setState(() {
@@ -415,7 +404,6 @@ class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
 
   /// Определяет тип недели для заданной даты
   String _getWeekTypeForDate(DateTime date) {
-    // Updated to calculate week type instead of using _weekInfo
     return DateFormatter.getWeekType(date);
   }
 

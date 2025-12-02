@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/domain/entities/specialty.dart';
-import 'package:my_mpt/domain/entities/group.dart';
-import 'package:my_mpt/domain/usecases/get_specialties_usecase.dart';
-import 'package:my_mpt/domain/usecases/get_groups_by_specialty_usecase.dart';
-import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
+import 'package:my_mpt/domain/entities/group.dart';
+import 'package:my_mpt/domain/entities/specialty.dart';
+import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/presentation/widgets/success_notification.dart';
 import 'package:my_mpt/presentation/widgets/error_notification.dart';
 import 'package:my_mpt/presentation/widgets/info_notification.dart';
@@ -23,8 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const _backgroundColor = Color(0xFF000000);
 
   late SpecialtyRepositoryInterface _repository;
-  late GetSpecialtiesUseCase _getSpecialtiesUseCase;
-  late GetGroupsBySpecialtyUseCase _getGroupsBySpecialtyUseCase;
   List<Specialty> _specialties = [];
   List<Group> _groups = [];
   Specialty? _selectedSpecialty;
@@ -42,8 +38,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _repository = repo_impl.MptRepository();
-    _getSpecialtiesUseCase = GetSpecialtiesUseCase(_repository);
-    _getGroupsBySpecialtyUseCase = GetGroupsBySpecialtyUseCase(_repository);
     _loadSpecialties();
     _loadSelectedPreferences();
   }
@@ -54,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final specialties = await _getSpecialtiesUseCase();
+      final specialties = await _repository.getSpecialties();
       setState(() {
         _specialties = specialties;
         _isLoading = false;
@@ -63,7 +57,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isLoading = false;
       });
-      // Handle error appropriately
       if (context.mounted) {
         showErrorNotification(
           context,
@@ -87,14 +80,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final lastUpdateMillis = prefs.getString('last_schedule_update');
       if (lastUpdateMillis != null && lastUpdateMillis.isNotEmpty) {
         try {
-          // Проверяем, является ли строка числом (новый формат)
           if (RegExp(r'^\d+$').hasMatch(lastUpdateMillis)) {
             _lastUpdate = DateTime.fromMillisecondsSinceEpoch(
               int.parse(lastUpdateMillis),
             );
-          } else {
-            // Старый формат - игнорируем
-          }
+          } else {}
         } catch (e) {}
       }
 
@@ -258,12 +248,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       // Добавляем таймаут для предотвращения бесконечной загрузки
-      final groups = await _getGroupsBySpecialtyUseCase(specialtyCode).timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Превышено время ожидания загрузки групп');
-        },
-      );
+      final groups = await _repository
+          .getGroupsBySpecialty(specialtyCode)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('Превышено время ожидания загрузки групп');
+            },
+          );
 
       // Загружаем выбранную группу, если она была сохранена
       Group? selectedGroup;
@@ -304,13 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       });
 
-      // Force refresh the UI
       setState(() {});
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      // Handle error appropriately
       if (context.mounted) {
         showErrorNotification(
           context,
@@ -325,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _onSpecialtySelected(Specialty specialty) async {
     setState(() {
       _selectedSpecialty = specialty;
-      _selectedSpecialtyCode = specialty.code; // Also store the code
+      _selectedSpecialtyCode = specialty.code;
       _selectedGroup = null;
     });
 
@@ -333,7 +323,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_selectedSpecialtyKey, specialty.code);
-      // Also save the specialty name for immediate display
       await prefs.setString('${_selectedSpecialtyKey}_name', specialty.name);
     } catch (e) {}
 
