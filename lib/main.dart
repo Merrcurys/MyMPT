@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
-import 'package:my_mpt/presentation/screens/today_schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
+import 'package:my_mpt/presentation/screens/overview_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
@@ -92,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isLoading = true;
 
   final List<Widget> _screens = const [
-    TodayScheduleScreen(),
+    OverviewScreen(),
     ScheduleScreen(),
     CallsScreen(),
     SettingsScreen(),

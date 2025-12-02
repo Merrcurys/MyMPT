@@ -12,14 +12,14 @@ import 'package:my_mpt/presentation/widgets/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
-class TodayScheduleScreen extends StatefulWidget {
-  const TodayScheduleScreen({super.key});
+class OverviewScreen extends StatefulWidget {
+  const OverviewScreen({super.key});
 
   @override
-  State<TodayScheduleScreen> createState() => _TodayScheduleScreenState();
+  State<OverviewScreen> createState() => _OverviewScreenState();
 }
 
-class _TodayScheduleScreenState extends State<TodayScheduleScreen> {
+class _OverviewScreenState extends State<OverviewScreen> {
   static const _backgroundColor = Color(0xFF000000);
   static const Color _lessonAccent = Colors.grey;
 
