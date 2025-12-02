@@ -10,6 +10,8 @@ import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/overview/schedule_change_card.dart';
+import 'package:my_mpt/presentation/widgets/overview/today_header.dart';
+import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class OverviewScreen extends StatefulWidget {
@@ -176,7 +178,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     bottom: 10,
                     left: 0,
                     right: 0,
-                    child: _PageIndicator(currentPageIndex: _currentPageIndex),
+                    child: PageIndicator(currentPageIndex: _currentPageIndex),
                   ),
                 ],
               ),
@@ -220,7 +222,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
-          child: _TodayHeader(
+          child: TodayHeader(
             dateLabel: dateLabel,
             lessonsCount: scheduleWithChanges.length,
             gradient: _getHeaderGradient(weekType),
@@ -651,113 +653,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 }
 
-class _TodayHeader extends StatelessWidget {
-  final String dateLabel;
-  final int lessonsCount;
-  final List<Color> gradient;
-  final String pageTitle;
-  final String weekType;
-
-  const _TodayHeader({
-    required this.dateLabel,
-    required this.lessonsCount,
-    required this.gradient,
-    required this.pageTitle,
-    required this.weekType,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: LinearGradient(
-          colors: gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 30,
-            offset: const Offset(0, 18),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Text(
-                weekType,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              pageTitle,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              dateLabel,
-              style: const TextStyle(fontSize: 16, color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _MetricChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.85)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _LessonTiming {
   final String start;
   final String end;
@@ -773,40 +668,4 @@ class _ScheduleChangesResult {
     required this.schedule,
     required this.hasBuildingOverride,
   });
-}
-
-class _PageIndicator extends StatelessWidget {
-  final int currentPageIndex;
-
-  const _PageIndicator({required this.currentPageIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _PageDot(isActive: currentPageIndex == 0),
-        const SizedBox(width: 8),
-        _PageDot(isActive: currentPageIndex == 1),
-      ],
-    );
-  }
-}
-
-class _PageDot extends StatelessWidget {
-  final bool isActive;
-
-  const _PageDot({required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.3),
-        shape: BoxShape.circle,
-      ),
-    );
-  }
 }

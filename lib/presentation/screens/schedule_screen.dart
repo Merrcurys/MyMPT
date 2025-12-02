@@ -4,11 +4,8 @@ import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
-import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
-import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
-import 'package:my_mpt/presentation/widgets/schedule/numerator_denominator_card.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/presentation/widgets/schedule/schedule_header.dart';
+import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
 ///
@@ -25,9 +22,6 @@ class ScheduleScreen extends StatefulWidget {
 class _ScheduleScreenState extends State<ScheduleScreen> {
   /// Цвет фона экрана
   static const _backgroundColor = Color(0xFF000000);
-
-  /// Цвет границ элементов
-  static const _borderColor = Color(0xFF333333);
 
   /// Единое хранилище для работы с расписанием
   late UnifiedScheduleRepository _repository;
@@ -142,8 +136,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 child: CustomScrollView(
                   slivers: [
                     SliverToBoxAdapter(
-                      child: _Header(
-                        borderColor: _borderColor,
+                      child: ScheduleHeader(
+                        borderColor: const Color(0xFF333333),
                         dateLabel: _formatDate(DateTime.now()),
                         weekType: DateFormatter.getWeekType(DateTime.now()),
                       ),
@@ -154,7 +148,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         delegate: SliverChildBuilderDelegate((context, index) {
                           final day = days[index];
                           final building = _primaryBuilding(day.value);
-                          return _DaySection(
+                          return DaySection(
                             title: day.key,
                             building: building,
                             lessons: day.value,
@@ -212,324 +206,5 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   /// - String: Отформатированная дата
   String _formatDate(DateTime date) {
     return DateFormatter.formatDayWithMonth(date);
-  }
-}
-
-/// Виджет заголовка экрана расписания
-class _Header extends StatelessWidget {
-  /// Цвет границы заголовка
-  final Color borderColor;
-
-  /// Текст даты
-  final String dateLabel;
-
-  /// Тип недели (числитель/знаменатель)
-  final String weekType;
-
-  const _Header({
-    required this.borderColor,
-    required this.dateLabel,
-    required this.weekType,
-  });
-
-  /// Получает градиент заголовка в зависимости от типа недели
-  ///
-  /// Параметры:
-  /// - [weekType]: Тип недели (Числитель/Знаменатель)
-  ///
-  /// Возвращает:
-  /// Градиент для заголовка
-  List<Color> _getHeaderGradient(String weekType) {
-    if (weekType == 'Знаменатель') {
-      return const [Color(0xFF111111), Color(0xFF4FC3F7)];
-    } else if (weekType == 'Числитель') {
-      return const [Color(0xFF111111), Color(0xFFFF8C00)];
-    } else {
-      return const [Color(0xFF111111), Color(0xFF333333)];
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: LinearGradient(
-          colors: _getHeaderGradient(weekType),
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 30,
-            offset: const Offset(0, 18),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Text(
-                weekType,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Моё расписание',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              dateLabel,
-              style: const TextStyle(fontSize: 16, color: Colors.white70),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Виджет секции дня недели
-class _DaySection extends StatelessWidget {
-  /// Название дня недели
-  final String title;
-
-  /// Корпус проведения занятий
-  final String building;
-
-  /// Список занятий в этот день
-  final List<Schedule> lessons;
-
-  /// Акцентный цвет
-  final Color accentColor;
-
-  /// Тип недели (числитель/знаменатель)
-  final String? weekType;
-
-  const _DaySection({
-    required this.title,
-    required this.building,
-    required this.lessons,
-    required this.accentColor,
-    this.weekType,
-  });
-
-  /// Преобразует день недели из ЗАГЛАВНЫХ букв в формат с заглавной буквы
-  ///
-  /// Параметры:
-  /// - [day]: День недели в ЗАГЛАВНЫХ буквах
-  ///
-  /// Возвращает:
-  /// - String: День недели с заглавной буквы
-  String _formatDayTitle(String day) {
-    if (day.isEmpty) return day;
-
-    // Словарь для преобразования дней недели
-    const dayMap = {
-      'ПОНЕДЕЛЬНИК': 'Понедельник',
-      'ВТОРНИК': 'Вторник',
-      'СРЕДА': 'Среда',
-      'ЧЕТВЕРГ': 'Четверг',
-      'ПЯТНИЦА': 'Пятница',
-      'СУББОТА': 'Суббота',
-      'ВОСКРЕСЕНЬЕ': 'Воскресенье',
-    };
-
-    return dayMap[day] ?? day;
-  }
-
-  /// Создает виджеты для отображения уроков с поддержкой числителя/знаменателя
-  ///
-  /// Параметры:
-  /// - [lessons]: Список занятий
-  /// - [callsData]: Данные о звонках
-  ///
-  /// Возвращает:
-  /// Список виджетов занятий
-  List<Widget> _buildLessonWidgets(
-    List<Schedule> lessons,
-    List<dynamic> callsData,
-  ) {
-    final widgets = <Widget>[];
-
-    // Группируем уроки по номеру пары
-    final Map<String, List<Schedule>> lessonsByPeriod = {};
-    for (final lesson in lessons) {
-      final period = lesson.number;
-      if (!lessonsByPeriod.containsKey(period)) {
-        lessonsByPeriod[period] = [];
-      }
-      lessonsByPeriod[period]!.add(lesson);
-    }
-
-    // Сортируем номера пар
-    final sortedPeriods = lessonsByPeriod.keys.toList()
-      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
-
-    // Создаем виджеты для каждой пары
-    for (int i = 0; i < sortedPeriods.length; i++) {
-      final period = sortedPeriods[i];
-      final periodLessons = lessonsByPeriod[period]!;
-
-      // Определяем время пары
-      String startTime = '';
-      String endTime = '';
-
-      try {
-        final periodInt = int.tryParse(period);
-        if (periodInt != null &&
-            periodInt > 0 &&
-            periodInt <= callsData.length) {
-          final call = callsData[periodInt - 1];
-          startTime = call.startTime;
-          endTime = call.endTime;
-        }
-      } catch (e) {
-        // Игнорируем ошибки
-      }
-
-      // Проверяем, есть ли уроки с типом (числитель/знаменатель)
-      bool hasTypedLessons = periodLessons.any(
-        (lesson) => lesson.lessonType != null,
-      );
-
-      if (hasTypedLessons) {
-        // Обрабатываем пары с числителем/знаменателем
-        // В недельном расписании показываем обе пары, независимо от типа недели
-        Schedule? numeratorLesson;
-        Schedule? denominatorLesson;
-
-        for (final lesson in periodLessons) {
-          if (lesson.lessonType == 'numerator') {
-            numeratorLesson = lesson;
-          } else if (lesson.lessonType == 'denominator') {
-            denominatorLesson = lesson;
-          }
-        }
-
-        widgets.add(
-          NumeratorDenominatorCard(
-            numeratorLesson: numeratorLesson,
-            denominatorLesson: denominatorLesson,
-            lessonNumber: period,
-            startTime: startTime,
-            endTime: endTime,
-          ),
-        );
-      } else {
-        // Обычные пары отображаем как раньше
-        for (int j = 0; j < periodLessons.length; j++) {
-          final lesson = periodLessons[j];
-          widgets.add(
-            LessonCard(
-              number: lesson.number,
-              subject: lesson.subject,
-              teacher: lesson.teacher,
-              startTime: startTime,
-              endTime: endTime,
-              accentColor: accentColor,
-            ),
-          );
-
-          // Для обычных пар добавляем разделитель между уроками в одной паре
-          if (j < periodLessons.length - 1) {
-            widgets.add(const SizedBox(height: 8));
-          }
-        }
-      }
-
-      // Добавляем разделитель между парами, кроме последней
-      if (i < sortedPeriods.length - 1) {
-        String nextLessonStartTime = '';
-
-        try {
-          final nextPeriodInt = int.tryParse(sortedPeriods[i + 1]);
-          if (nextPeriodInt != null &&
-              nextPeriodInt > 0 &&
-              nextPeriodInt <= callsData.length) {
-            final nextCall = callsData[nextPeriodInt - 1];
-            nextLessonStartTime = nextCall.startTime;
-          }
-        } catch (e) {
-          // Игнорируем ошибки
-        }
-
-        widgets.add(
-          BreakIndicator(startTime: endTime, endTime: nextLessonStartTime),
-        );
-      }
-
-      // Добавляем отступ между парами
-      if (i < sortedPeriods.length - 1) {
-        widgets.add(const SizedBox(height: 14));
-      }
-    }
-
-    return widgets;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final formattedTitle = _formatDayTitle(title);
-
-    final callsData = CallsService.getCalls();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  formattedTitle,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: BuildingChip(label: building),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Column(children: _buildLessonWidgets(lessons, callsData)),
-          const SizedBox(height: 12),
-          Divider(color: Colors.white.withValues(alpha: 0.05), height: 32),
-        ],
-      ),
-    );
   }
 }
