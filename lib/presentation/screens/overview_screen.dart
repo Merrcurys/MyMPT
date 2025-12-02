@@ -6,10 +6,10 @@ import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/presentation/widgets/building_chip.dart';
-import 'package:my_mpt/presentation/widgets/lesson_card.dart';
-import 'package:my_mpt/presentation/widgets/break_indicator.dart';
-import 'package:my_mpt/presentation/widgets/schedule_change_card.dart';
+import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
+import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
+import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
+import 'package:my_mpt/presentation/widgets/overview/schedule_change_card.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class OverviewScreen extends StatefulWidget {

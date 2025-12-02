@@ -4,9 +4,9 @@ import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/domain/entities/group.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
-import 'package:my_mpt/presentation/widgets/success_notification.dart';
-import 'package:my_mpt/presentation/widgets/error_notification.dart';
-import 'package:my_mpt/presentation/widgets/info_notification.dart';
+import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
+import 'package:my_mpt/presentation/widgets/settings/error_notification.dart';
+import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -203,19 +203,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
 
-      // Принудительно обновляем информацию о заменах
-      final changesService = ScheduleChangesService();
-      await changesService.parseScheduleChangesForGroup(
-        selectedGroupCode,
-        forceRefresh: true,
-      );
-
-      // Обновляем специальности и группы
-      await _loadSpecialties();
-      if (_selectedSpecialty != null) {
-        await _loadGroups(_selectedSpecialty!.code);
-      }
-
       // Сохраняем время обновления
       final now = DateTime.now();
       await prefs.setString(
@@ -231,8 +218,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         showSuccessNotification(
           context,
-          'Данные обновлены',
-          'Расписание, замены, специальности и группы обновлены',
+          'Расписание обновлено',
+          'Данные успешно загружены',
           Icons.check_circle_outline,
         );
       }
@@ -245,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showErrorNotification(
           context,
           'Ошибка обновления',
-          'Не удалось обновить данные',
+          'Не удалось обновить расписание',
           Icons.error_outline,
         );
       }
@@ -353,36 +340,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setString(_selectedGroupKey, group.code);
     } catch (e) {}
 
-    // Принудительно обновляем расписание и замены
+    // Принудительно обновляем расписание
     try {
-      // Обновляем расписание
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
-
-      // Обновляем замены
-      final changesService = ScheduleChangesService();
-      await changesService.parseScheduleChangesForGroup(
-        group.code,
-        forceRefresh: true,
-      );
-
-      // Сохраняем время обновления
-      final now = DateTime.now();
-      await prefs.setString(
-        'last_schedule_update',
-        now.millisecondsSinceEpoch.toString(),
-      );
-
-      setState(() {
-        _lastUpdate = now;
-      });
 
       // Show confirmation
       if (context.mounted) {
         showSuccessNotification(
           context,
           'Группа выбрана',
-          '${group.code} • Расписание и замены обновлены',
+          '${group.code} • Расписание обновлено',
           Icons.check_circle_outline,
         );
       }
@@ -391,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showErrorNotification(
           context,
           'Группа выбрана',
-          '${group.code} • Ошибка обновления данных',
+          '${group.code} • Ошибка обновления расписания',
           Icons.warning_amber_rounded,
         );
       }

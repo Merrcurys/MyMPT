@@ -4,10 +4,10 @@ import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/presentation/widgets/building_chip.dart';
-import 'package:my_mpt/presentation/widgets/lesson_card.dart';
-import 'package:my_mpt/presentation/widgets/break_indicator.dart';
-import 'package:my_mpt/presentation/widgets/numerator_denominator_card.dart';
+import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
+import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
+import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
+import 'package:my_mpt/presentation/widgets/schedule/numerator_denominator_card.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 
 /// Экран "Расписание" — тёмный минималистичный лонг-лист
