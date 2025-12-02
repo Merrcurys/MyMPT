@@ -203,6 +203,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
 
+      // Принудительно обновляем информацию о заменах
+      final changesService = ScheduleChangesService();
+      await changesService.parseScheduleChangesForGroup(
+        selectedGroupCode,
+        forceRefresh: true,
+      );
+
+      // Обновляем специальности и группы
+      await _loadSpecialties();
+      if (_selectedSpecialty != null) {
+        await _loadGroups(_selectedSpecialty!.code);
+      }
+
       // Сохраняем время обновления
       final now = DateTime.now();
       await prefs.setString(
@@ -218,8 +231,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (context.mounted) {
         showSuccessNotification(
           context,
-          'Расписание обновлено',
-          'Данные успешно загружены',
+          'Данные обновлены',
+          'Расписание, замены, специальности и группы обновлены',
           Icons.check_circle_outline,
         );
       }
@@ -232,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showErrorNotification(
           context,
           'Ошибка обновления',
-          'Не удалось обновить расписание',
+          'Не удалось обновить данные',
           Icons.error_outline,
         );
       }
@@ -340,17 +353,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setString(_selectedGroupKey, group.code);
     } catch (e) {}
 
-    // Принудительно обновляем расписание
+    // Принудительно обновляем расписание и замены
     try {
+      // Обновляем расписание
       final repository = UnifiedScheduleRepository();
       await repository.forceRefresh();
+
+      // Обновляем замены
+      final changesService = ScheduleChangesService();
+      await changesService.parseScheduleChangesForGroup(
+        group.code,
+        forceRefresh: true,
+      );
+
+      // Сохраняем время обновления
+      final now = DateTime.now();
+      await prefs.setString(
+        'last_schedule_update',
+        now.millisecondsSinceEpoch.toString(),
+      );
+
+      setState(() {
+        _lastUpdate = now;
+      });
 
       // Show confirmation
       if (context.mounted) {
         showSuccessNotification(
           context,
           'Группа выбрана',
-          '${group.code} • Расписание обновлено',
+          '${group.code} • Расписание и замены обновлены',
           Icons.check_circle_outline,
         );
       }
@@ -359,7 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showErrorNotification(
           context,
           'Группа выбрана',
-          '${group.code} • Ошибка обновления расписания',
+          '${group.code} • Ошибка обновления данных',
           Icons.warning_amber_rounded,
         );
       }
