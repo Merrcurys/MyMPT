@@ -1,16 +1,16 @@
-import 'package:my_mpt/data/services/schedule_changes_service.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
-import 'package:my_mpt/domain/repositories/schedule_changes_repository_interface.dart';
+import 'package:my_mpt/data/services/replacement_service.dart';
+import 'package:my_mpt/domain/entities/replacement.dart';
+import 'package:my_mpt/domain/repositories/replacement_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ScheduleChangesRepository implements ScheduleChangesRepositoryInterface {
-  final ScheduleChangesService _changesService = ScheduleChangesService();
+class ReplacementRepository implements ReplacementRepositoryInterface {
+  final ReplacementService _changesService = ReplacementService();
 
   static const String _selectedGroupKey = 'selected_group';
 
-  /// Получить изменения в расписании для конкретной группы
+  /// Получить замены в расписании для конкретной группы
   @override
-  Future<List<ScheduleChangeEntity>> getScheduleChanges() async {
+  Future<List<Replacement>> getScheduleChanges() async {
     try {
       // Здесь нужно получить выбранную группу из настроек
       final groupCode = await _getSelectedGroupCode();
@@ -23,9 +23,9 @@ class ScheduleChangesRepository implements ScheduleChangesRepositoryInterface {
         groupCode,
       );
 
-      // Преобразуем ScheduleChange в ScheduleChangeEntity
+      // Преобразуем модели замен в сущности замен
       return changes.map((change) {
-        return ScheduleChangeEntity(
+        return Replacement(
           lessonNumber: change.lessonNumber,
           replaceFrom: change.replaceFrom,
           replaceTo: change.replaceTo,

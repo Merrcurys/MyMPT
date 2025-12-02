@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
-import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
+import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/data/services/calls_service.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
+import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
-import 'package:my_mpt/presentation/widgets/overview/schedule_change_card.dart';
+import 'package:my_mpt/presentation/widgets/overview/replacement_card.dart';
 import 'package:my_mpt/presentation/widgets/overview/today_header.dart';
 import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
 
@@ -43,10 +43,10 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   late UnifiedScheduleRepository _repository;
-  late ScheduleChangesRepository _changesRepository;
+  late ReplacementRepository _changesRepository;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
-  List<ScheduleChangeEntity> _scheduleChanges = [];
+  List<Replacement> _scheduleChanges = [];
   bool _isLoading = false;
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
@@ -55,7 +55,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   void initState() {
     super.initState();
     _repository = UnifiedScheduleRepository();
-    _changesRepository = ScheduleChangesRepository();
+    _changesRepository = ReplacementRepository();
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
 
     _initializeSchedule();
@@ -379,18 +379,18 @@ class _OverviewScreenState extends State<OverviewScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...filteredChanges
-                            .whereType<ScheduleChangeEntity>()
-                            .map((change) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: ScheduleChangeCard(
-                                  lessonNumber: change.lessonNumber,
-                                  replaceFrom: change.replaceFrom,
-                                  replaceTo: change.replaceTo,
-                                ),
-                              );
-                            }),
+                        ...filteredChanges.whereType<Replacement>().map((
+                          change,
+                        ) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: ReplacementCard(
+                              lessonNumber: change.lessonNumber,
+                              replaceFrom: change.replaceFrom,
+                              replaceTo: change.replaceTo,
+                            ),
+                          );
+                        }),
                         const SizedBox(height: 20),
                       ],
                     ],
@@ -475,7 +475,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   _ScheduleChangesResult _applyScheduleChanges(
     List<Schedule> schedule,
-    List<ScheduleChangeEntity?> changes,
+    List<Replacement?> changes,
     List callsData,
   ) {
     if (changes.isEmpty) {
@@ -488,7 +488,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final List<Schedule> result = List<Schedule>.from(schedule);
     bool hasBuildingOverride = false;
 
-    for (final change in changes.whereType<ScheduleChangeEntity>()) {
+    for (final change in changes.whereType<Replacement>()) {
       final lessonNumber = change.lessonNumber.trim();
       if (lessonNumber.isEmpty) continue;
 
@@ -627,7 +627,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   /// Фильтрует изменения в расписании по дате для отображения только на соответствующей странице
-  List<ScheduleChangeEntity?> _getFilteredScheduleChanges(String pageTitle) {
+  List<Replacement?> _getFilteredScheduleChanges(String pageTitle) {
     final today = DateTime.now();
     final tomorrow = DateTime.now().add(Duration(days: 1));
 

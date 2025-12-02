@@ -272,7 +272,7 @@ UI-компоненты используют данные через:
 
 ### Основные компоненты системы замен
 
-#### 1. ScheduleChangesService (`lib/data/services/schedule_changes_service.dart`)
+#### 1. ReplacementService (`lib/data/services/replacement_service.dart`)
 Сервис, отвечающий за парсинг изменений в расписании с сайта mpt.ru/izmeneniya-v-raspisanii/. Основные функции:
 - Загрузка HTML-страницы с изменениями в расписании
 - Парсинг изменений для конкретной группы
@@ -280,16 +280,16 @@ UI-компоненты используют данные через:
 - Принудительное обновление данных при необходимости (forceRefresh)
 
 #### 2. Модели данных замен
-- **ScheduleChange** (`lib/data/models/schedule_change.dart`): Модель изменения в расписании
-- **ScheduleChangeEntity** (`lib/domain/entities/schedule_change.dart`): Доменная сущность изменения в расписании
+- **ReplacementModel** (`lib/data/models/replacement_model.dart`): Модель замены в расписании
+- **Replacement** (`lib/domain/entities/replacement.dart`): Доменная сущность замены в расписании
 
 #### 3. Репозитории и Use Cases
-- **ScheduleChangesRepository** (`lib/data/repositories/schedule_changes_repository.dart`): Реализация репозитория для работы с изменениями в расписании
-- **ScheduleChangesRepositoryInterface** (`lib/domain/repositories/schedule_changes_repository_interface.dart`): Интерфейс репозитория изменений
-- **GetScheduleChangesUseCase** (`lib/domain/usecases/get_schedule_changes_usecase.dart`): Use case для получения изменений в расписании
+- **ReplacementRepository** (`lib/data/repositories/replacement_repository.dart`): Реализация репозитория для работы с заменами в расписании
+- **ReplacementRepositoryInterface** (`lib/domain/repositories/replacement_repository_interface.dart`): Интерфейс репозитория замен
+- **GetScheduleChangesUseCase** (`lib/domain/usecases/get_schedule_changes_usecase.dart`): Use case для получения замен в расписании
 
 #### 4. Виджеты отображения замен
-- **ScheduleChangeCard** (`lib/presentation/widgets/schedule_change_card.dart`): Виджет карточки изменения в расписании
+- **ReplacementCard** (`lib/presentation/widgets/overview/replacement_card.dart`): Виджет карточки замены в расписании
 
 ### Механизм работы системы замен
 

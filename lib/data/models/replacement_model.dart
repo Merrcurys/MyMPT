@@ -1,8 +1,8 @@
-/// Сущность, представляющая изменение в расписании
+/// Модель замены в расписании
 ///
-/// Этот класс представляет собой изменение в расписании,
+/// Этот класс представляет собой замену в расписании,
 /// например, замену одного предмета на другой
-class ScheduleChangeEntity {
+class ReplacementModel {
   /// Номер пары, к которой применяется изменение
   final String lessonNumber;
 
@@ -26,7 +26,7 @@ class ScheduleChangeEntity {
   /// - [replaceTo]: Новый предмет (обязательный)
   /// - [updatedAt]: Время добавления изменения (обязательный)
   /// - [changeDate]: Дата применения изменения (обязательный)
-  ScheduleChangeEntity({
+  ReplacementModel({
     required this.lessonNumber,
     required this.replaceFrom,
     required this.replaceTo,
@@ -35,24 +35,21 @@ class ScheduleChangeEntity {
   });
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ScheduleChangeEntity &&
-        other.lessonNumber == lessonNumber &&
-        other.replaceFrom == replaceFrom &&
-        other.replaceTo == replaceTo &&
-        other.updatedAt == updatedAt &&
-        other.changeDate == changeDate;
+  String toString() {
+    return 'ReplacementModel(lessonNumber: $lessonNumber, replaceFrom: $replaceFrom, replaceTo: $replaceTo, updatedAt: $updatedAt, changeDate: $changeDate)';
   }
 
-  @override
-  int get hashCode {
-    return Object.hash(
-      lessonNumber,
-      replaceFrom,
-      replaceTo,
-      updatedAt,
-      changeDate,
-    );
+  /// Преобразует объект изменения в JSON
+  ///
+  /// Возвращает:
+  /// Представление изменения в формате JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'lessonNumber': lessonNumber,
+      'replaceFrom': replaceFrom,
+      'replaceTo': replaceTo,
+      'updatedAt': updatedAt,
+      'changeDate': changeDate,
+    };
   }
 }

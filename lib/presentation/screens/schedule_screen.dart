@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
-import 'package:my_mpt/data/repositories/schedule_changes_repository.dart';
+import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/schedule_change.dart';
+import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/presentation/widgets/schedule/schedule_header.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
@@ -27,13 +27,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late UnifiedScheduleRepository _repository;
 
   /// Хранилище для работы с изменениями в расписании
-  late ScheduleChangesRepository _changesRepository;
+  late ReplacementRepository _changesRepository;
 
   /// Недельное расписание
   Map<String, List<Schedule>> _weeklySchedule = {};
 
   /// Изменения в расписании
-  List<ScheduleChangeEntity> _scheduleChanges = [];
+  List<Replacement> _scheduleChanges = [];
 
   /// Информация о текущей неделе
   // WeekInfo? _weekInfo;
@@ -48,7 +48,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     _repository = UnifiedScheduleRepository();
-    _changesRepository = ScheduleChangesRepository();
+    _changesRepository = ReplacementRepository();
 
     // Слушаем уведомления об обновлении данных
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);

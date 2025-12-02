@@ -6,7 +6,7 @@ import 'package:my_mpt/data/services/calls_service.dart';
 ///
 /// Этот виджет отображает информацию об изменениях в расписании,
 /// таких как замены предметов или дополнительные занятия
-class ScheduleChangeCard extends StatelessWidget {
+class ReplacementCard extends StatelessWidget {
   /// Номер пары, к которой применяется изменение
   final String lessonNumber;
 
@@ -16,7 +16,7 @@ class ScheduleChangeCard extends StatelessWidget {
   /// Новый предмет (после изменения)
   final String replaceTo;
 
-  const ScheduleChangeCard({
+  const ReplacementCard({
     super.key,
     required this.lessonNumber,
     required this.replaceFrom,
