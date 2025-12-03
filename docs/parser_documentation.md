@@ -8,18 +8,19 @@
 
 ### Основные компоненты
 
-#### 1. ScheduleHtmlParser (`lib/data/parsers/schedule_html_parser.dart`)
-Основной класс парсера, который преобразует HTML-страницу с расписанием в структурированные данные. Основные функции:
-- Извлечение информации о предметах, преподавателях и аудиториях
-- Парсинг временных интервалов и номеров пар
-- Обработка специальных случаев (числитель/знаменатель)
-- Преобразование HTML-элементов в объекты Lesson
+#### 1. Парсеры данных
+- **GroupScheduleParser** (`lib/data/parsers/group_schedule_parser.dart`): Основной парсер, который преобразует HTML-страницу с расписанием в структурированные данные
+- **ScheduleDayParser** (`lib/data/parsers/schedule_day_parser.dart`): Парсер для извлечения расписания по дням недели из HTML-таблиц
+- **LessonParser** (`lib/data/parsers/lesson_parser.dart`): Парсер для извлечения информации об уроках из HTML-строк таблицы
+- **TabListParser** (`lib/data/parsers/tab_list_parser.dart`): Парсер для извлечения списка вкладок специальностей
+- **GroupParser** (`lib/data/parsers/group_parser.dart`): Парсер для извлечения информации о группах
+- **ReplacementParser** (`lib/data/parsers/replacement_parser.dart`): Парсер для извлечения замен в расписании
 
 #### 2. Источники данных
 - **ScheduleRemoteDataSource** (`lib/data/datasources/schedule_remote_data_source.dart`): Загружает свежие данные с сайта техникума
 - **ScheduleCacheDataSource** (`lib/data/datasources/schedule_cache_data_source.dart`): Управляет локальным кэшем расписания
 
-#### 3. Источники данных
+#### 3. Координаторы парсинга
 - **ScheduleParserRemoteDatasource** (`lib/data/datasources/remote/schedule_parser_remote_datasource.dart`): Координирует процесс парсинга
 - **UnifiedScheduleRepository** (`lib/data/repositories/unified_schedule_repository.dart`): Единая точка доступа к данным расписания
 
@@ -170,15 +171,28 @@ UI-компоненты используют данные через:
 
 ## Подробное описание работы компонентов
 
-### ScheduleHtmlParser
+### GroupScheduleParser
 
-Класс ScheduleHtmlParser является основным компонентом, отвечающим за преобразование HTML-кода страницы расписания в структурированные данные. Он использует библиотеку `html` для парсинга HTML-документа.
+Класс GroupScheduleParser является основным компонентом, отвечающим за преобразование HTML-кода страницы расписания в структурированные данные. Он использует библиотеку `html` для парсинга HTML-документа и делегирует работу вспомогательным парсерам.
 
 #### Основные методы:
 1. `parse()` - основной метод, который принимает HTML-страницу и код группы, и возвращает расписание в виде Map<String, List<Lesson>>
 2. `_findTabPaneForGroup()` - находит вкладку для указанной группы в HTML-документе
-3. `_parseLessons()` - парсит уроки из таблицы
-4. `_parseLessonRow()` - парсит строку с уроком, обрабатывая как обычные уроки, так и уроки с числителем/знаменателем
+
+### ScheduleDayParser
+
+Класс ScheduleDayParser отвечает за извлечение расписания по дням недели из HTML-таблиц.
+
+#### Основные методы:
+1. `extractDay()` - извлекает день недели из заголовка таблицы
+2. `parseLessons()` - парсит уроки из таблицы
+
+### LessonParser
+
+Класс LessonParser отвечает за извлечение информации об уроках из HTML-строк таблицы.
+
+#### Основные методы:
+1. `parseLessonRow()` - парсит строку с уроком, обрабатывая как обычные уроки, так и уроки с числителем/знаменателем
 
 ### ScheduleRemoteDataSource
 
@@ -195,8 +209,8 @@ UI-компоненты используют данные через:
 
 #### Основные методы:
 1. `save()` - сохраняет кэш расписания в локальное хранилище
-2. `load()` - загружает кэш расписания из локального хранилища
-3. `clear()` - очищает кэш расписания из локального хранилища
+2. `load()` - загружает кэш расписания из локального хранилище
+3. `clear()` - очищает кэш расписания из локального хранилище
 
 ### UnifiedScheduleRepository
 
@@ -232,8 +246,8 @@ UI-компоненты используют данные через:
 3. Если кэш устарел или отсутствует, запускается процесс обновления:
    - ScheduleParserService запрашивает HTML-страницу у ScheduleRemoteDataSource
    - ScheduleRemoteDataSource проверяет свой кэш и при необходимости загружает страницу с сервера
-   - ScheduleParserService передает HTML-страницу ScheduleHtmlParser для парсинга
-   - ScheduleHtmlParser возвращает структурированные данные
+   - ScheduleParserService передает HTML-страницу GroupScheduleParser для парсинга
+   - GroupScheduleParser возвращает структурированные данные
    - UnifiedScheduleRepository преобразует данные в доменные сущности и сохраняет их в локальный кэш через ScheduleCacheDataSource
 4. UI-компоненты получают актуальные данные через методы UnifiedScheduleRepository
 

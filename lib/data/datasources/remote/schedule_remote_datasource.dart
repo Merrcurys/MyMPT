@@ -1,26 +1,33 @@
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
+import 'package:my_mpt/data/models/lesson.dart';
+import 'package:my_mpt/data/parsers/schedule_parser.dart';
 
-/// Удаленный источник данных для получения HTML-страницы расписания
+/// Удаленный источник данных для получения расписания на неделю
 ///
-/// Этот класс отвечает за загрузку HTML-страницы с расписанием с сервера
-/// и реализует кэширование для уменьшения количества сетевых запросов
-class ScheduleRemoteDataSource {
+/// Этот класс отвечает за загрузку HTML-страницы с расписанием с сервера,
+/// парсинг данных и реализует кэширование для уменьшения количества сетевых запросов
+class ScheduleRemoteDatasource {
   /// Конструктор источника данных
   ///
   /// Параметры:
   /// - [client]: HTTP-клиент для выполнения запросов (опционально)
   /// - [baseUrl]: Базовый URL для запросов (по умолчанию 'https://mpt.ru/raspisanie/')
   /// - [cacheTtl]: Время жизни кэша (по умолчанию 24 часа)
-  ScheduleRemoteDataSource({
+  /// - [scheduleParser]: Парсер для обработки HTML-данных (опционально)
+  ScheduleRemoteDatasource({
     http.Client? client,
     this.baseUrl = 'https://mpt.ru/raspisanie/',
     this.cacheTtl = const Duration(hours: 24),
-  }) : _client = client ?? http.Client();
+    ScheduleParser? scheduleParser,
+  }) : _client = client ?? http.Client(),
+       _scheduleParser = scheduleParser ?? ScheduleParser();
 
   /// HTTP-клиент для выполнения запросов
   final http.Client _client;
+
+  /// Парсер для обработки HTML-данных
+  final ScheduleParser _scheduleParser;
 
   /// Базовый URL для запросов
   final String baseUrl;
@@ -34,6 +41,34 @@ class ScheduleRemoteDataSource {
   /// Время последней загрузки страницы
   DateTime? _lastFetch;
 
+  /// Загружает и парсит расписание для конкретной группы
+  ///
+  /// Метод проверяет наличие действительного кэша и при необходимости
+  /// загружает свежую версию страницы с сервера, парсит её и возвращает структурированные данные
+  ///
+  /// Параметры:
+  /// - [groupCode]: Код группы для которой нужно получить расписание
+  /// - [forceRefresh]: Принудительная загрузка без использования кэша
+  ///
+  /// Возвращает:
+  /// Расписание на неделю для группы
+  Future<Map<String, List<Lesson>>> fetchWeeklySchedule(
+    String groupCode, {
+    bool forceRefresh = false,
+  }) async {
+    if (groupCode.isEmpty) return {};
+
+    try {
+      // Загружаем HTML-страницу с расписанием
+      final html = await _fetchSchedulePage(forceRefresh: forceRefresh);
+
+      // Парсим данные с помощью парсера
+      return _scheduleParser.parse(html, groupCode);
+    } catch (error) {
+      throw Exception('Error fetching schedule for group $groupCode: $error');
+    }
+  }
+
   /// Загружает HTML-страницу с расписанием
   ///
   /// Метод проверяет наличие действительного кэша и при необходимости
@@ -44,7 +79,7 @@ class ScheduleRemoteDataSource {
   ///
   /// Возвращает:
   /// HTML-страница с расписанием
-  Future<String> fetchSchedulePage({bool forceRefresh = false}) async {
+  Future<String> _fetchSchedulePage({bool forceRefresh = false}) async {
     // Проверяем, действителен ли кэш
     final isCacheValid =
         _cachedHtml != null &&
@@ -61,14 +96,6 @@ class ScheduleRemoteDataSource {
     _cachedHtml = freshHtml;
     _lastFetch = DateTime.now();
     return freshHtml;
-  }
-
-  /// Очищает кэш
-  ///
-  /// Метод удаляет кэшированное содержимое и время последней загрузки
-  void clearCache() {
-    _cachedHtml = null;
-    _lastFetch = null;
   }
 
   /// Загружает HTML-страницу с сервера
@@ -96,5 +123,13 @@ class ScheduleRemoteDataSource {
     }
 
     return response.body;
+  }
+
+  /// Очищает кэш
+  ///
+  /// Метод удаляет кэшированное содержимое и время последней загрузки
+  void clearCache() {
+    _cachedHtml = null;
+    _lastFetch = null;
   }
 }

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
-import 'package:html/dom.dart';
 import 'package:my_mpt/data/models/replacement.dart';
+import 'package:my_mpt/data/parsers/replacement_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для парсинга замен в расписании с сайта МПТ
@@ -12,6 +12,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ReplacementRemoteDatasource {
   /// Базовый URL страницы с изменениями в расписании
   final String baseUrl = 'https://mpt.ru/izmeneniya-v-raspisanii/';
+
+  /// Парсер замен
+  final ReplacementParser _replacementParser = ReplacementParser();
 
   /// Время жизни кэша (5 часов для замен)
   static const Duration _cacheTtl = Duration(hours: 5);
@@ -64,108 +67,11 @@ class ReplacementRemoteDatasource {
         // Парсим HTML документ с помощью библиотеки html
         final document = parser.parse(response.body);
 
-        // Создаем список для хранения замен
-        final List<Replacement> changes = [];
-
-        // Получаем сегодняшнюю и завтрашнюю даты для фильтрации замен
-        final today = DateTime.now();
-        final tomorrow = DateTime.now().add(Duration(days: 1));
-
-        // Форматируем даты в строковый формат для сравнения
-        final String todayDate =
-            '${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year}';
-        final String tomorrowDate =
-            '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
-
-        // Нормализуем код группы для поиска
-        final normalizedGroupCode = groupCode.trim().toUpperCase();
-
-        // Ищем все заголовки h4 с датами замен (строгий селектор)
-        final dateHeaders = document.querySelectorAll('h4');
-
-        // Регулярное выражение для извлечения даты (компилируем один раз)
-        final RegExp dateRegExp = RegExp(r'(\d{2}\.\d{2}\.\d{4})');
-
-        // Проходим по заголовкам с датами
-        for (var header in dateHeaders) {
-          final text = header.text.trim();
-
-          // Проверяем, является ли заголовок заголовком изменений
-          if (!text.startsWith('Замены на')) continue;
-
-          // Извлекаем дату из заголовка
-          final match = dateRegExp.firstMatch(text);
-          if (match == null) continue;
-
-          final currentDate = match.group(1)!;
-
-          // Проверяем, что дата соответствует сегодня или завтра
-          if (currentDate != todayDate && currentDate != tomorrowDate) continue;
-
-          // Ищем таблицы напрямую после заголовка (оптимизированный поиск)
-          Element? nextElement = header.nextElementSibling;
-
-          while (nextElement != null) {
-            // Если встретили следующий заголовок, прекращаем поиск
-            if (nextElement.localName == 'h4' &&
-                nextElement.text.trim().startsWith('Замены на')) {
-              break;
-            }
-
-            // Ищем таблицы с заменами (строгий селектор)
-            Element? table;
-            if (nextElement.localName == 'div' &&
-                nextElement.classes.contains('table-responsive')) {
-              table = nextElement.querySelector('table.table');
-            } else if (nextElement.localName == 'table' &&
-                nextElement.classes.contains('table')) {
-              table = nextElement;
-            }
-
-            // Если таблица найдена, проверяем её на соответствие группе
-            if (table != null) {
-              final caption = table.querySelector('caption');
-              if (caption != null) {
-                final captionText = caption.text.trim().toUpperCase();
-                // Проверяем, содержит ли таблица замены для нашей группы
-                if (normalizedGroupCode.isNotEmpty &&
-                    captionText.contains(normalizedGroupCode)) {
-                  // Ищем все строки с заменами (пропускаем заголовок)
-                  final rows = table.querySelectorAll(
-                    'tbody > tr, tr:not(:first-child)',
-                  );
-
-                  // Обрабатываем строки
-                  for (var row in rows) {
-                    final cells = row.querySelectorAll('td');
-
-                    // Проверяем, что в строке есть все необходимые данные (4 ячейки)
-                    if (cells.length == 4) {
-                      // Извлекаем данные из ячеек таблицы
-                      final lessonNumber = cells[0].text.trim();
-                      final replaceFrom = cells[1].text.trim();
-                      final replaceTo = cells[2].text.trim();
-                      final updatedAt = cells[3].text.trim();
-
-                      // Создаем объект замены с пометкой о дате
-                      changes.add(
-                        Replacement(
-                          lessonNumber: lessonNumber,
-                          replaceFrom: replaceFrom,
-                          replaceTo: replaceTo,
-                          updatedAt: updatedAt,
-                          changeDate: currentDate,
-                        ),
-                      );
-                    }
-                  }
-                }
-              }
-            }
-
-            nextElement = nextElement.nextElementSibling;
-          }
-        }
+        // Парсим замены с помощью парсера
+        final changes = _replacementParser.parseScheduleChangesForGroup(
+          document,
+          groupCode,
+        );
 
         // Сохраняем замены в кэш
         await _saveCachedChanges(groupCode, changes);
@@ -198,12 +104,8 @@ class ReplacementRemoteDatasource {
         final now = DateTime.now();
         final age = now.difference(cacheTime);
 
-        // Проверяем, нужно ли обновить кэш
-        // Кэш обновляется каждые 5 часов, начиная с 6:00 утра
-        final shouldRefresh = _shouldRefreshCache(cacheTime, now, age);
-
-        if (!shouldRefresh && age < _cacheTtl) {
-          // Кэш замен действителен, возвращаем данные
+        if (age < _cacheTtl) {
+          // Кэш действителен, возвращаем данные
           final List<dynamic> decoded = jsonDecode(cachedJson);
           return decoded
               .map(
@@ -217,7 +119,7 @@ class ReplacementRemoteDatasource {
               )
               .toList();
         } else {
-          // Кэш замен истек или требуется обновление, очищаем устаревшие данные
+          // Кэш истек, очищаем устаревшие данные
           await prefs.remove(cacheKey);
           await prefs.remove(timestampKey);
         }
@@ -239,108 +141,12 @@ class ReplacementRemoteDatasource {
       final timestampKey = '$_cacheKeyChangesTimestamp${groupCode.hashCode}';
 
       final json = jsonEncode(
-        changes
-            .map(
-              (change) => {
-                'lessonNumber': change.lessonNumber,
-                'replaceFrom': change.replaceFrom,
-                'replaceTo': change.replaceTo,
-                'updatedAt': change.updatedAt,
-                'changeDate': change.changeDate,
-              },
-            )
-            .toList(),
+        changes.map((change) => change.toJson()).toList(),
       );
       await prefs.setString(cacheKey, json);
       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
       // Игнорируем ошибки кэша
     }
-  }
-
-  /// Проверяет, нужно ли обновить кэш замен по расписанию
-  ///
-  /// Кэш обновляется каждые 5 часов, начиная с 6:00 утра
-  /// Времена обновления: 6:00, 11:00, 16:00, 21:00, 0:00 (следующего дня)
-  bool _shouldRefreshCache(DateTime cacheTime, DateTime now, Duration age) {
-    // Если кэш старше 5 часов, обновляем
-    if (age >= _cacheTtl) return true;
-
-    // Определяем периоды обновления: 6:00-11:00, 11:00-16:00, 16:00-21:00, 21:00-0:00, 0:00-6:00
-    final updateTimes = [
-      _cacheUpdateStartHour, // 6:00
-      _cacheUpdateStartHour + 5, // 11:00
-      _cacheUpdateStartHour + 10, // 16:00
-      _cacheUpdateStartHour + 15, // 21:00
-      0, // 0:00 следующего дня
-    ];
-
-    // Находим период, в котором был создан кэш
-    int cachePeriod = -1;
-    final cacheHour = cacheTime.hour;
-
-    for (int i = 0; i < updateTimes.length; i++) {
-      final startHour = updateTimes[i];
-      final endHour = i < updateTimes.length - 1
-          ? updateTimes[i + 1]
-          : updateTimes[0];
-
-      if (endHour > startHour) {
-        // Обычный период в пределах одного дня
-        if (cacheHour >= startHour && cacheHour < endHour) {
-          cachePeriod = i;
-          break;
-        }
-      } else {
-        // Период, переходящий через полночь (21:00-0:00)
-        if (cacheHour >= startHour || cacheHour < endHour) {
-          cachePeriod = i;
-          break;
-        }
-      }
-    }
-
-    if (cachePeriod == -1) {
-      // Если не нашли период, обновляем
-      return true;
-    }
-
-    // Определяем время следующего обновления
-    final nextPeriodIndex = (cachePeriod + 1) % updateTimes.length;
-    final nextUpdateHour = updateTimes[nextPeriodIndex];
-
-    // Вычисляем время следующего обновления
-    DateTime nextUpdateTime;
-    if (nextPeriodIndex == 0) {
-      // Следующее обновление - на следующий день в 6:00
-      nextUpdateTime = DateTime(
-        cacheTime.year,
-        cacheTime.month,
-        cacheTime.day + 1,
-        nextUpdateHour,
-        0,
-      );
-    } else if (nextUpdateHour < updateTimes[cachePeriod]) {
-      // Период переходит через полночь
-      nextUpdateTime = DateTime(
-        cacheTime.year,
-        cacheTime.month,
-        cacheTime.day + 1,
-        nextUpdateHour,
-        0,
-      );
-    } else {
-      // Обычный период в том же дне
-      nextUpdateTime = DateTime(
-        cacheTime.year,
-        cacheTime.month,
-        cacheTime.day,
-        nextUpdateHour,
-        0,
-      );
-    }
-
-    // Если текущее время прошло время следующего обновления, обновляем
-    return now.isAfter(nextUpdateTime) || now.isAtSameMomentAs(nextUpdateTime);
   }
 }

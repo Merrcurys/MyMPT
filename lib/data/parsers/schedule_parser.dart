@@ -1,22 +1,9 @@
-import 'dart:math';
-
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:my_mpt/data/models/lesson.dart';
 
-/// Отвечает за превращение HTML-ответа в структурированные данные расписания
-///
-/// Этот класс реализует парсинг HTML-страницы с расписанием и преобразование
-/// данных в структурированный формат для дальнейшего использования в приложении
-class ScheduleHtmlParser {
-  /// Регулярное выражение для извлечения времени из текста
-  static final RegExp _timePattern = RegExp(
-    r'(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})',
-  );
-
-  /// Регулярное выражение для извлечения номера пары из текста
-  static final RegExp _lessonNumberPattern = RegExp(r'\d+');
-
+/// Парсер для извлечения расписания группы из HTML-документа
+class ScheduleParser {
   /// Парсит HTML-страницу с расписанием и возвращает структурированные данные
   ///
   /// Метод находит вкладку соответствующей группы в HTML-документе,
@@ -86,9 +73,11 @@ class ScheduleHtmlParser {
   Element? _findTabPaneForGroup(Document document, String groupCode) {
     // Нормализуем код группы для поиска
     final normalizedGroupCode = groupCode.trim().toUpperCase();
-    
+
     // Ищем все ссылки на вкладки в навигационном меню (строгий селектор)
-    final tabLinks = document.querySelectorAll('ul.nav-tabs > li > a[href^="#"]');
+    final tabLinks = document.querySelectorAll(
+      'ul.nav-tabs > li > a[href^="#"]',
+    );
     String? tabId;
 
     // Пробуем найти точное совпадение кода группы
@@ -107,7 +96,8 @@ class ScheduleHtmlParser {
     if (tabId == null) {
       for (var link in tabLinks) {
         final text = link.text.trim().toUpperCase();
-        if (text.contains(normalizedGroupCode) || normalizedGroupCode.contains(text)) {
+        if (text.contains(normalizedGroupCode) ||
+            normalizedGroupCode.contains(text)) {
           final href = link.attributes['href'];
           if (href != null && href.startsWith('#')) {
             tabId = href.substring(1);
@@ -125,7 +115,6 @@ class ScheduleHtmlParser {
     // Возвращаем элемент tab-pane с найденным ID (строгий селектор)
     return document.querySelector('[role="tabpanel"][id="$tabId"]');
   }
-
 
   /// Извлекает день недели из заголовка таблицы
   ///
@@ -294,7 +283,7 @@ class ScheduleHtmlParser {
   /// - String: Номер пары
   String _extractLessonNumber(String text) {
     // Ищем номер пары с помощью регулярного выражения
-    final match = _lessonNumberPattern.firstMatch(text);
+    final match = RegExp(r'\d+').firstMatch(text);
     // Возвращаем найденный номер или текст без пробелов
     return match?.group(0) ?? text.trim();
   }
@@ -311,7 +300,9 @@ class ScheduleHtmlParser {
   /// - (String, String): Кортеж из времени начала и окончания
   (String, String) _parseTimeRange(String text) {
     // Ищем время с помощью регулярного выражения
-    final match = _timePattern.firstMatch(text);
+    final match = RegExp(
+      r'(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})',
+    ).firstMatch(text);
     // Если не найдено, возвращаем пустые строки
     if (match == null) return ('', '');
 
@@ -351,6 +342,8 @@ class ScheduleHtmlParser {
     // Если один из списков пуст, возвращаем 0
     if (subjects.isEmpty || teachers.isEmpty) return 0;
     // Возвращаем минимальное количество из двух списков
-    return min(subjects.length, teachers.length);
+    return subjects.length < teachers.length
+        ? subjects.length
+        : teachers.length;
   }
 }

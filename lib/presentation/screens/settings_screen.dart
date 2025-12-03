@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/data/repositories/specialty_repository.dart';

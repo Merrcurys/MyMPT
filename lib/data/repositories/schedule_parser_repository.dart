@@ -1,11 +1,11 @@
-import 'package:my_mpt/data/datasources/remote/schedule_parser_remote_datasource.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_remote_datasource.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ScheduleParserRepository implements ScheduleRepositoryInterface {
-  final ScheduleParserRemoteDatasource _parserService =
-      ScheduleParserRemoteDatasource();
+  final ScheduleRemoteDatasource _parserService =
+      ScheduleRemoteDatasource();
 
   static const String _selectedGroupKey = 'selected_group';
 
@@ -20,7 +20,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
         return {};
       }
 
-      final parsedSchedule = await _parserService.parseScheduleForGroup(
+      final parsedSchedule = await _parserService.fetchWeeklySchedule(
         groupCode,
       );
 
@@ -61,7 +61,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
         return [];
       }
 
-      final parsedSchedule = await _parserService.parseScheduleForGroup(
+      final parsedSchedule = await _parserService.fetchWeeklySchedule(
         groupCode,
       );
 
@@ -103,7 +103,7 @@ class ScheduleParserRepository implements ScheduleRepositoryInterface {
         return [];
       }
 
-      final parsedSchedule = await _parserService.parseScheduleForGroup(
+      final parsedSchedule = await _parserService.fetchWeeklySchedule(
         groupCode,
       );
 

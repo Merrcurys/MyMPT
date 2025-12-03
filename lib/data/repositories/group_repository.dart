@@ -1,10 +1,10 @@
-import 'package:my_mpt/data/datasources/remote/mpt_remote_datasource.dart';
+import 'package:my_mpt/data/datasources/remote/group_remote_datasource.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/repositories/specialty_repository.dart';
 import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
 
 class GroupRepository implements GroupRepositoryInterface {
-  final MptRemoteDatasource _parserService = MptRemoteDatasource();
+  final GroupRemoteDatasource _parserService = GroupRemoteDatasource();
   final SpecialtyRepository _specialtyRepository = SpecialtyRepository();
 
   @override

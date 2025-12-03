@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/data/datasources/remote/schedule_parser_remote_datasource.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_remote_datasource.dart';
 import 'package:my_mpt/data/datasources/cache/schedule_cache_data_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Единое хранилище для всех данных расписания
 class UnifiedScheduleRepository {
-  final ScheduleParserRemoteDatasource _parserService =
-      ScheduleParserRemoteDatasource();
+  final ScheduleRemoteDatasource _parserService =
+      ScheduleRemoteDatasource();
   final ScheduleCacheDataSource _cacheDataSource = ScheduleCacheDataSource();
   static const String _selectedGroupKey = 'selected_group';
 
@@ -95,7 +95,7 @@ class UnifiedScheduleRepository {
       }
 
       // Получаем расписание с парсера
-      final parsedSchedule = await _parserService.parseScheduleForGroup(
+      final parsedSchedule = await _parserService.fetchWeeklySchedule(
         groupCode,
         forceRefresh: forceRefresh,
       );

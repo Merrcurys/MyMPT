@@ -1,10 +1,11 @@
-import 'package:my_mpt/data/datasources/remote/mpt_remote_datasource.dart';
+import 'package:my_mpt/data/datasources/remote/speciality_remote_datasource.dart';
 import 'package:my_mpt/data/models/tab_info.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
 
 class SpecialtyRepository implements SpecialtyRepositoryInterface {
-  final MptRemoteDatasource _parserService = MptRemoteDatasource();
+  final SpecialityRemoteDatasource _parserService =
+      SpecialityRemoteDatasource();
 
   // Кэш для специальностей
   List<Specialty>? _cachedSpecialties;
