@@ -329,13 +329,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString(_selectedSpecialtyKey, group.specialtyCode);
     await prefs.setString('${_selectedSpecialtyKey}_name', group.specialtyName);
 
-    if (context.mounted) {
-      showSuccessNotification(
-        context,
-        'Группа выбрана',
-        'Выбрана группа ${group.code}',
-        Icons.check_circle_outline,
+    // Обновляем расписание для новой группы
+    try {
+      final repository = UnifiedScheduleRepository();
+      await repository.forceRefresh();
+      
+      // Сохраняем время обновления
+      final now = DateTime.now();
+      await prefs.setString(
+        'last_schedule_update',
+        now.millisecondsSinceEpoch.toString(),
       );
+      
+      setState(() {
+        _lastUpdate = now;
+      });
+      
+      if (context.mounted) {
+        showSuccessNotification(
+          context,
+          'Группа выбрана',
+          'Выбрана группа ${group.code}. Расписание обновлено.',
+          Icons.check_circle_outline,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showErrorNotification(
+          context,
+          'Группа выбрана',
+          'Выбрана группа ${group.code}, но произошла ошибка при обновлении расписания.',
+          Icons.warning,
+        );
+      }
     }
   }
 

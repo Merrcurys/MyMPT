@@ -632,7 +632,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final tomorrow = DateTime.now().add(Duration(days: 1));
 
     // Форматируем даты в строку для сравнения с changeDate
-    // Используем padLeft(2, '0') для дня, чтобы соответствовать формату в ScheduleChangesService
+    // Используем padLeft(2, '0') для дня и месяца, чтобы соответствовать формату в ReplacementRemoteDatasource
     final String todayDate =
         '${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year}';
     final String tomorrowDate =
