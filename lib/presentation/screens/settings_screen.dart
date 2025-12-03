@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
+import 'package:my_mpt/data/repositories/specialty_repository.dart';
+import 'package:my_mpt/data/repositories/group_repository.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/domain/entities/group.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
+import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
 import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/error_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
@@ -23,7 +25,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   static const _backgroundColor = Color(0xFF000000);
 
-  late SpecialtyRepositoryInterface _repository;
+  late SpecialtyRepositoryInterface _specialtyRepository;
+  late GroupRepositoryInterface _groupRepository;
   List<Specialty> _specialties = [];
   List<Group> _groups = [];
   Specialty? _selectedSpecialty;
@@ -40,7 +43,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = repo_impl.MptRepository();
+    _specialtyRepository = SpecialtyRepository();
+    _groupRepository = GroupRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
   }
@@ -51,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final specialties = await _repository.getSpecialties();
+      final specialties = await _specialtyRepository.getSpecialties();
       setState(() {
         _specialties = specialties;
         _isLoading = false;
@@ -251,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       // Добавляем таймаут для предотвращения бесконечной загрузки
-      final groups = await _repository
+      final groups = await _groupRepository
           .getGroupsBySpecialty(specialtyCode)
           .timeout(
             const Duration(seconds: 30),

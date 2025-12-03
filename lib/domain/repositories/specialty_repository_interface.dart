@@ -1,11 +1,7 @@
 import '../entities/specialty.dart';
-import '../entities/group.dart';
 
-/// Интерфейс репозитория для работы со специальностями и группами
+/// Интерфейс репозитория для работы со специальностями
 abstract class SpecialtyRepositoryInterface {
   /// Получить все специальности
   Future<List<Specialty>> getSpecialties();
-
-  /// Получить группы по коду специальности
-  Future<List<Group>> getGroupsBySpecialty(String specialtyCode);
 }

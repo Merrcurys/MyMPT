@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/data/repositories/mpt_repository.dart' as repo_impl;
-import 'package:my_mpt/domain/entities/group.dart';
+import 'package:my_mpt/data/repositories/specialty_repository.dart';
+import 'package:my_mpt/data/repositories/group_repository.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
+import 'package:my_mpt/domain/entities/group.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
+import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
 import 'package:my_mpt/data/services/preload_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,18 +52,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   int _currentPage = 0;
 
   /// Ключ для хранения выбранной группы в настройках
-  static const String _selectedGroupKey = 'selected_group';
+  static const _selectedSpecialtyKey = 'selected_specialty';
+  static const _selectedGroupKey = 'selected_group';
+  static const _firstLaunchKey = 'first_launch';
 
-  /// Ключ для хранения выбранной специальности в настройках
-  static const String _selectedSpecialtyKey = 'selected_specialty';
-
-  /// Ключ для определения первого запуска приложения
-  static const String _firstLaunchKey = 'first_launch';
+  late SpecialtyRepositoryInterface _specialtyRepository;
+  late GroupRepositoryInterface _groupRepository;
 
   @override
   void initState() {
     super.initState();
-    _repository = repo_impl.MptRepository();
+    _specialtyRepository = SpecialtyRepository();
+    _groupRepository = GroupRepository();
     // Предзагружаем все данные при первом запуске
     _preloadAllData();
   }
@@ -79,7 +81,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      final specialties = await _repository.getSpecialties();
+      final specialties = await _specialtyRepository.getSpecialties();
       setState(() {
         _specialties = specialties;
         _isLoading = false;
@@ -107,7 +109,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     });
 
     try {
-      final groups = await _repository.getGroupsBySpecialty(specialtyCode);
+      final groups = await _groupRepository.getGroupsBySpecialty(specialtyCode);
       setState(() {
         _groups = groups;
         _isGroupsLoading = false;
