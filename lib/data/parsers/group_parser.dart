@@ -2,6 +2,10 @@ import 'package:html/dom.dart';
 import 'package:my_mpt/data/models/group.dart';
 
 /// Парсер для извлечения информации о группах из HTML-документа
+///
+/// Исправлены проблемы с дублированием групп:
+/// 1. Добавено удаление дубликатов по коду группы
+/// 2. Улучшена обработка групп с несколькими кодами (разделенными запятыми/слэшами)
 class GroupParser {
   /// Парсит список групп из HTML-документа с возможной фильтрацией по специальности
   ///
@@ -20,60 +24,105 @@ class GroupParser {
 
     // Если задан фильтр специальности, ищем только соответствующий tabpanel
     if (specialtyFilter != null && specialtyFilter.isNotEmpty) {
-      // Получаем список табов для поиска соответствия между specialtyFilter и ID
-      // Внимание: Этот метод должен вызываться извне с уже известными табами
-      // или мы должны передать табы как параметр
+      // Ищем все tabpanel элементы (более строгий селектор)
+      final tabPanels = document.querySelectorAll('[role="tabpanel"]');
 
-      // Для простоты, продолжаем использовать общий подход, но фильтруем результаты
-      // В будущем можно оптимизировать, чтобы парсить только нужный tabpanel
-    }
-
-    // Ищем все tabpanel элементы (более строгий селектор)
-    final tabPanels = document.querySelectorAll('[role="tabpanel"]');
-
-    // Проходим по всем tabpanel и ищем группы
-    for (var tabPanel in tabPanels) {
-      // Ищем заголовки групп только внутри tabpanel (строгий селектор h2, h3)
-      final groupHeaders = tabPanel.querySelectorAll('h2, h3');
-
-      // Ищем заголовок h2 с информацией о специальности
-      String specialtyFromContext = '';
-      for (var h2 in tabPanel.querySelectorAll('h2')) {
-        final h2Text = h2.text.trim();
-        if (h2Text.startsWith('Расписание занятий для ')) {
-          specialtyFromContext = h2Text.substring(23).trim();
-          break;
+      Element? targetTabPanel;
+      // Ищем tabpanel элемент для заданной специальности (строгий селектор)
+      for (var panel in tabPanels) {
+        final h2Headers = panel.querySelectorAll('h2');
+        for (var h2 in h2Headers) {
+          final h2Text = h2.text.trim();
+          if (h2Text.startsWith('Расписание занятий для ') &&
+              (h2Text.contains(specialtyFilter) ||
+                  specialtyFilter.contains(h2Text))) {
+            targetTabPanel = panel;
+            break;
+          }
         }
+        if (targetTabPanel != null) break;
       }
 
-      // Проходим по заголовкам и парсим информацию о группах
-      for (var header in groupHeaders) {
-        final text = header.text.trim();
-        // Проверяем, начинается ли текст строго с "Группа "
-        if (text.startsWith('Группа ')) {
-          // Парсим информацию о группе из текста заголовка
-          final groupInfo = _parseGroupFromHeader(
-            text,
-            document,
-            specialtyFromContext.isNotEmpty ? specialtyFromContext : null,
-          );
-          groups.addAll(groupInfo);
+      // Если не нашли целевой tabpanel, используем первый доступный
+      targetTabPanel ??= tabPanels.isNotEmpty ? tabPanels.first : null;
+
+      if (targetTabPanel != null) {
+        // Ищем заголовки групп только внутри целевого tabpanel (строгий селектор h2, h3)
+        final groupHeaders = targetTabPanel.querySelectorAll('h2, h3');
+
+        // Ищем заголовок h2 с информацией о специальности
+        String specialtyFromContext = '';
+        for (var h2 in targetTabPanel.querySelectorAll('h2')) {
+          final h2Text = h2.text.trim();
+          if (h2Text.startsWith('Расписание занятий для ')) {
+            specialtyFromContext = h2Text.substring(23).trim();
+            break;
+          }
+        }
+
+        // Проходим по заголовкам и парсим информацию о группах
+        for (var header in groupHeaders) {
+          final text = header.text.trim();
+          // Проверяем, начинается ли текст строго с "Группа "
+          if (text.startsWith('Группа ')) {
+            // Парсим информацию о группе из текста заголовка
+            final groupInfo = _parseGroupFromHeader(
+              text,
+              document,
+              specialtyFromContext.isNotEmpty ? specialtyFromContext : null,
+            );
+            groups.addAll(groupInfo);
+          }
+        }
+      }
+    } else {
+      // Ищем все tabpanel элементы (более строгий селектор)
+      final tabPanels = document.querySelectorAll('[role="tabpanel"]');
+
+      // Проходим по всем tabpanel и ищем группы
+      for (var tabPanel in tabPanels) {
+        // Ищем заголовки групп только внутри tabpanel (строгий селектор h2, h3)
+        final groupHeaders = tabPanel.querySelectorAll('h2, h3');
+
+        // Ищем заголовок h2 с информацией о специальности
+        String specialtyFromContext = '';
+        for (var h2 in tabPanel.querySelectorAll('h2')) {
+          final h2Text = h2.text.trim();
+          if (h2Text.startsWith('Расписание занятий для ')) {
+            specialtyFromContext = h2Text.substring(23).trim();
+            break;
+          }
+        }
+
+        // Проходим по заголовкам и парсим информацию о группах
+        for (var header in groupHeaders) {
+          final text = header.text.trim();
+          // Проверяем, начинается ли текст строго с "Группа "
+          if (text.startsWith('Группа ')) {
+            // Парсим информацию о группе из текста заголовка
+            final groupInfo = _parseGroupFromHeader(
+              text,
+              document,
+              specialtyFromContext.isNotEmpty ? specialtyFromContext : null,
+            );
+            groups.addAll(groupInfo);
+          }
         }
       }
     }
 
-    // Если задан фильтр специальности, фильтруем результаты
-    if (specialtyFilter != null && specialtyFilter.isNotEmpty) {
-      groups.removeWhere((group) {
-        // Удаляем группы, которые не соответствуют фильтру
-        return !(group.specialtyName.contains(specialtyFilter) ||
-            specialtyFilter.contains(group.specialtyName) ||
-            group.specialtyCode.contains(specialtyFilter) ||
-            specialtyFilter.contains(group.specialtyCode));
-      });
+    // Удаляем дубликаты групп, сравнивая по коду группы
+    final uniqueGroups = <Group>[];
+    final groupCodes = <String>{};
+
+    for (var group in groups) {
+      if (!groupCodes.contains(group.code)) {
+        groupCodes.add(group.code);
+        uniqueGroups.add(group);
+      }
     }
 
-    return groups;
+    return uniqueGroups;
   }
 
   /// Парсит информацию о группе из текста заголовка
@@ -110,71 +159,41 @@ class GroupParser {
         specialtyName = specialtyFromContext;
       } else {
         // Иначе определяем специальность по префиксу группы
-        // Извлекаем префикс из первой части кода группы
-        final groupCodeParts = groupCode.split(RegExp(r'[;,\/]'));
+        // Извлекаем префикс из первой части кода группы (до первого разделителя)
         String prefix = '';
-        if (groupCodeParts.isNotEmpty) {
-          final firstGroup = groupCodeParts[0].trim();
-          // Извлекаем префикс из кода группы (например, ВД-2-23 -> ВД)
-          final prefixMatch = RegExp(
-            r'^([А-Яа-я0-9]+)-',
-          ).firstMatch(firstGroup);
-          if (prefixMatch != null) {
-            prefix = prefixMatch.group(1) ?? '';
-          }
-        }
 
-        // Маппинг префиксов групп к кодам специальностей
-        final Map<String, String> prefixToSpecialtyCode = {
-          'Э': '09.02.01 Э',
-          'СА': '09.02.02 СА',
-          'П': '09.02.07 П,Т',
-          'Т': '09.02.07 П,Т',
-          'ИС': '09.02.07 ИС, БД, ВД',
-          'БД': '09.02.07 ИС, БД, ВД',
-          'ВД': '09.02.07 ИС, БД, ВД',
-          'БАС': '09.02.08 БАС',
-          'БИ': '38.02.07 БИ',
-          'Ю': '40.02.01 Ю',
-          'ВТ': '09.02.07 ВТ',
-        };
+        // Находим первый разделитель (запятая, точка с запятой или слэш)
+        final firstSeparatorIndex = groupCode.indexOf(RegExp(r'[;,\/]'));
+        String firstGroupPart;
 
-        // Маппинг префиксов групп к полным названиям специальностей
-        final Map<String, String> prefixToSpecialtyName = {
-          'Э': '09.02.01 Экономика и бухгалтерский учет',
-          'СА': '09.02.02 Сети и системы связи',
-          'П':
-              '09.02.07 Прикладная информатика, Технологии дополненной и виртуальной реальности',
-          'Т':
-              '09.02.07 Прикладная информатика, Технологии дополненной и виртуальной реальности',
-          'ИС':
-              '09.02.07 Информационные системы и программирование, Базы данных, Веб-дизайн',
-          'БД':
-              '09.02.07 Информационные системы и программирование, Базы данных, Веб-дизайн',
-          'ВД':
-              '09.02.07 Информационные системы и программирование, Базы данных, Веб-дизайн',
-          'БАС': '09.02.08 Безопасность автоматизированных систем',
-          'БИ': '38.02.07 Банковское дело',
-          'Ю': '40.02.01 Право и организация социального обеспечения',
-          'ВТ': '09.02.07 Веб-технологии',
-        };
-
-        // Определяем код и название специальности по префиксу
-        if (prefixToSpecialtyCode.containsKey(prefix)) {
-          specialtyCode = prefixToSpecialtyCode[prefix]!;
-          specialtyName = prefixToSpecialtyName[prefix] ?? prefix;
+        if (firstSeparatorIndex != -1) {
+          // Если есть разделитель, берем часть до него
+          firstGroupPart = groupCode.substring(0, firstSeparatorIndex).trim();
         } else {
-          // Если не удалось определить специальность по префиксу, используем префикс как код
-          specialtyCode = prefix.isNotEmpty
-              ? prefix
-              : 'Неизвестная специальность';
-          specialtyName = prefix.isNotEmpty
-              ? prefix
-              : 'Неизвестная специальность';
+          // Если нет разделителей, берем весь код группы
+          firstGroupPart = groupCode;
         }
+
+        // Извлекаем префикс из первой части кода группы (например, ВД-2-23 -> ВД)
+        final prefixMatch = RegExp(
+          r'^([А-Яа-я0-9]+)-',
+        ).firstMatch(firstGroupPart);
+
+        if (prefixMatch != null) {
+          prefix = prefixMatch.group(1) ?? '';
+        }
+
+        // Если не удалось определить специальность по префиксу, используем префикс как код
+        specialtyCode = prefix.isNotEmpty
+            ? prefix
+            : 'Неизвестная специальность';
+        specialtyName = prefix.isNotEmpty
+            ? prefix
+            : 'Неизвестная специальность';
       }
 
       // Добавляем информацию о группе в список
+      // ВАЖНО: groupCode содержит полное название группы как есть, включая все разделители
       groups.add(
         Group(
           code: groupCode, // Сохраняем полное название группы
