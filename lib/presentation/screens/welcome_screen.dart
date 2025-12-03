@@ -115,8 +115,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     try {
       final groups = await _groupRepository.getGroupsBySpecialty(specialtyCode);
+      // Не выполняем дополнительную сортировку, так как группы уже отсортированы в репозитории
+      // Порядок сортировки: сначала по специальности, затем по году (новые года выше), затем по номеру группы
       final sortedGroups = List<Group>.from(groups);
-      sortedGroups.sort((a, b) => a.code.compareTo(b.code));
 
       setState(() {
         _groups = sortedGroups;
