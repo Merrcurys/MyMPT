@@ -126,8 +126,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         if (_selectedGroup != null) {
           final previouslySelected = sortedGroups.firstWhere(
             (group) => group.code == _selectedGroup!.code,
-            orElse: () =>
-                Group(code: '', specialtyCode: '', specialtyName: ''),
+            orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
           );
 
           if (previouslySelected.code.isNotEmpty) {
@@ -284,6 +283,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -386,10 +386,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
               elevation: 5,
+              disabledBackgroundColor: Colors.white.withValues(alpha: 0.5),
+              disabledForegroundColor: Colors.black.withValues(alpha: 0.5),
             ),
             child: const Text(
               'Продолжить',
@@ -498,10 +501,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             onPressed: _selectedGroup != null ? _saveSelectionAndProceed : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
               elevation: 5,
+              disabledBackgroundColor: Colors.white.withValues(alpha: 0.5),
+              disabledForegroundColor: Colors.black.withValues(alpha: 0.5),
             ),
             child: const Text(
               'Готово',
