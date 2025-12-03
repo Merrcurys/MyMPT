@@ -1,10 +1,11 @@
-import 'package:my_mpt/data/services/replacement_service.dart';
+import 'package:my_mpt/data/datasources/remote/replacement_remote_datasource.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/domain/repositories/replacement_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ReplacementRepository implements ReplacementRepositoryInterface {
-  final ReplacementService _changesService = ReplacementService();
+  final ReplacementRemoteDatasource _changesService =
+      ReplacementRemoteDatasource();
 
   static const String _selectedGroupKey = 'selected_group';
 

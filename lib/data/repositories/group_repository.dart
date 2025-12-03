@@ -1,10 +1,10 @@
-import 'package:my_mpt/data/services/mpt_parser_service.dart';
-import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
-import 'package:my_mpt/domain/entities/group.dart';
+import 'package:my_mpt/data/datasources/remote/mpt_remote_datasource.dart';
+import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/repositories/specialty_repository.dart';
+import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
 
 class GroupRepository implements GroupRepositoryInterface {
-  final MptParserService _parserService = MptParserService();
+  final MptRemoteDatasource _parserService = MptRemoteDatasource();
   final SpecialtyRepository _specialtyRepository = SpecialtyRepository();
 
   @override
@@ -29,34 +29,15 @@ class GroupRepository implements GroupRepositoryInterface {
         // Используем имя специальности для поиска групп
         final groupInfos = await _parserService.parseGroups(retryName);
 
-        final result = groupInfos
-            .map(
-              (groupInfo) => Group(
-                code: groupInfo.code,
-                specialtyCode: groupInfo.specialtyCode,
-              ),
-            )
-            .toList();
-
-        result.sort((a, b) => a.code.compareTo(b.code));
-        return result;
+        groupInfos.sort((a, b) => a.code.compareTo(b.code));
+        return groupInfos;
       }
 
       // Используем имя специальности для поиска групп
       final groupInfos = await _parserService.parseGroups(specialtyName);
 
-      final result = groupInfos
-          .map(
-            (groupInfo) => Group(
-              code: groupInfo.code,
-              specialtyCode: groupInfo.specialtyCode,
-              // Возможно, нужно добавить другие поля из GroupInfo
-            ),
-          )
-          .toList();
-
-      result.sort((a, b) => a.code.compareTo(b.code));
-      return result;
+      groupInfos.sort((a, b) => a.code.compareTo(b.code));
+      return groupInfos;
     } catch (e) {
       return [];
     }

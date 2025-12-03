@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:my_mpt/core/utils/date_formatter.dart';
+import 'package:my_mpt/data/models/group.dart';
+import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/data/repositories/specialty_repository.dart';
 import 'package:my_mpt/data/repositories/group_repository.dart';
-import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
-import 'package:my_mpt/domain/entities/group.dart';
-import 'package:my_mpt/domain/entities/specialty.dart';
-import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
-import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
+import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/presentation/widgets/settings/error_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
-import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
 import 'package:my_mpt/presentation/widgets/settings/section.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_card.dart';
+import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
+import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
+import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
+import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,9 +29,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   late SpecialtyRepositoryInterface _specialtyRepository;
   late GroupRepositoryInterface _groupRepository;
-  List<Specialty> _specialties = [];
+  late UnifiedScheduleRepository _repository;
+  late ReplacementRepository _changesRepository;
+
+  List<data_model.Specialty> _specialties = [];
   List<Group> _groups = [];
-  Specialty? _selectedSpecialty;
+  data_model.Specialty? _selectedSpecialty;
   Group? _selectedGroup;
   String? _selectedSpecialtyCode;
   bool _isLoading = false;
@@ -45,6 +50,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _specialtyRepository = SpecialtyRepository();
     _groupRepository = GroupRepository();
+    _repository = UnifiedScheduleRepository();
+    _changesRepository = ReplacementRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
   }
@@ -56,8 +63,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final specialties = await _specialtyRepository.getSpecialties();
+      // Преобразуем доменные сущности в модели данных
+      final dataSpecialties = specialties
+          .map((s) => data_model.Specialty(code: s.code, name: s.name))
+          .toList();
+
       setState(() {
-        _specialties = specialties;
+        _specialties = dataSpecialties.cast<data_model.Specialty>();
         _isLoading = false;
       });
     } catch (e) {
@@ -98,7 +110,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         if (selectedGroupCode != null && selectedGroupCode.isNotEmpty) {
           // Устанавливаем выбранную группу, она будет проверена в _loadGroups
-          _selectedGroup = Group(code: selectedGroupCode, specialtyCode: '');
+          _selectedGroup = Group(
+            code: selectedGroupCode,
+            specialtyCode: '',
+            specialtyName: '',
+          );
         }
 
         if (selectedSpecialtyCode != null && selectedSpecialtyCode.isNotEmpty) {
@@ -106,14 +122,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           if (selectedSpecialtyName != null &&
               selectedSpecialtyName.isNotEmpty) {
-            _selectedSpecialty = Specialty(
+            _selectedSpecialty = data_model.Specialty(
               code: selectedSpecialtyCode,
               name: selectedSpecialtyName,
             );
           } else if (_specialties.isNotEmpty) {
             final selectedSpecialty = _specialties.firstWhere(
               (specialty) => specialty.code == selectedSpecialtyCode,
-              orElse: () => Specialty(code: '', name: ''),
+              orElse: () => data_model.Specialty(code: '', name: ''),
             );
 
             if (selectedSpecialty.code.isNotEmpty) {
@@ -250,60 +266,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _isLoading = true;
       _groups = [];
-      // Не сбрасываем _selectedGroup здесь, чтобы сохранить выбранную группу
     });
 
     try {
-      // Добавляем таймаут для предотвращения бесконечной загрузки
-      final groups = await _groupRepository
-          .getGroupsBySpecialty(specialtyCode)
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              throw Exception('Превышено время ожидания загрузки групп');
-            },
-          );
-
-      // Загружаем выбранную группу, если она была сохранена
-      Group? selectedGroup;
-      if (_selectedGroup != null) {
-        // Проверяем, существует ли выбранная группа в новом списке
-        selectedGroup = groups.firstWhere(
-          (group) => group.code == _selectedGroup!.code,
-          orElse: () => Group(code: '', specialtyCode: ''),
-        );
-
-        // Если группа не найдена, сбрасываем выбор
-        if (selectedGroup.code.isEmpty) {
-          selectedGroup = null;
-        }
-      } else {
-        // Проверяем, есть ли сохраненная группа в настройках
-        final prefs = await SharedPreferences.getInstance();
-        final savedGroupCode = prefs.getString(_selectedGroupKey);
-        if (savedGroupCode != null && savedGroupCode.isNotEmpty) {
-          selectedGroup = groups.firstWhere(
-            (group) => group.code == savedGroupCode,
-            orElse: () => Group(code: '', specialtyCode: ''),
-          );
-
-          // Если группа не найдена, сбрасываем выбор
-          if (selectedGroup.code.isEmpty) {
-            selectedGroup = null;
-          }
-        }
-      }
+      final groups = await _groupRepository.getGroupsBySpecialty(specialtyCode);
+      final sortedGroups = List<Group>.from(groups);
+      sortedGroups.sort((a, b) => a.code.compareTo(b.code));
 
       setState(() {
-        _groups = groups;
+        _groups = sortedGroups;
         _isLoading = false;
-        // Обновляем выбранную группу только если она существует в новом списке
-        if (selectedGroup != null) {
-          _selectedGroup = selectedGroup;
+
+        // Проверяем, была ли ранее выбрана группа
+        if (_selectedGroup != null) {
+          final previouslySelected = sortedGroups.firstWhere(
+            (group) => group.code == _selectedGroup!.code,
+            orElse: () =>
+                Group(code: '', specialtyCode: '', specialtyName: ''),
+          );
+
+          if (previouslySelected.code.isNotEmpty) {
+            _selectedGroup = previouslySelected;
+          } else {
+            _selectedGroup = null;
+          }
         }
       });
-
-      setState(() {});
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -312,28 +300,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         showErrorNotification(
           context,
           'Ошибка загрузки',
-          'Не удалось загрузить группы. Попробуйте еще раз.',
+          'Не удалось загрузить группы',
           Icons.error_outline,
         );
       }
     }
   }
 
-  void _onSpecialtySelected(Specialty specialty) async {
+  Future<void> _onSpecialtySelected(data_model.Specialty specialty) async {
     setState(() {
       _selectedSpecialty = specialty;
       _selectedSpecialtyCode = specialty.code;
+      _groups = [];
       _selectedGroup = null;
     });
 
-    // Сохраняем выбранную специальность в настройки
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_selectedSpecialtyKey, specialty.code);
-      await prefs.setString('${_selectedSpecialtyKey}_name', specialty.name);
-    } catch (e) {}
-
-    _loadGroups(specialty.code);
+    await _loadGroups(specialty.code);
   }
 
   void _onGroupSelected(Group group) async {
@@ -341,35 +323,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedGroup = group;
     });
 
-    // Сохраняем выбранную группу в настройки
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_selectedGroupKey, group.code);
-    } catch (e) {}
+    // Сохраняем выбранную группу в настройках
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedGroupKey, group.code);
+    await prefs.setString(_selectedSpecialtyKey, group.specialtyCode);
+    await prefs.setString('${_selectedSpecialtyKey}_name', group.specialtyName);
 
-    // Принудительно обновляем расписание
-    try {
-      final repository = UnifiedScheduleRepository();
-      await repository.forceRefresh();
-
-      // Show confirmation
-      if (context.mounted) {
-        showSuccessNotification(
-          context,
-          'Группа выбрана',
-          '${group.code} • Расписание обновлено',
-          Icons.check_circle_outline,
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        showErrorNotification(
-          context,
-          'Группа выбрана',
-          '${group.code} • Ошибка обновления расписания',
-          Icons.warning_amber_rounded,
-        );
-      }
+    if (context.mounted) {
+      showSuccessNotification(
+        context,
+        'Группа выбрана',
+        'Выбрана группа ${group.code}',
+        Icons.check_circle_outline,
+      );
     }
   }
 

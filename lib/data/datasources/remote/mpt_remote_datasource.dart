@@ -3,15 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart';
 import 'package:my_mpt/data/models/tab_info.dart';
-import 'package:my_mpt/data/models/week_info.dart';
-import 'package:my_mpt/data/models/group_info.dart';
+import 'package:my_mpt/data/models/group.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для парсинга данных с сайта МПТ
 ///
 /// Этот сервис отвечает за извлечение информации о специальностях, группах и типе недели
 /// с официального сайта техникума mpt.ru/raspisanie/
-class MptParserService {
+class MptRemoteDatasource {
   /// Базовый URL сайта с расписанием
   final String baseUrl = 'https://mpt.ru/raspisanie/';
 
@@ -65,7 +64,9 @@ class MptParserService {
         }
 
         // Ищем все элементы вкладок в навигационном меню (строгий селектор)
-        final tabItems = tablist.querySelectorAll('li[role="presentation"] > a[href^="#"]');
+        final tabItems = tablist.querySelectorAll(
+          'li[role="presentation"] > a[href^="#"]',
+        );
 
         // Создаем список для хранения информации о вкладках
         final List<TabInfo> tabs = [];
@@ -78,7 +79,10 @@ class MptParserService {
           final name = anchor.text.trim();
 
           // Добавляем информацию о вкладке в список, если есть необходимые атрибуты
-          if (href != null && href.startsWith('#') && ariaControls != null && name.isNotEmpty) {
+          if (href != null &&
+              href.startsWith('#') &&
+              ariaControls != null &&
+              name.isNotEmpty) {
             tabs.add(
               TabInfo(href: href, ariaControls: ariaControls, name: name),
             );
@@ -109,15 +113,19 @@ class MptParserService {
       if (timestamp != null && cachedJson != null) {
         final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
         final age = DateTime.now().difference(cacheTime);
-        
+
         if (age < _cacheTtl) {
           // Кэш действителен, возвращаем данные
           final List<dynamic> decoded = jsonDecode(cachedJson);
-          return decoded.map((json) => TabInfo(
-            href: json['href'] as String,
-            ariaControls: json['ariaControls'] as String,
-            name: json['name'] as String,
-          )).toList();
+          return decoded
+              .map(
+                (json) => TabInfo(
+                  href: json['href'] as String,
+                  ariaControls: json['ariaControls'] as String,
+                  name: json['name'] as String,
+                ),
+              )
+              .toList();
         } else {
           // Кэш истек, очищаем устаревшие данные
           await prefs.remove(_cacheKeyTabs);
@@ -136,95 +144,12 @@ class MptParserService {
       final prefs = await SharedPreferences.getInstance();
       final json = jsonEncode(tabs.map((tab) => tab.toJson()).toList());
       await prefs.setString(_cacheKeyTabs, json);
-      await prefs.setInt(_cacheKeyTabsTimestamp, DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+        _cacheKeyTabsTimestamp,
+        DateTime.now().millisecondsSinceEpoch,
+      );
     } catch (e) {
       // Игнорируем ошибки кэша
-    }
-  }
-
-  /// Парсит информацию о текущей неделе
-  ///
-  /// Метод извлекает HTML-страницу с расписанием и определяет тип текущей недели
-  /// (числитель или знаменатель), а также текущую дату и день недели
-  ///
-  /// Возвращает:
-  /// - WeekInfo: Информация о текущей неделе
-  Future<WeekInfo> parseWeekInfo() async {
-    try {
-      // Отправляем HTTP-запрос к странице с расписанием
-      final response = await http
-          .get(Uri.parse(baseUrl))
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('Превышено время ожидания ответа от сервера');
-            },
-          );
-
-      // Проверяем успешность запроса
-      if (response.statusCode == 200) {
-        // Парсим HTML документ с помощью библиотеки html
-        final document = parser.parse(response.body);
-
-        // Инициализируем переменные для хранения информации
-        String date = '';
-        String day = '';
-
-        // Ищем заголовок с датой и днем недели
-        final dateHeader = document.querySelector('h2');
-        if (dateHeader != null) {
-          // Извлекаем текст заголовка и разбиваем по разделителю
-          final dateText = dateHeader.text.trim();
-          final parts = dateText.split(' - ');
-          if (parts.length >= 2) {
-            date = parts[0]; // Дата
-            day = parts[1]; // День недели
-          } else {
-            date = dateText;
-          }
-        }
-
-        // Ищем информацию о типе недели
-        String weekType = '';
-        final weekHeaders = document.querySelectorAll('h3');
-
-        // Проходим по всем заголовкам h3 и ищем информацию о неделе
-        for (var header in weekHeaders) {
-          final text = header.text.trim();
-          if (text.startsWith('Неделя:')) {
-            // Извлекаем тип недели из текста
-            weekType = text.substring(7).trim();
-            // Проверяем наличие дополнительной информации в элементе .label
-            final labelElement = header.querySelector('.label');
-            if (labelElement != null) {
-              weekType = labelElement.text.trim();
-            }
-            break;
-          }
-        }
-
-        // Если тип недели не найден в заголовках h3, ищем в элементах .label
-        if (weekType.isEmpty) {
-          final labelElements = document.querySelectorAll('.label');
-          for (var label in labelElements) {
-            final labelText = label.text.trim();
-            // Проверяем, является ли текст "Числитель" или "Знаменатель"
-            if (labelText == 'Числитель' || labelText == 'Знаменатель') {
-              weekType = labelText;
-              break;
-            }
-          }
-        }
-
-        // Создаем и возвращаем объект с информацией о неделе
-        return WeekInfo(weekType: weekType, date: date, day: day);
-      } else {
-        throw Exception(
-          'Не удалось загрузить страницу: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      throw Exception('Ошибка при парсинге информации о неделе: $e');
     }
   }
 
@@ -239,13 +164,16 @@ class MptParserService {
   ///
   /// Возвращает:
   /// Список информации о группах
-  Future<List<GroupInfo>> parseGroups([
+  Future<List<Group>> parseGroups([
     String? specialtyFilter,
     bool forceRefresh = false,
   ]) async {
     // Если задан фильтр специальности, используем оптимизированный метод
     if (specialtyFilter != null) {
-      return _parseGroupsBySpecialty(specialtyFilter, forceRefresh: forceRefresh);
+      return _parseGroupsBySpecialty(
+        specialtyFilter,
+        forceRefresh: forceRefresh,
+      );
     }
 
     // Иначе используем метод для получения всех групп
@@ -259,7 +187,7 @@ class MptParserService {
   ///
   /// Возвращает:
   /// Список информации о всех группах
-  Future<List<GroupInfo>> _parseAllGroups({bool forceRefresh = false}) async {
+  Future<List<Group>> _parseAllGroups({bool forceRefresh = false}) async {
     try {
       // Проверяем кэш
       if (!forceRefresh) {
@@ -287,7 +215,7 @@ class MptParserService {
         final document = parser.parse(response.body);
 
         // Создаем список для хранения информации о группах
-        final List<GroupInfo> groups = [];
+        final List<Group> groups = [];
 
         // Ищем все tabpanel элементы (более строгий селектор)
         final tabPanels = document.querySelectorAll('[role="tabpanel"]');
@@ -296,7 +224,7 @@ class MptParserService {
         for (var tabPanel in tabPanels) {
           // Ищем заголовки групп только внутри tabpanel (строгий селектор h2, h3)
           final groupHeaders = tabPanel.querySelectorAll('h2, h3');
-          
+
           // Ищем заголовок h2 с информацией о специальности
           String specialtyFromContext = '';
           for (var h2 in tabPanel.querySelectorAll('h2')) {
@@ -347,7 +275,7 @@ class MptParserService {
   ///
   /// Возвращает:
   /// Список информации о группах для указанной специальности
-  Future<List<GroupInfo>> _parseGroupsBySpecialty(
+  Future<List<Group>> _parseGroupsBySpecialty(
     String specialtyFilter, {
     bool forceRefresh = false,
   }) async {
@@ -390,9 +318,10 @@ class MptParserService {
             break;
           }
           // Проверяем совпадение по href (код специальности)
-          if (tab.href == specialtyFilter || 
+          if (tab.href == specialtyFilter ||
               tab.href == '#$specialtyFilter' ||
-              tab.href.replaceAll('#', '').replaceAll('-', '.').toUpperCase() == specialtyFilter) {
+              tab.href.replaceAll('#', '').replaceAll('-', '.').toUpperCase() ==
+                  specialtyFilter) {
             targetId = tab.ariaControls;
             break;
           }
@@ -408,7 +337,10 @@ class MptParserService {
               break;
             }
             // Проверяем частичное совпадение по href
-            final normalizedHref = tab.href.replaceAll('#', '').replaceAll('-', '.').toUpperCase();
+            final normalizedHref = tab.href
+                .replaceAll('#', '')
+                .replaceAll('-', '.')
+                .toUpperCase();
             if (normalizedHref.contains(specialtyFilter) ||
                 specialtyFilter.contains(normalizedHref)) {
               targetId = tab.ariaControls;
@@ -423,7 +355,9 @@ class MptParserService {
         }
 
         // Ищем tabpanel с нужным ID (строгий селектор)
-        final tabPanel = document.querySelector('[role="tabpanel"][id="$targetId"]');
+        final tabPanel = document.querySelector(
+          '[role="tabpanel"][id="$targetId"]',
+        );
 
         // Если не нашли tabpanel, возвращаем пустой список
         if (tabPanel == null) {
@@ -431,7 +365,7 @@ class MptParserService {
         }
 
         // Создаем список для хранения информации о группах
-        final List<GroupInfo> groups = [];
+        final List<Group> groups = [];
 
         // Ищем заголовок h2 с информацией о специальности (строгий селектор)
         String specialtyFromContext = '';
@@ -489,13 +423,13 @@ class MptParserService {
   ///
   /// Возвращает:
   /// Список информации о группах (обычно один элемент)
-  List<GroupInfo> _parseGroupFromHeader(
+  List<Group> _parseGroupFromHeader(
     String headerText,
     Document document, [
     String? specialtyFromContext,
   ]) {
     // Создаем список для хранения информации о группах
-    final List<GroupInfo> groups = [];
+    final List<Group> groups = [];
 
     try {
       // Извлекаем код группы из текста заголовка (например, "Группа Э-1-22, Э-11/1-23" -> "Э-1-22, Э-11/1-23")
@@ -566,14 +500,18 @@ class MptParserService {
           specialtyName = prefixToSpecialtyName[prefix] ?? prefix;
         } else {
           // Если не удалось определить специальность по префиксу, используем префикс как код
-          specialtyCode = prefix.isNotEmpty ? prefix : 'Неизвестная специальность';
-          specialtyName = prefix.isNotEmpty ? prefix : 'Неизвестная специальность';
+          specialtyCode = prefix.isNotEmpty
+              ? prefix
+              : 'Неизвестная специальность';
+          specialtyName = prefix.isNotEmpty
+              ? prefix
+              : 'Неизвестная специальность';
         }
       }
 
       // Добавляем информацию о группе в список
       groups.add(
-        GroupInfo(
+        Group(
           code: groupCode, // Сохраняем полное название группы
           specialtyCode: specialtyCode,
           specialtyName: specialtyName,
@@ -587,7 +525,7 @@ class MptParserService {
   }
 
   /// Получает кэшированные группы
-  Future<List<GroupInfo>?> _getCachedGroups(String? specialtyFilter) async {
+  Future<List<Group>?> _getCachedGroups(String? specialtyFilter) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cacheKey = specialtyFilter != null
@@ -596,22 +534,26 @@ class MptParserService {
       final timestampKey = specialtyFilter != null
           ? '$_cacheKeyGroupsTimestamp${specialtyFilter.hashCode}'
           : '${_cacheKeyGroupsTimestamp}all';
-      
+
       final timestamp = prefs.getInt(timestampKey);
       final cachedJson = prefs.getString(cacheKey);
 
       if (timestamp != null && cachedJson != null) {
         final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
         final age = DateTime.now().difference(cacheTime);
-        
+
         if (age < _cacheTtl) {
           // Кэш действителен, возвращаем данные
           final List<dynamic> decoded = jsonDecode(cachedJson);
-          return decoded.map((json) => GroupInfo(
-            code: json['code'] as String,
-            specialtyCode: json['specialtyCode'] as String,
-            specialtyName: json['specialtyName'] as String,
-          )).toList();
+          return decoded
+              .map(
+                (json) => Group(
+                  code: json['code'] as String,
+                  specialtyCode: json['specialtyCode'] as String,
+                  specialtyName: json['specialtyName'] as String,
+                ),
+              )
+              .toList();
         } else {
           // Кэш истек, очищаем устаревшие данные
           await prefs.remove(cacheKey);
@@ -625,7 +567,10 @@ class MptParserService {
   }
 
   /// Сохраняет группы в кэш
-  Future<void> _saveCachedGroups(String? specialtyFilter, List<GroupInfo> groups) async {
+  Future<void> _saveCachedGroups(
+    String? specialtyFilter,
+    List<Group> groups,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cacheKey = specialtyFilter != null
@@ -634,12 +579,10 @@ class MptParserService {
       final timestampKey = specialtyFilter != null
           ? '$_cacheKeyGroupsTimestamp${specialtyFilter.hashCode}'
           : '${_cacheKeyGroupsTimestamp}all';
-      
+
       final json = jsonEncode(groups.map((group) => group.toJson()).toList());
       await prefs.setString(cacheKey, json);
       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-    } catch (e) {
-      // Игнорируем ошибки кэша
-    }
+    } catch (e) {}
   }
 }

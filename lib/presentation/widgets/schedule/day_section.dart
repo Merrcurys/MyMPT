@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
@@ -189,7 +189,7 @@ class DaySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formattedTitle = _formatDayTitle(title);
-    final callsData = CallsService.getCalls();
+    final callsData = CallsUtil.getCalls();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

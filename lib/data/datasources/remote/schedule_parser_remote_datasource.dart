@@ -1,13 +1,13 @@
-import 'package:my_mpt/data/datasources/schedule_remote_data_source.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_remote_data_source.dart';
 import 'package:my_mpt/data/models/lesson.dart';
 import 'package:my_mpt/data/parsers/schedule_html_parser.dart';
 
-class ScheduleParserService {
-  ScheduleParserService({
+class ScheduleParserRemoteDatasource {
+  ScheduleParserRemoteDatasource({
     ScheduleRemoteDataSource? remoteDataSource,
     ScheduleHtmlParser? htmlParser,
-  })  : _remoteDataSource = remoteDataSource ?? ScheduleRemoteDataSource(),
-        _htmlParser = htmlParser ?? ScheduleHtmlParser();
+  }) : _remoteDataSource = remoteDataSource ?? ScheduleRemoteDataSource(),
+       _htmlParser = htmlParser ?? ScheduleHtmlParser();
 
   final ScheduleRemoteDataSource _remoteDataSource;
   final ScheduleHtmlParser _htmlParser;

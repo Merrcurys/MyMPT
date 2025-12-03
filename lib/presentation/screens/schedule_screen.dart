@@ -35,9 +35,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   /// Изменения в расписании
   List<Replacement> _scheduleChanges = [];
 
-  /// Информация о текущей неделе
-  // WeekInfo? _weekInfo;
-
   /// Флаг загрузки данных
   bool _isLoading = false;
 

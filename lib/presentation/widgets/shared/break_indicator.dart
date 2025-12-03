@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 
 /// Виджет индикатора перемены
 ///
@@ -20,7 +20,7 @@ class BreakIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String duration = CallsService.getBreakDuration(startTime, endTime);
+    final String duration = CallsUtil.getBreakDuration(startTime, endTime);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0),

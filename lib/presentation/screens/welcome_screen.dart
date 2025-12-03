@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/data/repositories/specialty_repository.dart';
 import 'package:my_mpt/data/repositories/group_repository.dart';
-import 'package:my_mpt/domain/entities/specialty.dart';
-import 'package:my_mpt/domain/entities/group.dart';
+import 'package:my_mpt/data/models/group.dart';
+import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
-import 'package:my_mpt/data/services/preload_service.dart';
+import 'package:my_mpt/core/services/preload_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Экран приветствия и настройки приложения
@@ -31,13 +31,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final PreloadService _preloadService = PreloadService();
 
   /// Список специальностей
-  List<Specialty> _specialties = [];
+  List<data_model.Specialty> _specialties = [];
 
   /// Список групп
   List<Group> _groups = [];
 
   /// Выбранная специальность
-  Specialty? _selectedSpecialty;
+  data_model.Specialty? _selectedSpecialty;
 
   /// Выбранная группа
   Group? _selectedGroup;
@@ -82,8 +82,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     try {
       final specialties = await _specialtyRepository.getSpecialties();
+      // Преобразуем доменные сущности в модели данных
+      final dataSpecialties = specialties
+          .map((s) => data_model.Specialty(code: s.code, name: s.name))
+          .toList();
+
       setState(() {
-        _specialties = specialties;
+        _specialties = dataSpecialties.cast<data_model.Specialty>();
         _isLoading = false;
       });
     } catch (e) {
@@ -110,9 +115,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     try {
       final groups = await _groupRepository.getGroupsBySpecialty(specialtyCode);
+      final sortedGroups = List<Group>.from(groups);
+      sortedGroups.sort((a, b) => a.code.compareTo(b.code));
+
       setState(() {
-        _groups = groups;
+        _groups = sortedGroups;
         _isGroupsLoading = false;
+
+        // Проверяем, была ли ранее выбрана группа
+        if (_selectedGroup != null) {
+          final previouslySelected = sortedGroups.firstWhere(
+            (group) => group.code == _selectedGroup!.code,
+            orElse: () =>
+                Group(code: '', specialtyCode: '', specialtyName: ''),
+          );
+
+          if (previouslySelected.code.isNotEmpty) {
+            _selectedGroup = previouslySelected;
+          } else {
+            _selectedGroup = null;
+          }
+        }
       });
     } catch (e) {
       setState(() {
@@ -319,14 +342,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                 )
               : DropdownButtonHideUnderline(
-                  child: DropdownButton<Specialty>(
+                  child: DropdownButton<data_model.Specialty>(
                     value: _selectedSpecialty,
                     hint: const Text(
                       'Выберите специальность',
                       style: TextStyle(color: Colors.white70),
                     ),
-                    items: _specialties.map((Specialty specialty) {
-                      return DropdownMenuItem<Specialty>(
+                    items: _specialties.map((data_model.Specialty specialty) {
+                      return DropdownMenuItem<data_model.Specialty>(
                         value: specialty,
                         child: Text(
                           specialty.name,
@@ -334,7 +357,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (Specialty? newValue) {
+                    onChanged: (data_model.Specialty? newValue) {
                       setState(() {
                         _selectedSpecialty = newValue;
                       });

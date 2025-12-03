@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/data/services/schedule_parser_service.dart';
-import 'package:my_mpt/data/datasources/schedule_cache_data_source.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_parser_remote_datasource.dart';
+import 'package:my_mpt/data/datasources/cache/schedule_cache_data_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Единое хранилище для всех данных расписания
 class UnifiedScheduleRepository {
-  final ScheduleParserService _parserService = ScheduleParserService();
+  final ScheduleParserRemoteDatasource _parserService =
+      ScheduleParserRemoteDatasource();
   final ScheduleCacheDataSource _cacheDataSource = ScheduleCacheDataSource();
   static const String _selectedGroupKey = 'selected_group';
 
@@ -20,14 +21,18 @@ class UnifiedScheduleRepository {
   // Уведомление об изменении данных
   final ValueNotifier<bool> dataUpdatedNotifier = ValueNotifier<bool>(false);
 
-  static final UnifiedScheduleRepository _instance = UnifiedScheduleRepository._internal();
+  static final UnifiedScheduleRepository _instance =
+      UnifiedScheduleRepository._internal();
   factory UnifiedScheduleRepository() => _instance;
   UnifiedScheduleRepository._internal();
 
   /// Получить расписание на неделю
-  Future<Map<String, List<Schedule>>> getWeeklySchedule({bool forceRefresh = false}) async {
+  Future<Map<String, List<Schedule>>> getWeeklySchedule({
+    bool forceRefresh = false,
+  }) async {
     await _restoreCacheIfNeeded();
-    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedWeeklySchedule == null;
+    final needRefresh =
+        forceRefresh || _shouldRefreshData() || _cachedWeeklySchedule == null;
     if (needRefresh) {
       await _refreshAllData(forceRefresh: forceRefresh);
     }
@@ -37,7 +42,8 @@ class UnifiedScheduleRepository {
   /// Получить расписание на сегодня
   Future<List<Schedule>> getTodaySchedule({bool forceRefresh = false}) async {
     await _restoreCacheIfNeeded();
-    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTodaySchedule == null;
+    final needRefresh =
+        forceRefresh || _shouldRefreshData() || _cachedTodaySchedule == null;
     if (needRefresh) {
       await _refreshAllData(forceRefresh: forceRefresh);
     }
@@ -45,9 +51,12 @@ class UnifiedScheduleRepository {
   }
 
   /// Получить расписание на завтра
-  Future<List<Schedule>> getTomorrowSchedule({bool forceRefresh = false}) async {
+  Future<List<Schedule>> getTomorrowSchedule({
+    bool forceRefresh = false,
+  }) async {
     await _restoreCacheIfNeeded();
-    final needRefresh = forceRefresh || _shouldRefreshData() || _cachedTomorrowSchedule == null;
+    final needRefresh =
+        forceRefresh || _shouldRefreshData() || _cachedTomorrowSchedule == null;
     if (needRefresh) {
       await _refreshAllData(forceRefresh: forceRefresh);
     }
@@ -90,7 +99,7 @@ class UnifiedScheduleRepository {
         groupCode,
         forceRefresh: forceRefresh,
       );
-      
+
       // Преобразуем данные в Schedule
       final Map<String, List<Schedule>> weeklySchedule = {};
       parsedSchedule.forEach((day, lessons) {
@@ -111,15 +120,15 @@ class UnifiedScheduleRepository {
 
       // Обновляем кэш
       _cachedWeeklySchedule = weeklySchedule;
-      
+
       // Получаем сегодняшний и завтрашний день
       final today = _getTodayInRussian();
       final tomorrow = _getTomorrowInRussian();
-      
+
       // Устанавливаем сегодняшнее и завтрашнее расписание
       _cachedTodaySchedule = weeklySchedule[today] ?? [];
       _cachedTomorrowSchedule = weeklySchedule[tomorrow] ?? [];
-      
+
       _lastUpdate = DateTime.now();
 
       await _cacheDataSource.save(
@@ -156,7 +165,7 @@ class UnifiedScheduleRepository {
       if (envGroup.isNotEmpty) {
         return envGroup;
       }
-      
+
       // Если переменная окружения не задана, используем SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(_selectedGroupKey) ?? '';

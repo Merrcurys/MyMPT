@@ -1,10 +1,11 @@
-import 'package:my_mpt/data/services/schedule_parser_service.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_parser_remote_datasource.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ScheduleParserRepository implements ScheduleRepositoryInterface {
-  final ScheduleParserService _parserService = ScheduleParserService();
+  final ScheduleParserRemoteDatasource _parserService =
+      ScheduleParserRemoteDatasource();
 
   static const String _selectedGroupKey = 'selected_group';
 

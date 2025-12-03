@@ -1,7 +1,7 @@
-/// Модель группы
+/// Модель информации о группе
 ///
 /// Этот класс представляет собой информацию о группе,
-/// включая код группы и код специальности
+/// включая код группы и информацию о специальности
 class Group {
   /// Код группы
   final String code;
@@ -9,45 +9,35 @@ class Group {
   /// Код специальности
   final String specialtyCode;
 
-  /// Конструктор группы
+  /// Название специальности
+  final String specialtyName;
+
+  /// Конструктор информации о группе
   ///
   /// Параметры:
-  /// - [code]: Код группы (обязательный)
-  /// - [specialtyCode]: Код специальности (обязательный)
-  Group({required this.code, required this.specialtyCode});
-
-  /// Фабричный конструктор для создания группы из JSON
-  ///
-  /// Параметры:
-  /// - [json]: Представление группы в формате JSON
-  ///
-  /// Возвращает:
-  /// - Group: Объект группы
-  factory Group.fromJson(Map<String, dynamic> json) {
-    return Group(
-      code: json['code'] as String,
-      specialtyCode: json['specialtyCode'] as String,
-    );
-  }
-
-  /// Преобразует объект группы в JSON
-  ///
-  /// Возвращает:
-  /// Представление группы в формате JSON
-  Map<String, dynamic> toJson() {
-    return {'code': code, 'specialtyCode': specialtyCode};
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Group && runtimeType == other.runtimeType && code == other.code;
-
-  @override
-  int get hashCode => code.hashCode;
+  /// - [code]: Код группы
+  /// - [specialtyCode]: Код специальности
+  /// - [specialtyName]: Название специальности
+  Group({
+    required this.code,
+    required this.specialtyCode,
+    required this.specialtyName,
+  });
 
   @override
   String toString() {
-    return 'Group{code: $code, specialtyCode: $specialtyCode}';
+    return 'GroupInfo(code: $code, specialtyCode: $specialtyCode, specialtyName: $specialtyName)';
+  }
+
+  /// Преобразует объект информации о группе в JSON
+  ///
+  /// Возвращает:
+  /// Представление информации о группе в формате JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'code': code,
+      'specialtyCode': specialtyCode,
+      'specialtyName': specialtyName,
+    };
   }
 }

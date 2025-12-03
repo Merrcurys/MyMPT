@@ -19,8 +19,8 @@
 - **ScheduleRemoteDataSource** (`lib/data/datasources/schedule_remote_data_source.dart`): Загружает свежие данные с сайта техникума
 - **ScheduleCacheDataSource** (`lib/data/datasources/schedule_cache_data_source.dart`): Управляет локальным кэшем расписания
 
-#### 3. Сервисы
-- **ScheduleParserService** (`lib/data/services/schedule_parser_service.dart`): Координирует процесс парсинга
+#### 3. Источники данных
+- **ScheduleParserRemoteDatasource** (`lib/data/datasources/remote/schedule_parser_remote_datasource.dart`): Координирует процесс парсинга
 - **UnifiedScheduleRepository** (`lib/data/repositories/unified_schedule_repository.dart`): Единая точка доступа к данным расписания
 
 ## Система кэширования
@@ -272,7 +272,7 @@ UI-компоненты используют данные через:
 
 ### Основные компоненты системы замен
 
-#### 1. ReplacementService (`lib/data/services/replacement_service.dart`)
+#### 1. ReplacementRemoteDatasource (`lib/data/datasources/remote/replacement_remote_datasource.dart`)
 Сервис, отвечающий за парсинг изменений в расписании с сайта mpt.ru/izmeneniya-v-raspisanii/. Основные функции:
 - Загрузка HTML-страницы с изменениями в расписании
 - Парсинг изменений для конкретной группы

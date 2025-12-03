@@ -3,7 +3,7 @@ import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
 import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
@@ -202,7 +202,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
 
     final filteredChanges = _getFilteredScheduleChanges(pageTitle);
-    final callsData = CallsService.getCalls();
+    final callsData = CallsUtil.getCalls();
     final _ScheduleChangesResult changesResult = filteredChanges.isEmpty
         ? _ScheduleChangesResult(
             schedule: filteredScheduleData,

@@ -2,7 +2,7 @@
 ///
 /// Этот класс представляет собой замену в расписании,
 /// например, замену одного предмета на другой
-class ReplacementModel {
+class Replacement {
   /// Номер пары, к которой применяется изменение
   final String lessonNumber;
 
@@ -18,7 +18,7 @@ class ReplacementModel {
   /// Дата применения изменения
   final String changeDate;
 
-  /// Конструктор изменения в расписании
+  /// Конструктор замены в расписании
   ///
   /// Параметры:
   /// - [lessonNumber]: Номер пары (обязательный)
@@ -26,7 +26,7 @@ class ReplacementModel {
   /// - [replaceTo]: Новый предмет (обязательный)
   /// - [updatedAt]: Время добавления изменения (обязательный)
   /// - [changeDate]: Дата применения изменения (обязательный)
-  ReplacementModel({
+  Replacement({
     required this.lessonNumber,
     required this.replaceFrom,
     required this.replaceTo,

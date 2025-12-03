@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/data/models/call.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/presentation/widgets/calls/calls_header.dart';
 import 'package:my_mpt/presentation/widgets/calls/call_timeline_tile.dart';
 
@@ -18,7 +18,7 @@ class CallsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Call> callsData = CallsService.getCalls();
+    final List<Call> callsData = CallsUtil.getCalls();
 
     return Scaffold(
       backgroundColor: _backgroundColor,

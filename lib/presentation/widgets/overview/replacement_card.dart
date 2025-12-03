@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
-import 'package:my_mpt/data/services/calls_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 
 /// Виджет карточки изменения в расписании
 ///
@@ -225,7 +225,7 @@ _LessonTimes _lessonTimesForNumber(String lessonNumber) {
   String start = '--:--';
   String end = '--:--';
 
-  for (final call in CallsService.getCalls()) {
+  for (final call in CallsUtil.getCalls()) {
     if (call.period == sanitizedNumber) {
       start = call.startTime;
       end = call.endTime;

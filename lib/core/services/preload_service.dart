@@ -1,11 +1,11 @@
-import 'package:my_mpt/data/services/mpt_parser_service.dart';
+import 'package:my_mpt/data/datasources/remote/mpt_remote_datasource.dart';
 
 /// Сервис для предзагрузки данных при первом запуске приложения
 ///
 /// Этот сервис загружает все специальности и все группы,
 /// чтобы сохранить их в кэш для быстрого доступа
 class PreloadService {
-  final MptParserService _parserService = MptParserService();
+  final MptRemoteDatasource _parserService = MptRemoteDatasource();
 
   /// Предзагружает все специальности и группы
   ///
@@ -18,7 +18,7 @@ class PreloadService {
     try {
       // Загружаем все специальности (сохраняются в кэш автоматически)
       final specialties = await _parserService.parseTabList(forceRefresh: true);
-      
+
       // Для каждой специальности загружаем группы (сохраняются в кэш автоматически)
       // Используем await для последовательной загрузки, чтобы не перегружать сервер
       for (var specialty in specialties) {
@@ -51,4 +51,3 @@ class PreloadService {
     }
   }
 }
-

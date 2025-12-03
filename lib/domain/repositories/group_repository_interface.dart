@@ -1,4 +1,4 @@
-import '../entities/group.dart';
+import '../../data/models/group.dart';
 
 /// Интерфейс репозитория для работы с группами
 abstract class GroupRepositoryInterface {

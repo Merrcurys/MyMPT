@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart';
-import 'package:my_mpt/data/models/replacement_model.dart';
+import 'package:my_mpt/data/models/replacement.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для парсинга замен в расписании с сайта МПТ
 ///
 /// Этот сервис отвечает за извлечение информации о заменах в расписании
 /// с официального сайта техникума mpt.ru/izmeneniya-v-raspisanii/
-class ReplacementService {
+class ReplacementRemoteDatasource {
   /// Базовый URL страницы с изменениями в расписании
   final String baseUrl = 'https://mpt.ru/izmeneniya-v-raspisanii/';
 
@@ -34,7 +34,7 @@ class ReplacementService {
   ///
   /// Возвращает:
   /// Список замен в расписании для группы
-  Future<List<ReplacementModel>> parseScheduleChangesForGroup(
+  Future<List<Replacement>> parseScheduleChangesForGroup(
     String groupCode, {
     bool forceRefresh = false,
   }) async {
@@ -65,7 +65,7 @@ class ReplacementService {
         final document = parser.parse(response.body);
 
         // Создаем список для хранения замен
-        final List<ReplacementModel> changes = [];
+        final List<Replacement> changes = [];
 
         // Получаем сегодняшнюю и завтрашнюю даты для фильтрации замен
         final today = DateTime.now();
@@ -149,7 +149,7 @@ class ReplacementService {
 
                       // Создаем объект замены с пометкой о дате
                       changes.add(
-                        ReplacementModel(
+                        Replacement(
                           lessonNumber: lessonNumber,
                           replaceFrom: replaceFrom,
                           replaceTo: replaceTo,
@@ -184,7 +184,7 @@ class ReplacementService {
   }
 
   /// Получает кэшированные замены из хранилища
-  Future<List<ReplacementModel>?> _getCachedChanges(String groupCode) async {
+  Future<List<Replacement>?> _getCachedChanges(String groupCode) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cacheKey = '$_cacheKeyChanges${groupCode.hashCode}';
@@ -207,7 +207,7 @@ class ReplacementService {
           final List<dynamic> decoded = jsonDecode(cachedJson);
           return decoded
               .map(
-                (json) => ReplacementModel(
+                (json) => Replacement(
                   lessonNumber: json['lessonNumber'] as String,
                   replaceFrom: json['replaceFrom'] as String,
                   replaceTo: json['replaceTo'] as String,
@@ -231,7 +231,7 @@ class ReplacementService {
   /// Сохраняет замены в кэш
   Future<void> _saveCachedChanges(
     String groupCode,
-    List<ReplacementModel> changes,
+    List<Replacement> changes,
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();

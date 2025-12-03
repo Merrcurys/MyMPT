@@ -4,7 +4,7 @@ import 'package:my_mpt/data/models/call.dart';
 ///
 /// Этот класс предоставляет информацию о расписании звонков техникума
 /// и методы для расчета продолжительности перемен
-class CallsService {
+class CallsUtil {
   /// Статические данные о расписании звонков
   static final List<Call> _callsData = [
     Call(
