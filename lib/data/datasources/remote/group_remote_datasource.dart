@@ -221,7 +221,7 @@ class GroupRemoteDatasource {
         }
 
         // Парсим группы с помощью парсера, передавая фильтр специальности
-        final groups = _groupParser.parseGroups(document);
+        final groups = _groupParser.parseGroups(document, specialtyFilter);
 
         // Сохраняем в кэш
         await _saveCachedGroups(specialtyFilter, groups);

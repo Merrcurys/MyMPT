@@ -18,6 +18,16 @@ class GroupParser {
     // Создаем список для хранения информации о группах
     final List<Group> groups = [];
 
+    // Если задан фильтр специальности, ищем только соответствующий tabpanel
+    if (specialtyFilter != null && specialtyFilter.isNotEmpty) {
+      // Получаем список табов для поиска соответствия между specialtyFilter и ID
+      // Внимание: Этот метод должен вызываться извне с уже известными табами
+      // или мы должны передать табы как параметр
+
+      // Для простоты, продолжаем использовать общий подход, но фильтруем результаты
+      // В будущем можно оптимизировать, чтобы парсить только нужный tabpanel
+    }
+
     // Ищем все tabpanel элементы (более строгий селектор)
     final tabPanels = document.querySelectorAll('[role="tabpanel"]');
 
@@ -50,6 +60,17 @@ class GroupParser {
           groups.addAll(groupInfo);
         }
       }
+    }
+
+    // Если задан фильтр специальности, фильтруем результаты
+    if (specialtyFilter != null && specialtyFilter.isNotEmpty) {
+      groups.removeWhere((group) {
+        // Удаляем группы, которые не соответствуют фильтру
+        return !(group.specialtyName.contains(specialtyFilter) ||
+            specialtyFilter.contains(group.specialtyName) ||
+            group.specialtyCode.contains(specialtyFilter) ||
+            specialtyFilter.contains(group.specialtyCode));
+      });
     }
 
     return groups;
