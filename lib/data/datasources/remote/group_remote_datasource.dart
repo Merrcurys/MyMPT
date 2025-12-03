@@ -156,16 +156,19 @@ class GroupRemoteDatasource {
         String? targetId;
         for (var tab in tabs) {
           // Проверяем точное совпадение по имени таба
-          if (tab.name == specialtyFilter) {
-            targetId = tab.ariaControls;
+          if (tab['name'] == specialtyFilter) {
+            targetId = tab['ariaControls'];
             break;
           }
           // Проверяем совпадение по href (код специальности)
-          if (tab.href == specialtyFilter ||
-              tab.href == '#$specialtyFilter' ||
-              tab.href.replaceAll('#', '').replaceAll('-', '.').toUpperCase() ==
+          if (tab['href'] == specialtyFilter ||
+              tab['href'] == '#$specialtyFilter' ||
+              tab['href']!
+                      .replaceAll('#', '')
+                      .replaceAll('-', '.')
+                      .toUpperCase() ==
                   specialtyFilter) {
-            targetId = tab.ariaControls;
+            targetId = tab['ariaControls'];
             break;
           }
         }
@@ -174,19 +177,19 @@ class GroupRemoteDatasource {
         if (targetId == null) {
           for (var tab in tabs) {
             // Проверяем частичное совпадение по имени таба
-            if (tab.name.contains(specialtyFilter) ||
-                specialtyFilter.contains(tab.name)) {
-              targetId = tab.ariaControls;
+            if (tab['name']!.contains(specialtyFilter) ||
+                specialtyFilter.contains(tab['name']!)) {
+              targetId = tab['ariaControls'];
               break;
             }
             // Проверяем частичное совпадение по href
-            final normalizedHref = tab.href
+            final normalizedHref = tab['href']!
                 .replaceAll('#', '')
                 .replaceAll('-', '.')
                 .toUpperCase();
             if (normalizedHref.contains(specialtyFilter) ||
                 specialtyFilter.contains(normalizedHref)) {
-              targetId = tab.ariaControls;
+              targetId = tab['ariaControls'];
               break;
             }
           }

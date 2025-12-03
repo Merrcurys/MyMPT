@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
+import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
+import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
 import 'package:my_mpt/data/repositories/specialty_repository.dart';
 import 'package:my_mpt/data/repositories/group_repository.dart';
-import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
-import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/presentation/widgets/settings/error_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/section.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_card.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
 import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
-import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,7 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   late SpecialtyRepositoryInterface _specialtyRepository;
   late GroupRepositoryInterface _groupRepository;
-  late UnifiedScheduleRepository _repository;
+  late ScheduleRepository _repository;
   late ReplacementRepository _changesRepository;
 
   List<data_model.Specialty> _specialties = [];
@@ -49,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _specialtyRepository = SpecialtyRepository();
     _groupRepository = GroupRepository();
-    _repository = UnifiedScheduleRepository();
+    _repository = ScheduleRepository();
     _changesRepository = ReplacementRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
@@ -221,9 +221,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
-      // Обновляем расписание через unified repository
-      final repository = UnifiedScheduleRepository();
-      await repository.forceRefresh();
+      // Обновляем расписание через новый репозиторий
+      await _repository.refreshAllData();
 
       // Сохраняем время обновления
       final now = DateTime.now();
@@ -280,8 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (_selectedGroup != null) {
           final previouslySelected = sortedGroups.firstWhere(
             (group) => group.code == _selectedGroup!.code,
-            orElse: () =>
-                Group(code: '', specialtyCode: '', specialtyName: ''),
+            orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
           );
 
           if (previouslySelected.code.isNotEmpty) {
@@ -330,20 +328,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Обновляем расписание для новой группы
     try {
-      final repository = UnifiedScheduleRepository();
-      await repository.forceRefresh();
-      
+      await _repository.refreshAllData();
+
       // Сохраняем время обновления
       final now = DateTime.now();
       await prefs.setString(
         'last_schedule_update',
         now.millisecondsSinceEpoch.toString(),
       );
-      
+
       setState(() {
         _lastUpdate = now;
       });
-      
+
       if (context.mounted) {
         showSuccessNotification(
           context,

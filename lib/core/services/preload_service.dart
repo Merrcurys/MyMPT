@@ -30,7 +30,7 @@ class PreloadService {
         try {
           // Загружаем с forceRefresh = true для предзагрузки
           // Используем позиционный параметр forceRefresh
-          await _groupService.parseGroups(specialty.name, true);
+          await _groupService.parseGroups(specialty['name'], true);
           // Небольшая задержка между запросами, чтобы не перегружать сервер
           await Future.delayed(const Duration(milliseconds: 100));
         } catch (e) {

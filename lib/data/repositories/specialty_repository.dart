@@ -1,5 +1,4 @@
 import 'package:my_mpt/data/datasources/remote/speciality_remote_datasource.dart';
-import 'package:my_mpt/data/models/tab_info.dart';
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/entities/specialty.dart';
 
@@ -36,8 +35,8 @@ class SpecialtyRepository implements SpecialtyRepositoryInterface {
     }
   }
 
-  Specialty _createSpecialtyFromTab(TabInfo tab) {
-    String code = tab.href;
+  Specialty _createSpecialtyFromTab(Map<String, String> tab) {
+    String code = tab['href'] ?? '';
     if (code.startsWith('#specialty-')) {
       code = code
           .substring(11)
@@ -46,9 +45,9 @@ class SpecialtyRepository implements SpecialtyRepositoryInterface {
           .replaceAll('E', 'Э');
     }
 
-    String name = tab.name;
+    String name = tab['name'] ?? '';
     if (name.isEmpty) {
-      name = tab.ariaControls;
+      name = tab['ariaControls'] ?? '';
     }
 
     return Specialty(code: code, name: name);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
-import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
@@ -24,7 +24,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   static const _backgroundColor = Color(0xFF000000);
 
   /// Единое хранилище для работы с расписанием
-  late UnifiedScheduleRepository _repository;
+  late ScheduleRepository _repository;
 
   /// Хранилище для работы с изменениями в расписании
   late ReplacementRepository _changesRepository;
@@ -44,7 +44,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = UnifiedScheduleRepository();
+    _repository = ScheduleRepository();
     _changesRepository = ReplacementRepository();
 
     // Слушаем уведомления об обновлении данных
@@ -80,9 +80,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     try {
-      final weeklySchedule = await _repository.getWeeklySchedule(
-        forceRefresh: forceRefresh,
-      );
+      if (forceRefresh) {
+        await _repository.refreshAllData();
+      }
+
+      final weeklySchedule = await _repository.getWeeklySchedule();
       if (!mounted) return;
       setState(() {
         _weeklySchedule = weeklySchedule;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
-import 'package:my_mpt/data/repositories/unified_schedule_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
@@ -42,7 +42,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
   }
 
-  late UnifiedScheduleRepository _repository;
+  late ScheduleRepository _repository;
   late ReplacementRepository _changesRepository;
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
@@ -54,7 +54,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = UnifiedScheduleRepository();
+    _repository = ScheduleRepository();
     _changesRepository = ReplacementRepository();
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
 

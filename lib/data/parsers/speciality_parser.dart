@@ -1,5 +1,4 @@
 import 'package:html/dom.dart';
-import 'package:my_mpt/data/models/tab_info.dart';
 
 /// Парсер для извлечения списка вкладок специальностей из HTML-документа
 class SpecialityParser {
@@ -12,8 +11,8 @@ class SpecialityParser {
   /// - [document]: HTML-документ с расписанием
   ///
   /// Возвращает:
-  /// Список информации о вкладках специальностей
-  List<TabInfo> parse(Document document) {
+  /// Список информации о вкладках специальностей в виде Map
+  List<Map<String, String>> parse(Document document) {
     // Ищем элемент навигационного меню со списком вкладок (более строгий селектор)
     final tablist = document.querySelector('ul[role="tablist"]');
 
@@ -28,7 +27,7 @@ class SpecialityParser {
     );
 
     // Создаем список для хранения информации о вкладках
-    final List<TabInfo> tabs = [];
+    final List<Map<String, String>> tabs = [];
 
     // Проходим по всем вкладкам и извлекаем информацию
     for (var anchor in tabItems) {
@@ -42,7 +41,7 @@ class SpecialityParser {
           href.startsWith('#') &&
           ariaControls != null &&
           name.isNotEmpty) {
-        tabs.add(TabInfo(href: href, ariaControls: ariaControls, name: name));
+        tabs.add({'href': href, 'ariaControls': ariaControls, 'name': name});
       }
     }
 
