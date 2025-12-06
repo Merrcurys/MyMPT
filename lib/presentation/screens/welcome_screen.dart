@@ -412,6 +412,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               _currentPage = 0;
             });
           },
+          style: ButtonStyle(
+            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+          ),
           child: const Text(
             'Назад',
             style: TextStyle(color: Colors.white70, fontSize: 16),
@@ -527,6 +530,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               _currentPage = 1;
             });
           },
+          style: ButtonStyle(
+            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+          ),
           child: const Text(
             'Назад',
             style: TextStyle(color: Colors.white70, fontSize: 16),
