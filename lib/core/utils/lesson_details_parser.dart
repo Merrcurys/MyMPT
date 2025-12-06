@@ -99,16 +99,15 @@ LessonDetails parseLessonDetails(String raw) {
     );
   }
 
-  final initialsPattern = RegExp(
-    r'^(.+?)\s([A-Za-zА-Яа-яЁё]\.[A-Za-zА-Яа-яЁё]\.\s*[A-Za-zА-Яа-яЁё-]+)$',
-  );
-  final initialsMatch = initialsPattern.firstMatch(working);
-  if (initialsMatch != null) {
+  // Проверяем, содержит ли строка запятую вне скобок
+  final RegExp teacherSeparatorRegExp = RegExp(r'^(.+?)\s+([А-ЯA-Z]\.[А-ЯA-Z]\.?\s+[А-Яа-яA-Za-z-]+(?:,\s*[А-ЯA-Z]\.[А-ЯA-Z]\.?\s*[А-Яа-яA-Za-z-]+)*)$');
+  final teacherSeparatorMatch = teacherSeparatorRegExp.firstMatch(working);
+  if (teacherSeparatorMatch != null) {
     return LessonDetails(
       subject:
-          initialsMatch.group(1)!.trim() +
+          teacherSeparatorMatch.group(1)!.trim() +
           (specialEnding.isNotEmpty ? ' ($specialEnding)' : ''),
-      teacher: initialsMatch.group(2)!.trim(),
+      teacher: teacherSeparatorMatch.group(2)!.trim(),
       specialEnding: specialEnding,
     );
   }
