@@ -37,15 +37,16 @@ class SpecialtyRepository implements SpecialtyRepositoryInterface {
 
   Specialty _createSpecialtyFromTab(Map<String, String> tab) {
     String code = tab['href'] ?? '';
+    String name = tab['name'] ?? '';
+
     if (code.startsWith('#specialty-')) {
       code = code
           .substring(11)
-          .toUpperCase()
-          .replaceAll('-', '.')
-          .replaceAll('E', 'Э');
+          .toUpperCase();
+    } else if (code.startsWith('#')) {
+      code = name;
     }
 
-    String name = tab['name'] ?? '';
     if (name.isEmpty) {
       name = tab['ariaControls'] ?? '';
     }
@@ -55,6 +56,21 @@ class SpecialtyRepository implements SpecialtyRepositoryInterface {
 
   // Метод для получения имени специальности по коду из кэша
   String? getSpecialtyNameByCode(String code) {
-    return _codeToNameCache?[code];
+    // Сначала попробуем найти по ключу
+    final result = _codeToNameCache?[code];
+    if (result != null) {
+      return result;
+    }
+
+    // Если не нашли по ключу, попробуем найти по значению
+    if (_codeToNameCache != null) {
+      for (var entry in _codeToNameCache!.entries) {
+        if (entry.value == code) {
+          return entry.value;
+        }
+      }
+    }
+
+    return result;
   }
 }

@@ -94,6 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final selectedSpecialtyName = prefs.getString(
         '${_selectedSpecialtyKey}_name',
       );
+
       // Загружаем время последнего обновления
       final lastUpdateMillis = prefs.getString('last_schedule_update');
       if (lastUpdateMillis != null && lastUpdateMillis.isNotEmpty) {
@@ -108,11 +109,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         if (selectedGroupCode != null && selectedGroupCode.isNotEmpty) {
-          // Устанавливаем выбранную группу, она будет проверена в _loadGroups
+          // Устанавливаем выбранную группу
           _selectedGroup = Group(
             code: selectedGroupCode,
-            specialtyCode: '',
-            specialtyName: '',
+            specialtyCode: selectedSpecialtyCode ?? '',
+            specialtyName: selectedSpecialtyName ?? '',
           );
         }
 
@@ -263,7 +264,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadGroups(String specialtyCode) async {
     setState(() {
       _isLoading = true;
-      _groups = [];
     });
 
     try {
@@ -272,22 +272,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Порядок сортировки: сначала по специальности, затем по году (новые года выше), затем по номеру группы
       final sortedGroups = List<Group>.from(groups);
 
-      setState(() {
-        _groups = sortedGroups;
-        _isLoading = false;
+      // Загружаем выбранную группу, если она была сохранена
+      Group? selectedGroup;
+      if (_selectedGroup != null) {
+        // Проверяем, существует ли выбранная группа в новом списке
+        selectedGroup = sortedGroups.firstWhere(
+          (group) => group.code == _selectedGroup!.code,
+          orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
+        );
 
-        // Проверяем, была ли ранее выбрана группа
-        if (_selectedGroup != null) {
-          final previouslySelected = sortedGroups.firstWhere(
-            (group) => group.code == _selectedGroup!.code,
+        // Если группа не найдена, сбрасываем выбор
+        if (selectedGroup.code.isEmpty) {
+          selectedGroup = null;
+        }
+      } else {
+        // Проверяем, есть ли сохраненная группа в настройках
+        final prefs = await SharedPreferences.getInstance();
+        final savedGroupCode = prefs.getString(_selectedGroupKey);
+        if (savedGroupCode != null && savedGroupCode.isNotEmpty) {
+          selectedGroup = sortedGroups.firstWhere(
+            (group) => group.code == savedGroupCode,
             orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
           );
 
-          if (previouslySelected.code.isNotEmpty) {
-            _selectedGroup = previouslySelected;
-          } else {
-            _selectedGroup = null;
+          // Если группа не найдена, сбрасываем выбор
+          if (selectedGroup.code.isEmpty) {
+            selectedGroup = null;
           }
+        }
+      }
+
+      setState(() {
+        _groups = sortedGroups;
+        _isLoading = false;
+        // Обновляем выбранную группу только если она существует в новом списке
+        if (selectedGroup != null) {
+          _selectedGroup = selectedGroup;
         }
       });
     } catch (e) {
@@ -313,6 +333,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedGroup = null;
     });
 
+    // Сохраняем выбранную специальность в настройках
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedSpecialtyKey, specialty.code);
+    await prefs.setString('${_selectedSpecialtyKey}_name', specialty.name);
     await _loadGroups(specialty.code);
   }
 
