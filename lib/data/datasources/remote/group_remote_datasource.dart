@@ -14,8 +14,8 @@ class GroupRemoteDatasource {
   /// Базовый URL сайта с расписанием
   final String baseUrl = 'https://mpt.ru/raspisanie/';
 
-  /// Время жизни кэша (48 часов)
-  static const Duration _cacheTtl = Duration(hours: 48);
+  /// Время жизни кэша (24 часа)
+  static const Duration _cacheTtl = Duration(hours: 24);
 
   /// Парсер групп
   final GroupParser _groupParser = GroupParser();
