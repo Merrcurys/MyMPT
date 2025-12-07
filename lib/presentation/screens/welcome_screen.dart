@@ -24,9 +24,6 @@ class WelcomeScreen extends StatefulWidget {
 
 /// Состояние экрана приветствия
 class _WelcomeScreenState extends State<WelcomeScreen> {
-  /// Репозиторий для работы со специальностями и группами
-  late SpecialtyRepositoryInterface _repository;
-
   /// Сервис предзагрузки данных
   final PreloadService _preloadService = PreloadService();
 

@@ -14,8 +14,8 @@ class GroupRemoteDatasource {
   /// Базовый URL сайта с расписанием
   final String baseUrl = 'https://mpt.ru/raspisanie/';
 
-  /// Время жизни кэша (48 часов)
-  static const Duration _cacheTtl = Duration(hours: 48);
+  /// Время жизни кэша (24 часа)
+  static const Duration _cacheTtl = Duration(hours: 24);
 
   /// Парсер групп
   final GroupParser _groupParser = GroupParser();
@@ -208,16 +208,6 @@ class GroupRemoteDatasource {
         // Если не нашли tabpanel, возвращаем пустой список
         if (tabPanel == null) {
           return [];
-        }
-
-        // Ищем заголовок h2 с информацией о специальности (строгий селектор)
-        String specialtyFromContext = '';
-        final h2Header = tabPanel.querySelector('h2');
-        if (h2Header != null) {
-          final h2Text = h2Header.text.trim();
-          if (h2Text.startsWith('Расписание занятий для ')) {
-            specialtyFromContext = h2Text.substring(23).trim();
-          }
         }
 
         // Парсим группы с помощью парсера, передавая фильтр специальности

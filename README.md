@@ -20,6 +20,15 @@
       <img src="https://github.com/user-attachments/assets/71d756bb-83be-42cb-9032-5f2e34558ed8" alt="Demo" width="1000">      
 </p>
 
+## Документация
+
+Документация проекта находится в файле [DOCUMENTATION.md](https://github.com/Merrcurys/MyMPT/blob/main/docs/DOCUMENTATION.md). Она включает в себя:
+
+- Архитектуру проекта
+- Описание слоев данных, домена и представления
+- Информацию о хранении и обновлении расписаний, замен, групп и специальностей
+- Подробные сведения о механизмах кэширования
+
 ## Установка приложения
 
 Приложение доступно в RuStore	- [<img align="center" height="45" alt="logo-color-dark" src="https://github.com/user-attachments/assets/bd6014bd-a5c7-4130-bd31-80c8b57e13a2" />](https://www.rustore.ru/catalog/app/ru.merrcurys.my_mpt)

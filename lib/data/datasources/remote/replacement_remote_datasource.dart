@@ -16,11 +16,8 @@ class ReplacementRemoteDatasource {
   /// Парсер замен
   final ReplacementParser _replacementParser = ReplacementParser();
 
-  /// Время жизни кэша (5 часов для замен)
-  static const Duration _cacheTtl = Duration(hours: 5);
-
-  /// Время начала обновления кэша (6:00 утра)
-  static const int _cacheUpdateStartHour = 6;
+  /// Время жизни кэша (15 минут для замен)
+  static const Duration _cacheTtl = Duration(minutes: 15);
 
   /// Ключи для кэширования
   static const String _cacheKeyChanges = 'replacements_';

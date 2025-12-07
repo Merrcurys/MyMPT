@@ -121,7 +121,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         _scheduleChanges = scheduleChanges;
       });
-    } catch (e) {}
+    } catch (e) {
+      // Игнорируем ошибки при загрузке изменений
+    }
   }
 
   @override
@@ -319,7 +321,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
                               lessonStartTime = call.startTime;
                               lessonEndTime = call.endTime;
                             }
-                          } catch (e) {}
+                          } catch (e) {
+                            // Игнорируем ошибки парсинга
+                          }
 
                           final widgets = <Widget>[
                             LessonCard(
@@ -346,7 +350,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
                                 final nextCall = callsData[nextPeriodInt - 1];
                                 nextLessonStartTime = nextCall.startTime;
                               }
-                            } catch (e) {}
+                            } catch (e) {
+                              // Игнорируем ошибки парсинга
+                            }
 
                             widgets.add(
                               BreakIndicator(

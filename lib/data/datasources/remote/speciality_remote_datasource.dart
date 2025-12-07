@@ -19,7 +19,7 @@ class SpecialityRemoteDatasource {
   SpecialityRemoteDatasource({
     http.Client? client,
     this.baseUrl = 'https://mpt.ru/raspisanie/',
-    this.cacheTtl = const Duration(hours: 1),
+    this.cacheTtl = const Duration(hours: 24),
     SpecialityParser? specialityParser,
   }) : _client = client ?? http.Client(),
        _specialityParser = specialityParser ?? SpecialityParser();

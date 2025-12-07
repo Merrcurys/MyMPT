@@ -12,7 +12,6 @@ import 'package:my_mpt/presentation/widgets/settings/settings_card.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
 import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
-import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -29,16 +28,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late SpecialtyRepositoryInterface _specialtyRepository;
   late GroupRepositoryInterface _groupRepository;
   late ScheduleRepository _repository;
-  late ReplacementRepository _changesRepository;
 
   List<data_model.Specialty> _specialties = [];
   List<Group> _groups = [];
   data_model.Specialty? _selectedSpecialty;
   Group? _selectedGroup;
-  String? _selectedSpecialtyCode;
   bool _isLoading = false;
   bool _isRefreshing = false;
-  StateSetter? _modalStateSetter;
   DateTime? _lastUpdate;
 
   static const String _selectedGroupKey = 'selected_group';
@@ -50,7 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _specialtyRepository = SpecialtyRepository();
     _groupRepository = GroupRepository();
     _repository = ScheduleRepository();
-    _changesRepository = ReplacementRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
   }
@@ -75,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isLoading = false;
       });
-      if (context.mounted) {
+      if (mounted) {
         showErrorNotification(
           context,
           'Ошибка загрузки',
@@ -104,7 +99,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               int.parse(lastUpdateMillis),
             );
           } else {}
-        } catch (e) {}
+        } catch (e) {
+          // Игнорируем ошибку парсинга даты
+        }
       }
 
       setState(() {
@@ -118,8 +115,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
 
         if (selectedSpecialtyCode != null && selectedSpecialtyCode.isNotEmpty) {
-          _selectedSpecialtyCode = selectedSpecialtyCode;
-
           if (selectedSpecialtyName != null &&
               selectedSpecialtyName.isNotEmpty) {
             _selectedSpecialty = data_model.Specialty(
@@ -147,7 +142,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
         }
       });
-    } catch (e) {}
+    } catch (e) {
+      // Игнорируем ошибки при загрузке предпочтений
+    }
   }
 
   /// Получает текст для отображения времени последнего обновления
@@ -208,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final selectedGroupCode = prefs.getString(_selectedGroupKey);
 
       if (selectedGroupCode == null || selectedGroupCode.isEmpty) {
-        if (context.mounted) {
+        if (mounted) {
           showInfoNotification(
             context,
             'Выберите группу',
@@ -237,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isRefreshing = false;
       });
 
-      if (context.mounted) {
+      if (mounted) {
         showSuccessNotification(
           context,
           'Расписание обновлено',
@@ -250,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isRefreshing = false;
       });
 
-      if (context.mounted) {
+      if (mounted) {
         showErrorNotification(
           context,
           'Ошибка обновления',
@@ -314,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isLoading = false;
       });
-      if (context.mounted) {
+      if (mounted) {
         showErrorNotification(
           context,
           'Ошибка загрузки',
@@ -328,7 +325,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _onSpecialtySelected(data_model.Specialty specialty) async {
     setState(() {
       _selectedSpecialty = specialty;
-      _selectedSpecialtyCode = specialty.code;
       _groups = [];
       _selectedGroup = null;
     });
@@ -374,7 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _repository.dataUpdatedNotifier.value =
             !_repository.dataUpdatedNotifier.value;
 
-        if (context.mounted) {
+        if (mounted) {
           showSuccessNotification(
             context,
             'Группа выбрана',
@@ -383,7 +379,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
       } catch (e) {
-        if (context.mounted) {
+        if (mounted) {
           showErrorNotification(
             context,
             'Группа выбрана',
@@ -393,7 +389,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         showErrorNotification(
           context,
           'Ошибка',
@@ -563,7 +559,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final Uri supportUri = Uri.parse('https://telegram.me/MptSupportBot');
     if (!await launchUrl(supportUri)) {
       // Показываем сообщение об ошибке, если не удалось открыть ссылку
-      if (context.mounted) {
+      if (mounted) {
         showErrorNotification(
           context,
           'Ошибка',
@@ -643,9 +639,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            // Сохраняем StateSetter для обновления состояния модального окна
-            _modalStateSetter = setModalState;
-
             return Container(
               height: MediaQuery.of(context).size.height * 0.6,
               decoration: const BoxDecoration(
