@@ -345,46 +345,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedGroup = group;
     });
 
-    // Сохраняем выбранную группу в настройках
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedGroupKey, group.code);
-    await prefs.setString(_selectedSpecialtyKey, group.specialtyCode);
-    await prefs.setString('${_selectedSpecialtyKey}_name', group.specialtyName);
-
-    // Обновляем расписание для новой группы
     try {
-      await _repository.refreshAllData();
-
-      // Сохраняем время обновления
-      final now = DateTime.now();
+      // Сохраняем выбранную группу в настройках
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedGroupKey, group.code);
+      await prefs.setString(_selectedSpecialtyKey, group.specialtyCode);
       await prefs.setString(
-        'last_schedule_update',
-        now.millisecondsSinceEpoch.toString(),
+        '${_selectedSpecialtyKey}_name',
+        group.specialtyName,
       );
 
-      setState(() {
-        _lastUpdate = now;
-      });
+      // Обновляем расписание для новой группы
+      try {
+        await _repository.refreshAllData();
 
-      // Отправляем уведомление об обновлении данных всем слушателям
-      _repository.dataUpdatedNotifier.value =
-          !_repository.dataUpdatedNotifier.value;
-
-      if (context.mounted) {
-        showSuccessNotification(
-          context,
-          'Группа выбрана',
-          'Выбрана группа ${group.code}. Расписание обновлено.',
-          Icons.check_circle_outline,
+        // Сохраняем время обновления
+        final now = DateTime.now();
+        await prefs.setString(
+          'last_schedule_update',
+          now.millisecondsSinceEpoch.toString(),
         );
+
+        setState(() {
+          _lastUpdate = now;
+        });
+
+        // Отправляем уведомление об обновлении данных всем слушателям
+        _repository.dataUpdatedNotifier.value =
+            !_repository.dataUpdatedNotifier.value;
+
+        if (context.mounted) {
+          showSuccessNotification(
+            context,
+            'Группа выбрана',
+            'Выбрана группа ${group.code}. Расписание обновлено.',
+            Icons.check_circle_outline,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          showErrorNotification(
+            context,
+            'Группа выбрана',
+            'Выбрана группа ${group.code}, но произошла ошибка при обновлении расписания.',
+            Icons.warning,
+          );
+        }
       }
     } catch (e) {
       if (context.mounted) {
         showErrorNotification(
           context,
-          'Группа выбрана',
-          'Выбрана группа ${group.code}, но произошла ошибка при обновлении расписания.',
-          Icons.warning,
+          'Ошибка',
+          'Произошла ошибка при выборе группы.',
+          Icons.error_outline,
         );
       }
     }
@@ -518,7 +532,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Версия: 0.1.2',
+                  'Версия: 0.1.3',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
