@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' show parse;
-import 'package:html/dom.dart';
 import 'package:my_mpt/data/parsers/speciality_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

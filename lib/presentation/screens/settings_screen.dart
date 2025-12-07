@@ -342,6 +342,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _lastUpdate = now;
       });
 
+      // Отправляем уведомление об обновлении данных всем слушателям
+      _repository.dataUpdatedNotifier.value =
+          !_repository.dataUpdatedNotifier.value;
+
       if (context.mounted) {
         showSuccessNotification(
           context,
