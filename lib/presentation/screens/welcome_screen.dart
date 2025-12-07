@@ -413,7 +413,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             });
           },
           style: ButtonStyle(
-            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+            overlayColor: WidgetStateProperty.all<Color>(Colors.white30),
           ),
           child: const Text(
             'Назад',
@@ -531,7 +531,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             });
           },
           style: ButtonStyle(
-            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+            overlayColor: WidgetStateProperty.all<Color>(Colors.white30),
           ),
           child: const Text(
             'Назад',
