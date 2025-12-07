@@ -72,20 +72,6 @@ class GroupRepository implements GroupRepositoryInterface {
     return componentsA.number.compareTo(componentsB.number);
   }
 
-  /// Получает первую часть кода группы для составных названий
-  String _getFirstGroupCode(String groupCode) {
-    // Если есть разделители, берем первую часть
-    final separators = [',', ';', '/'];
-    for (final separator in separators) {
-      final index = groupCode.indexOf(separator);
-      if (index != -1) {
-        return groupCode.substring(0, index).trim();
-      }
-    }
-    // Если нет разделителей, возвращаем весь код
-    return groupCode;
-  }
-
   /// Извлекает компоненты из кода группы в формате Специальность-Номер-Год
   _GroupComponents _parseGroupCode(String groupCode) {
     // По умолчанию значения

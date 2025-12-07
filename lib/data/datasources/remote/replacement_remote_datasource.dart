@@ -19,9 +19,6 @@ class ReplacementRemoteDatasource {
   /// Время жизни кэша (5 часов для замен)
   static const Duration _cacheTtl = Duration(hours: 5);
 
-  /// Время начала обновления кэша (6:00 утра)
-  static const int _cacheUpdateStartHour = 6;
-
   /// Ключи для кэширования
   static const String _cacheKeyChanges = 'replacements_';
   static const String _cacheKeyChangesTimestamp = 'replacements_timestamp_';

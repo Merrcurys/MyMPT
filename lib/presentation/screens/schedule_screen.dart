@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
-import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/presentation/widgets/schedule/schedule_header.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
@@ -26,14 +24,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   /// Единое хранилище для работы с расписанием
   late ScheduleRepository _repository;
 
-  /// Хранилище для работы с изменениями в расписании
-  late ReplacementRepository _changesRepository;
-
   /// Недельное расписание
   Map<String, List<Schedule>> _weeklySchedule = {};
-
-  /// Изменения в расписании
-  List<Replacement> _scheduleChanges = [];
 
   /// Флаг загрузки данных
   bool _isLoading = false;
@@ -45,7 +37,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void initState() {
     super.initState();
     _repository = ScheduleRepository();
-    _changesRepository = ReplacementRepository();
 
     // Слушаем уведомления об обновлении данных
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
@@ -105,15 +96,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
       return;
     }
-
-    try {
-      final scheduleChanges = await _changesRepository.getScheduleChanges();
-
-      if (!mounted) return;
-      setState(() {
-        _scheduleChanges = scheduleChanges;
-      });
-    } catch (_) {}
   }
 
   @override

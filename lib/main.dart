@@ -13,7 +13,7 @@ void main() {
       runApp(const MyApp());
     },
     (e, st) {
-      print("Error catched in main thread $e");
+      // Игнорируем необработанные ошибки
     },
   );
 }
@@ -35,7 +35,6 @@ class MyApp extends StatelessWidget {
           secondary: Color(0xFFFFA500),
           tertiary: Color(0xFFFFB347),
           surface: Color(0xFF121212),
-          background: Color(0xFF000000),
         ),
         textTheme: ThemeData.dark().textTheme.apply(
           bodyColor: Colors.white,
@@ -52,21 +51,21 @@ class MyApp extends StatelessWidget {
           height: 80,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           elevation: 0,
-          iconTheme: MaterialStateProperty.resolveWith<IconThemeData>(
+          iconTheme: WidgetStateProperty.resolveWith<IconThemeData>(
             (states) => IconThemeData(
-              color: states.contains(MaterialState.selected)
+              color: states.contains(WidgetState.selected)
                   ? Colors.white
                   : Colors.white70,
             ),
           ),
-          labelTextStyle: MaterialStateProperty.resolveWith<TextStyle>(
+          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
             (states) => TextStyle(
               fontSize: 11,
-              fontWeight: states.contains(MaterialState.selected)
+              fontWeight: states.contains(WidgetState.selected)
                   ? FontWeight.w600
                   : FontWeight.w500,
               letterSpacing: 0.1,
-              color: states.contains(MaterialState.selected)
+              color: states.contains(WidgetState.selected)
                   ? Colors.white
                   : Colors.white60,
             ),
