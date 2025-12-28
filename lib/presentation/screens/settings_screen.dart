@@ -12,6 +12,8 @@ import 'package:my_mpt/presentation/widgets/settings/settings_card.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
 import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/services/update_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -48,6 +50,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _repository = ScheduleRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
+  }
+
+  /// Check if an update is available
+  Future<bool> _isUpdateAvailable() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('update_available') ?? false;
+  }
+
+  /// Open the update page
+  Future<void> _openUpdatePage() async {
+    final updateService = UpdateService();
+    await updateService.openAppStore();
+    
+    // Mark that the update notification has been shown
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('update_available');
   }
 
   Future<void> _loadSpecialties() async {
@@ -412,6 +430,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const SettingsHeader(),
               const SizedBox(height: 28),
+              // Update notification banner
+              FutureBuilder<bool>(
+                future: _isUpdateAvailable(),
+                builder: (context, snapshot) {
+                  if (snapshot.data == true) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF8C00).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.update, color: Color(0xFFFF8C00)),
+                        title: const Text(
+                          'Доступно обновление',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Установите новую версию приложения',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        trailing: ElevatedButton(
+                          onPressed: _openUpdatePage,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF8C00),
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Обновить'),
+                        ),
+                        onTap: _openUpdatePage,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               const Section(title: 'Учебная группа'),
               const SizedBox(height: 14),
               SettingsCard(
@@ -449,6 +509,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 28),
               const Section(title: 'Дополнительно'),
+              const SizedBox(height: 14),
+              SettingsCard(
+                title: 'Напоминания о заменах',
+                subtitle: 'Получать напоминания о заменах в расписании',
+                icon: Icons.notifications_outlined,
+                trailing: FutureBuilder<bool>(
+                  future: NotificationService().areRemindersEnabled(),
+                  builder: (context, snapshot) {
+                    bool isEnabled = snapshot.data ?? true;
+                    return Switch(
+                      value: isEnabled,
+                      onChanged: (value) async {
+                        await NotificationService().setRemindersEnabled(value);
+                        setState(() {}); // Update the UI
+                      },
+                      activeColor: const Color(0xFFFF8C00),
+                    );
+                  },
+                ),
+              ),
               const SizedBox(height: 14),
               GestureDetector(
                 onTap: _showAboutDialog,

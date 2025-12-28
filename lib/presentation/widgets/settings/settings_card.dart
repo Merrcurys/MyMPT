@@ -8,6 +8,8 @@ class SettingsCard extends StatefulWidget {
   final VoidCallback? onTap;
   final bool isRefreshing;
 
+  final Widget? trailing;
+
   const SettingsCard({
     super.key,
     required this.title,
@@ -15,6 +17,7 @@ class SettingsCard extends StatefulWidget {
     required this.icon,
     this.onTap,
     this.isRefreshing = false,
+    this.trailing,
   });
 
   @override
@@ -102,20 +105,18 @@ class _SettingsCardState extends State<SettingsCard>
                 ],
               ),
             ),
-            widget.isRefreshing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(
-                    widget.onTap != null ? Icons.arrow_forward_ios : null,
-                    size: 16,
-                    color: Colors.white54,
-                  ),
+            if (widget.trailing != null) ...[
+              const SizedBox(width: 8),
+              widget.trailing!,
+            ] else if (widget.isRefreshing) ...[
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white,)),
+            ] else ...[
+              Icon(
+                widget.onTap != null ? Icons.arrow_forward_ios : null,
+                size: 16,
+                color: Colors.white54,
+              ),
+            ],
           ],
         ),
       ),

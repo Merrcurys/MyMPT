@@ -4,10 +4,30 @@ import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/services/background_replacement_checker.dart';
+import 'package:my_mpt/core/services/update_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
 import 'dart:async';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
+  
+  final backgroundChecker = BackgroundReplacementChecker();
+  backgroundChecker.startChecking();
+  
+  // Check for updates
+  final updateService = UpdateService();
+  final hasUpdate = await updateService.isNewVersionAvailable();
+  
+  if (hasUpdate) {
+    // Store update availability for showing in the UI
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('update_available', true);
+  }
+  
   runZonedGuarded(
     () {
       runApp(const MyApp());

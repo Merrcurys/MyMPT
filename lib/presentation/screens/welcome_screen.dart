@@ -264,7 +264,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           const SizedBox(height: 30),
           const Text(
-            'Мы рады, что вы выбрали именно этот техникум для обучения. Мы разработали это приложение, чтобы вам было более комфортно смотреть расписание.',
+            'Мы рады, что вы выбрали именно этот техникум для обучения. Мы разработали это приложение, чтобы вам было удобнее смотреть расписание.',
             style: TextStyle(fontSize: 16, color: Colors.white70, height: 1.5),
             textAlign: TextAlign.center,
           ),
