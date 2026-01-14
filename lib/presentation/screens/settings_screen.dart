@@ -528,7 +528,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Версия: 0.1.3',
+                  'Версия: 0.1.4',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

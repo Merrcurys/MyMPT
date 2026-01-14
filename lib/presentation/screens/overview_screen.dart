@@ -6,7 +6,7 @@ import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
-import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
+import 'package:my_mpt/presentation/widgets/shared/location.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/overview/replacement_card.dart';
@@ -260,7 +260,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                       Flexible(
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: BuildingChip(
+                          child: Location(
                             label: building,
                             showOverrideIndicator: hasBuildingOverride,
                           ),

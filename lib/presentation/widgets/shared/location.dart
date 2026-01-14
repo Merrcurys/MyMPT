@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 ///
 /// Этот виджет отображает информацию о корпусе проведения занятий
 /// с цветовой индикацией в зависимости от названия корпуса
-class BuildingChip extends StatelessWidget {
+class Location extends StatelessWidget {
   /// Название корпуса
   final String label;
   final bool showOverrideIndicator;
 
-  const BuildingChip({
+  const Location({
     super.key,
     required this.label,
     this.showOverrideIndicator = false,

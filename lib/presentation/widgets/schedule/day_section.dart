@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/presentation/widgets/shared/building_chip.dart';
+import 'package:my_mpt/presentation/widgets/shared/location.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/schedule/numerator_denominator_card.dart';
@@ -213,7 +213,7 @@ class DaySection extends StatelessWidget {
               Flexible(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: BuildingChip(label: building),
+                  child: Location(label: building),
                 ),
               ),
             ],
