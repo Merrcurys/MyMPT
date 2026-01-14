@@ -44,31 +44,31 @@ class DateFormatter {
   }
 
   /// Определяет тип недели (числитель/знаменатель) на основе даты
-  ///
-  /// Номер недели начинается с первого дня учебы (1 сентября).
-  /// Первый день учебы всегда 1 сентября.
-  ///
-  /// Параметры:
-  /// - [date]: Дата для определения типа недели
-  ///
   /// Возвращает:
   /// - String: Тип недели ('Числитель' или 'Знаменатель')
   static String getWeekType(DateTime date) {
-    // Определяем начало учебного года
-    final startOfYear = DateTime(date.year, 9, 1);
+    final normalizedDate = DateTime(date.year, date.month, date.day);
 
-    // Если сейчас до сентября, значит учебный год начался в прошлом году
-    final startDate = date.month < 9
-        ? DateTime(date.year - 1, 9, 1)
-        : startOfYear;
+    DateTime startDate;
+    if (normalizedDate.month < 9) {
+      startDate = DateTime(date.year, 1, 1);
+    } else {
+      startDate = DateTime(date.year, 9, 1);
+    }
 
-    // Вычисляем количество дней между датой и началом учебного года
-    final difference = date.difference(startDate).inDays;
+    // Находим понедельник первой учебной недели (самый простой способ)
+    final firstMonday = startDate.subtract(
+      Duration(days: startDate.weekday - 1),
+    );
 
-    // Вычисляем номер недели (начинается с 0)
-    final weekNumber = (difference ~/ 7);
+    // Находим понедельник текущей недели
+    final currentMonday = normalizedDate.subtract(
+      Duration(days: normalizedDate.weekday - 1),
+    );
 
-    // Определяем тип недели: четные недели - числитель, нечетные - знаменатель
-    return weekNumber.isEven ? 'Числитель' : 'Знаменатель';
+    // Считаем количество недель от первого понедельника
+    final weekNumber = currentMonday.difference(firstMonday).inDays ~/ 7 + 1;
+
+    return weekNumber % 2 == 1 ? 'Числитель' : 'Знаменатель';
   }
 }
