@@ -14,7 +14,8 @@ dependencies:
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.0
   flutter_local_notifications: ^18.0.1
-  workmanager: ^0.5.2
+  flutter_background_service: ^5.0.5
+  flutter_background_service_android: ^6.0.0
 
 dev_dependencies:
   flutter_test:
