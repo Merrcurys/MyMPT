@@ -13,6 +13,8 @@ dependencies:
   html: ^0.15.0
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.0
+  flutter_local_notifications: ^18.0.1
+  workmanager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,7 @@ import 'package:my_mpt/core/utils/lesson_details_parser.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
 import 'package:my_mpt/presentation/widgets/shared/location.dart';
@@ -121,6 +122,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         _scheduleChanges = scheduleChanges;
       });
+
+      // Обновляем сохраненные замены в сервисе уведомлений,
+      // чтобы не отправлять уведомления о заменах, которые пользователь уже видел
+      final notificationService = NotificationService();
+      await notificationService.updateLastCheckedReplacements();
     } catch (e) {
       // Игнорируем ошибки при загрузке изменений
     }

@@ -4,10 +4,21 @@ import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/services/background_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Инициализируем сервис уведомлений
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
+  // Инициализируем фоновые задачи
+  await initializeBackgroundTasks();
+
   runZonedGuarded(
     () {
       runApp(const MyApp());
