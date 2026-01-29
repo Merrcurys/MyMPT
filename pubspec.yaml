@@ -17,6 +17,7 @@ dependencies:
   flutter_background_service: ^5.0.5
   flutter_background_service_android: ^6.0.0
   package_info_plus: ^9.0.0
+  flutter_rustore_update: ^10.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:my_mpt/core/services/background_task.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/services/rustore_update_ui.dart';
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
+import 'package:my_mpt/presentation/screens/overview_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
-import 'package:my_mpt/presentation/screens/overview_screen.dart';
-import 'package:my_mpt/core/services/notification_service.dart';
-import 'package:my_mpt/core/services/background_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,9 +50,9 @@ class MyApp extends StatelessWidget {
           surface: Color(0xFF121212),
         ),
         textTheme: ThemeData.dark().textTheme.apply(
-          bodyColor: Colors.white,
-          displayColor: Colors.white,
-        ),
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -101,6 +103,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _isFirstLaunch = true;
   bool _isLoading = true;
 
+  bool _updateChecked = false;
+
   final List<Widget> _screens = const [
     OverviewScreen(),
     ScheduleScreen(),
@@ -147,6 +151,14 @@ class _MainScreenState extends State<MainScreen> {
 
     if (_isFirstLaunch) {
       return WelcomeScreen(onSetupComplete: _onSetupComplete);
+    }
+
+    // При открытии приложения запускаем RuStore UI update flow (1 раз за запуск)
+    if (!_updateChecked) {
+      _updateChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        RuStoreUpdateUi.checkAndRunDeferredUpdate();
+      });
     }
 
     return Scaffold(
