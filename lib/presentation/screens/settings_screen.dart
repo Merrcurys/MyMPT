@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
-import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
-import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
-import 'package:my_mpt/data/repositories/specialty_repository.dart';
 import 'package:my_mpt/data/repositories/group_repository.dart';
+import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/data/repositories/specialty_repository.dart';
+import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
+import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/presentation/widgets/settings/error_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 import 'package:my_mpt/presentation/widgets/settings/section.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_card.dart';
 import 'package:my_mpt/presentation/widgets/settings/settings_header.dart';
 import 'package:my_mpt/presentation/widgets/settings/success_notification.dart';
-import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -37,6 +39,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isRefreshing = false;
   DateTime? _lastUpdate;
 
+  // Версия приложения (пример: 0.1.4 (5))
+  String _appVersion = '—';
+
   static const String _selectedGroupKey = 'selected_group';
   static const String _selectedSpecialtyKey = 'selected_specialty';
 
@@ -48,6 +53,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _repository = ScheduleRepository();
     _loadSpecialties();
     _loadSelectedPreferences();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+
+      setState(() {
+        // Хотим формат: 0.1.4 (5)
+        final build = info.buildNumber.trim();
+        _appVersion = build.isEmpty ? info.version : '${info.version} ($build)';
+      });
+    } catch (e) {
+      // Игнорируем ошибки
+    }
   }
 
   Future<void> _loadSpecialties() async {
@@ -370,6 +391,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _repository.dataUpdatedNotifier.value =
             !_repository.dataUpdatedNotifier.value;
 
+        // --- ВАЖНО: после смены группы сразу проверяем замены и можем уведомить,
+        // --- если они уже есть (не ждём фонового таймера).
+        try {
+          final notificationService = NotificationService();
+          await notificationService.initialize();
+          await notificationService.checkForNewReplacements(
+            notifyIfFirstCheck: true,
+          );
+        } catch (e) {
+          // Игнорируем ошибки уведомлений
+        }
+
         if (mounted) {
           showSuccessNotification(
             context,
@@ -416,8 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 14),
               SettingsCard(
                 title: 'Выберите свою специальность',
-                subtitle:
-                    _selectedSpecialty?.name ?? 'Специальность не выбрана',
+                subtitle: _selectedSpecialty?.name ?? 'Специальность не выбрана',
                 icon: Icons.book_outlined,
                 onTap: _showSpecialtySelector,
               ),
@@ -527,9 +559,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Версия: 0.1.4',
-                  style: TextStyle(
+                Text(
+                  'Версия: $_appVersion',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -597,9 +629,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Выберите специальность',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
               Expanded(
@@ -661,9 +693,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Text(
                       'Выберите группу',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                   Expanded(
@@ -674,28 +706,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           )
                         : _groups.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Группы не найдены',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: _groups.length,
-                            itemBuilder: (context, index) {
-                              final group = _groups[index];
-                              return ListTile(
-                                title: Text(
-                                  group.code,
-                                  style: const TextStyle(color: Colors.white),
+                            ? const Center(
+                                child: Text(
+                                  'Группы не найдены',
+                                  style: TextStyle(color: Colors.white70),
                                 ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _onGroupSelected(group);
+                              )
+                            : ListView.builder(
+                                itemCount: _groups.length,
+                                itemBuilder: (context, index) {
+                                  final group = _groups[index];
+                                  return ListTile(
+                                    title: Text(
+                                      group.code,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _onGroupSelected(group);
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
+                              ),
                   ),
                 ],
               ),
