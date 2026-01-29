@@ -62,9 +62,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       setState(() {
-        // Хотим формат: 0.1.4 (5)
-        final build = info.buildNumber.trim();
-        _appVersion = build.isEmpty ? info.version : '${info.version} ($build)';
+        // Формат: 0.0.0
+        _appVersion = info.version;
       });
     } catch (e) {
       // Игнорируем ошибки
@@ -556,6 +555,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   '• Симернин Матвей Александрович',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Студент группы СА-2-24:',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '• Посёлов Иван Павлович',
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 16),

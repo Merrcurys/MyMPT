@@ -30,7 +30,9 @@ class NotificationService {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -55,8 +57,10 @@ class NotificationService {
       importance: Importance.high,
     );
 
-    final androidImpl = _notifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidImpl?.createNotificationChannel(channel);
 
     // Запрашиваем разрешения для Android 13+
@@ -71,40 +75,14 @@ class NotificationService {
     // Можно добавить навигацию к экрану с заменами
   }
 
-  /// Быстрый тест: должен показать уведомление сразу
-  Future<void> showTestNotification() async {
-    await initialize();
-
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-
-    await _notifications.show(
-      9999,
-      'Тест уведомлений',
-      'Если ты это видишь — канал/разрешения ок',
-      details,
-    );
-  }
-
   /// Проверяет новые замены и отправляет уведомления
   ///
   /// notifyIfFirstCheck:
   /// - false: первая проверка просто сохраняет состояние, не уведомляет (как было)
   /// - true: если это первая проверка и замены не пустые, уведомляем сразу (для сценария смены группы)
-  Future<void> checkForNewReplacements({bool notifyIfFirstCheck = false}) async {
+  Future<void> checkForNewReplacements({
+    bool notifyIfFirstCheck = false,
+  }) async {
     try {
       await initialize();
 
@@ -114,8 +92,8 @@ class NotificationService {
           prefs.getBool(_notificationsEnabledKey) ?? true;
       if (!notificationsEnabled) return;
 
-      final currentReplacements =
-          await _replacementRepository.getScheduleChanges();
+      final currentReplacements = await _replacementRepository
+          .getScheduleChanges();
 
       final lastCheckedReplacements = await _getLastCheckedReplacements();
 
@@ -127,8 +105,10 @@ class NotificationService {
         return;
       }
 
-      final newReplacements =
-          _findNewReplacements(currentReplacements, lastCheckedReplacements);
+      final newReplacements = _findNewReplacements(
+        currentReplacements,
+        lastCheckedReplacements,
+      );
 
       if (newReplacements.isNotEmpty) {
         await _showReplacementNotification(newReplacements);
@@ -147,8 +127,9 @@ class NotificationService {
   ) {
     if (lastChecked.isEmpty) return [];
 
-    final lastCheckedHashes =
-        lastChecked.map((r) => _getReplacementHash(r)).toSet();
+    final lastCheckedHashes = lastChecked
+        .map((r) => _getReplacementHash(r))
+        .toSet();
 
     return current.where((replacement) {
       final hash = _getReplacementHash(replacement);
@@ -165,8 +146,9 @@ class NotificationService {
   Future<void> _showReplacementNotification(List<Replacement> reps) async {
     final count = reps.length;
 
-    final title =
-        count == 1 ? 'Новая замена в расписании' : 'Новые замены в расписании';
+    final title = count == 1
+        ? 'Новая замена в расписании'
+        : 'Новые замены в расписании';
 
     final body = count == 1
         ? 'Пара ${reps.first.lessonNumber}: ${reps.first.replaceFrom} → ${reps.first.replaceTo}'
@@ -187,7 +169,10 @@ class NotificationService {
       presentSound: true,
     );
 
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
     await _notifications.show(
       DateTime.now().millisecondsSinceEpoch % 100000,
@@ -202,13 +187,17 @@ class NotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final json = jsonEncode(
-        reps.map((r) => {
-              'lessonNumber': r.lessonNumber,
-              'replaceFrom': r.replaceFrom,
-              'replaceTo': r.replaceTo,
-              'updatedAt': r.updatedAt,
-              'changeDate': r.changeDate,
-            }).toList(),
+        reps
+            .map(
+              (r) => {
+                'lessonNumber': r.lessonNumber,
+                'replaceFrom': r.replaceFrom,
+                'replaceTo': r.replaceTo,
+                'updatedAt': r.updatedAt,
+                'changeDate': r.changeDate,
+              },
+            )
+            .toList(),
       );
       await prefs.setString(_lastCheckedReplacementsKey, json);
     } catch (e) {}
@@ -248,8 +237,8 @@ class NotificationService {
 
   Future<void> updateLastCheckedReplacements() async {
     try {
-      final currentReplacements =
-          await _replacementRepository.getScheduleChanges();
+      final currentReplacements = await _replacementRepository
+          .getScheduleChanges();
       await _saveLastCheckedReplacements(currentReplacements);
     } catch (e) {}
   }

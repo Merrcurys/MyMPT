@@ -20,7 +20,8 @@ class RuStoreUpdateUi {
       final info = await RustoreUpdateClient.info();
 
       // ВАЖНО: в SDK константа именно UPDATE_AILABILITY_AVAILABLE
-      final updateAvailable = info.updateAvailability == UPDATE_AILABILITY_AVAILABLE;
+      final updateAvailable =
+          info.updateAvailability == UPDATE_AILABILITY_AVAILABLE;
 
       if (!updateAvailable) return;
 
@@ -39,22 +40,6 @@ class RuStoreUpdateUi {
     }
   }
 
-  /// Принудительное обновление (UI RuStore) — если решите включить
-  static Future<void> checkAndRunImmediateUpdate() async {
-    if (!Platform.isAndroid) return;
-    if (_started) return;
-    _started = true;
-
-    try {
-      final info = await RustoreUpdateClient.info();
-      final updateAvailable = info.updateAvailability == UPDATE_AILABILITY_AVAILABLE;
-      if (!updateAvailable) return;
-
-      // Immediate flow запускается с UI RuStore
-      await RustoreUpdateClient.immediate();
-    } catch (_) {}
-  }
-
   static void _ensureListener() {
     if (_listenerStarted) return;
     _listenerStarted = true;
@@ -68,11 +53,5 @@ class RuStoreUpdateUi {
         }
       } catch (_) {}
     });
-  }
-
-  static void resetForHotRestart() {
-    // удобно при разработке/хот-рестартах
-    _started = false;
-    _listenerStarted = false;
   }
 }
