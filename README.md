@@ -36,6 +36,8 @@
 
 APK-релизы можно скачать с GitHub -[<img align="center" height="60" alt="logo-color-dark" src="https://github.com/user-attachments/assets/1a481370-4323-40e8-94b8-0106b9fc5363" />](https://github.com/Merrcurys/MyMPT/releases)
 
+Установка .ipa на ios через Sideloadly или AltStore. - [Инструкция](https://ssl-team.com/blog/kak-zapustit-ipa-na-iphone/?utm_referrer=https%3A%2F%2Fyandex.ru%2F).
+
 ## Поддержка и обсуждение
 
 Канал с новостями в Telegram - [посмотреть](https://t.me/merrcurys_software).
