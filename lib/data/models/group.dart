@@ -24,6 +24,14 @@ class Group {
     required this.specialtyName,
   });
 
+  factory Group.fromJson(Map<String, dynamic> json) {
+    return Group(
+      code: (json['code'] ?? '') as String,
+      specialtyCode: (json['specialtyCode'] ?? '') as String,
+      specialtyName: (json['specialtyName'] ?? '') as String,
+    );
+  }
+
   @override
   String toString() {
     return 'GroupInfo(code: $code, specialtyCode: $specialtyCode, specialtyName: $specialtyName)';

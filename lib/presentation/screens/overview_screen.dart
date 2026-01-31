@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
-import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/data/repositories/replacement_repository.dart';
-import 'package:my_mpt/core/utils/calls_util.dart';
-import 'package:my_mpt/core/services/notification_service.dart';
-import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
-import 'package:my_mpt/presentation/widgets/shared/location.dart';
-import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
-import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
+import 'package:my_mpt/domain/entities/schedule.dart';
+import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
 import 'package:my_mpt/presentation/widgets/overview/replacement_card.dart';
 import 'package:my_mpt/presentation/widgets/overview/today_header.dart';
-import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
+import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
+import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
+import 'package:my_mpt/presentation/widgets/shared/location.dart';
 
 /// Экран "Сегодня" с обновлённым тёмным стилем
 class OverviewScreen extends StatefulWidget {
@@ -27,12 +27,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   static const Color _lessonAccent = Colors.grey;
 
   /// Получает градиент заголовка в зависимости от типа недели
-  ///
-  /// Параметры:
-  /// - [weekType]: Тип недели (Числитель/Знаменатель)
-  ///
-  /// Возвращает:
-  /// Градиент для заголовка
   List<Color> _getHeaderGradient(String weekType) {
     if (weekType == 'Знаменатель') {
       return const [Color(0xFF111111), Color(0xFF4FC3F7)];
@@ -45,10 +39,16 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   late ScheduleRepository _repository;
   late ReplacementRepository _changesRepository;
+
   List<Schedule> _todayScheduleData = [];
   List<Schedule> _tomorrowScheduleData = [];
   List<Replacement> _scheduleChanges = [];
+
   bool _isLoading = false;
+
+  /// true = показываем бейдж "Офлайн" (когда пытались обновиться и не смогли, но кэш есть)
+  bool _isOffline = false;
+
   final PageController _pageController = PageController();
   int _currentPageIndex = 0;
 
@@ -67,7 +67,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
     _fetchScheduleData(forceRefresh: true, showLoader: false);
   }
 
-  /// Обработчик уведомлений об обновлении данных
   void _onDataUpdated() {
     _fetchScheduleData(forceRefresh: false, showLoader: false);
   }
@@ -82,9 +81,10 @@ class _OverviewScreenState extends State<OverviewScreen> {
       });
     }
 
+    bool? refreshOk;
     try {
       if (forceRefresh) {
-        await _repository.forceRefresh();
+        refreshOk = await _repository.forceRefreshWithStatus();
       }
 
       final scheduleResults = await Future.wait([
@@ -96,6 +96,13 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         _todayScheduleData = scheduleResults[0];
         _tomorrowScheduleData = scheduleResults[1];
+
+        // Если была реальная попытка обновления и она провалилась — показываем офлайн.
+        // Если не было попытки — берём флаг из репозитория.
+        _isOffline = refreshOk == null
+            ? _repository.isOfflineBadgeVisible
+            : !refreshOk;
+
         if (showLoader) {
           _isLoading = false;
         }
@@ -115,7 +122,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
 
     try {
-      // Обновляем только для изменения расписания
       final scheduleChanges = await _changesRepository.getScheduleChanges();
 
       if (!mounted) return;
@@ -123,11 +129,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
         _scheduleChanges = scheduleChanges;
       });
 
-      // Обновляем сохраненные замены в сервисе уведомлений,
-      // чтобы не отправлять уведомления о заменах, которые пользователь уже видел
       final notificationService = NotificationService();
       await notificationService.updateLastCheckedReplacements();
-    } catch (e) {
+    } catch (_) {
       // Игнорируем ошибки при загрузке изменений
     }
   }
@@ -135,7 +139,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   @override
   void dispose() {
     _pageController.dispose();
-    // Удаляем слушателя уведомлений
     _repository.dataUpdatedNotifier.removeListener(_onDataUpdated);
     super.dispose();
   }
@@ -181,7 +184,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
                       ),
                     ],
                   ),
-                  // Добавляем индикатор страниц внизу экрана
                   Positioned(
                     bottom: 10,
                     left: 0,
@@ -194,16 +196,43 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
+  Widget _offlineBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.wifi_off,
+            size: 14,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Офлайн',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSchedulePage(List<Schedule> scheduleData, String pageTitle) {
-    // Определяем дату для которой отображаем расписание
     final targetDate = pageTitle == 'Сегодня'
         ? DateTime.now()
         : DateTime.now().add(const Duration(days: 1));
 
-    // Определяем тип недели для целевой даты
     final weekType = _getWeekTypeForDate(targetDate);
 
-    // Фильтруем пары в зависимости от типа недели
     final filteredScheduleData = _filterScheduleByWeekType(
       scheduleData,
       weekType,
@@ -211,6 +240,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     final filteredChanges = _getFilteredScheduleChanges(pageTitle);
     final callsData = CallsUtil.getCalls();
+
     final _ScheduleChangesResult changesResult = filteredChanges.isEmpty
         ? _ScheduleChangesResult(
             schedule: filteredScheduleData,
@@ -221,6 +251,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
             filteredChanges,
             callsData,
           );
+
     final scheduleWithChanges = changesResult.schedule;
     final hasBuildingOverride = changesResult.hasBuildingOverride;
 
@@ -252,14 +283,22 @@ class _OverviewScreenState extends State<OverviewScreen> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          pageTitle,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                pageTitle,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            if (_isOffline) _offlineBadge(),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -327,9 +366,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                               lessonStartTime = call.startTime;
                               lessonEndTime = call.endTime;
                             }
-                          } catch (e) {
-                            // Игнорируем ошибки парсинга
-                          }
+                          } catch (_) {}
 
                           final widgets = <Widget>[
                             LessonCard(
@@ -356,9 +393,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                                 final nextCall = callsData[nextPeriodInt - 1];
                                 nextLessonStartTime = nextCall.startTime;
                               }
-                            } catch (e) {
-                              // Игнорируем ошибки парсинга
-                            }
+                            } catch (_) {}
 
                             widgets.add(
                               BreakIndicator(
@@ -391,9 +426,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...filteredChanges.whereType<Replacement>().map((
-                          change,
-                        ) {
+                        ...filteredChanges.whereType<Replacement>().map((change) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: ReplacementCard(
@@ -416,22 +449,18 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
-  /// Определяет тип недели для заданной даты
   String _getWeekTypeForDate(DateTime date) {
     return DateFormatter.getWeekType(date);
   }
 
-  /// Фильтрует пары в зависимости от типа недели
   List<Schedule> _filterScheduleByWeekType(
     List<Schedule> schedule,
     String? weekType,
   ) {
-    // Если информация о неделе недоступна, возвращаем все пары
     if (weekType == null) {
       return schedule;
     }
 
-    // Группируем пары по номеру
     final Map<String, List<Schedule>> lessonsByPeriod = {};
     for (final lesson in schedule) {
       final period = lesson.number;
@@ -441,12 +470,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
       lessonsByPeriod[period]!.add(lesson);
     }
 
-    // Фильтруем пары
     final List<Schedule> filteredSchedule = [];
 
     lessonsByPeriod.forEach((period, lessons) {
-      // Проверяем, есть ли пары с типом (числитель/знаменатель)
-      // Фильтруем пустые уроки - у которых subject пустой
       final numeratorLessons = lessons
           .where(
             (lesson) =>
@@ -469,15 +495,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
           .toList();
 
       if (numeratorLessons.isNotEmpty || denominatorLessons.isNotEmpty) {
-        // Если есть пары с типом, выбираем только те, которые соответствуют текущей неделе
         if (weekType == 'Числитель' && numeratorLessons.isNotEmpty) {
           filteredSchedule.addAll(numeratorLessons);
         } else if (weekType == 'Знаменатель' && denominatorLessons.isNotEmpty) {
           filteredSchedule.addAll(denominatorLessons);
         }
-        // Если для текущей недели нет пары, не добавляем ничего (остается пустой слот)
       } else {
-        // Если нет пар с типом, добавляем все обычные пары
         filteredSchedule.addAll(regularLessons);
       }
     });
@@ -504,9 +527,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
       final lessonNumber = change.lessonNumber.trim();
       if (lessonNumber.isEmpty) continue;
 
-      final normalizedReplaceTo = change.replaceTo
-          .replaceAll('\u00A0', ' ')
-          .trim();
+      final normalizedReplaceTo =
+          change.replaceTo.replaceAll('\u00A0', ' ').trim();
       final shouldHide = _shouldHideLessonFromOverview(normalizedReplaceTo);
       final existingIndex = result.indexWhere(
         (lesson) => lesson.number.trim() == lessonNumber,
@@ -529,6 +551,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
         normalizedReplaceTo,
         existingIndex != -1 ? result[existingIndex].building : '',
       );
+
       if (updatedBuilding.isNotEmpty &&
           existingIndex != -1 &&
           updatedBuilding != result[existingIndex].building) {
@@ -544,9 +567,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
           teacher: teacher.isNotEmpty ? teacher : existing.teacher,
           startTime: existing.startTime,
           endTime: existing.endTime,
-          building: updatedBuilding.isNotEmpty
-              ? updatedBuilding
-              : existing.building,
+          building:
+              updatedBuilding.isNotEmpty ? updatedBuilding : existing.building,
           lessonType: existing.lessonType,
         );
       } else {
@@ -559,9 +581,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
             teacher: teacher,
             startTime: timing.start,
             endTime: timing.end,
-            building: updatedBuilding.isNotEmpty
-                ? updatedBuilding
-                : 'Дистанционно',
+            building:
+                updatedBuilding.isNotEmpty ? updatedBuilding : 'Дистанционно',
             lessonType: null,
           ),
         );
@@ -638,19 +659,15 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return DateFormatter.formatDayWithMonth(date);
   }
 
-  /// Фильтрует изменения в расписании по дате для отображения только на соответствующей странице
   List<Replacement?> _getFilteredScheduleChanges(String pageTitle) {
     final today = DateTime.now();
     final tomorrow = DateTime.now().add(Duration(days: 1));
 
-    // Форматируем даты в строку для сравнения с changeDate
-    // Используем padLeft(2, '0') для дня и месяца, чтобы соответствовать формату в ReplacementRemoteDatasource
     final String todayDate =
         '${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year}';
     final String tomorrowDate =
         '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
 
-    // Определяем, какие изменения показывать на текущей странице
     String targetDate = '';
     if (pageTitle == 'Сегодня') {
       targetDate = todayDate;
@@ -658,7 +675,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
       targetDate = tomorrowDate;
     }
 
-    // Фильтруем изменения по дате применения (changeDate)
     return _scheduleChanges
         .where((change) => change.changeDate == targetDate)
         .toList();

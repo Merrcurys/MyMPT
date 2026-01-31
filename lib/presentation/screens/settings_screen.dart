@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/data/models/group.dart';
@@ -39,6 +41,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isRefreshing = false;
   DateTime? _lastUpdate;
 
+  Timer? _refreshTimer;
+  Duration _refreshElapsed = Duration.zero;
+
   // Версия приложения (пример: 0.1.4 (5))
   String _appVersion = '—';
 
@@ -54,6 +59,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSpecialties();
     _loadSelectedPreferences();
     _loadAppVersion();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatElapsed(Duration d) {
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$mm:$ss';
   }
 
   Future<void> _loadAppVersion() async {
@@ -110,23 +127,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '${_selectedSpecialtyKey}_name',
       );
 
-      // Загружаем время последнего обновления
-      final lastUpdateMillis = prefs.getString('last_schedule_update');
-      if (lastUpdateMillis != null && lastUpdateMillis.isNotEmpty) {
+      // Время последнего обновления — берём из кэша расписания (ISO-строка)
+      final lastUpdateIso = prefs.getString('schedule_cache_last_update');
+      if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
         try {
-          if (RegExp(r'^\d+$').hasMatch(lastUpdateMillis)) {
-            _lastUpdate = DateTime.fromMillisecondsSinceEpoch(
-              int.parse(lastUpdateMillis),
-            );
-          } else {}
-        } catch (e) {
-          // Игнорируем ошибку парсинга даты
+          _lastUpdate = DateTime.parse(lastUpdateIso);
+        } catch (_) {}
+      } else {
+        // Фоллбек на старый ключ (если остался у пользователей)
+        final lastUpdateMillis = prefs.getString('last_schedule_update');
+        if (lastUpdateMillis != null && lastUpdateMillis.isNotEmpty) {
+          try {
+            if (RegExp(r'^\d+$').hasMatch(lastUpdateMillis)) {
+              _lastUpdate = DateTime.fromMillisecondsSinceEpoch(
+                int.parse(lastUpdateMillis),
+              );
+            }
+          } catch (_) {}
         }
       }
 
       setState(() {
         if (selectedGroupCode != null && selectedGroupCode.isNotEmpty) {
-          // Устанавливаем выбранную группу
           _selectedGroup = Group(
             code: selectedGroupCode,
             specialtyCode: selectedSpecialtyCode ?? '',
@@ -152,10 +174,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }
           }
 
-          // Загружаем группы для выбранной специальности
           if (_selectedSpecialty != null &&
               _selectedSpecialty!.code.isNotEmpty) {
-            // Добавляем небольшую задержку для корректной инициализации
             Future.delayed(const Duration(milliseconds: 100), () {
               _loadGroups(_selectedSpecialty!.code);
             });
@@ -167,7 +187,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Получает текст для отображения времени последнего обновления
   String _getLastUpdateText() {
     if (_lastUpdate == null) {
       return 'Расписание еще не обновлялось';
@@ -187,7 +206,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Возвращает правильное склонение слова "час" в зависимости от числа
   String _getHoursText(int hours) {
     if (hours % 10 == 1 && hours % 100 != 11) {
       return 'час';
@@ -200,7 +218,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Возвращает правильное склонение слова "минута" в зависимости от числа
   String _getMinutesText(int minutes) {
     if (minutes % 10 == 1 && minutes % 100 != 11) {
       return 'минуту';
@@ -213,14 +230,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Обновляет расписание
   Future<void> _refreshSchedule() async {
     setState(() {
       _isRefreshing = true;
+      _refreshElapsed = Duration.zero;
+    });
+
+    final sw = Stopwatch()..start();
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _refreshElapsed = sw.elapsed);
     });
 
     try {
-      // Проверяем, выбрана ли группа
       final prefs = await SharedPreferences.getInstance();
       final selectedGroupCode = prefs.getString(_selectedGroupKey);
 
@@ -233,40 +256,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.info_outline,
           );
         }
-        setState(() {
-          _isRefreshing = false;
-        });
         return;
       }
 
-      // Обновляем расписание через новый репозиторий
-      await _repository.refreshAllData();
+      final ok = await _repository.refreshAllDataWithStatus(forceRefresh: true);
 
-      // Сохраняем время обновления
-      final now = DateTime.now();
-      await prefs.setString(
-        'last_schedule_update',
-        now.millisecondsSinceEpoch.toString(),
-      );
+      // Перечитываем время из кэша расписания
+      final lastUpdateIso = prefs.getString('schedule_cache_last_update');
+      DateTime? parsedLastUpdate;
+      if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
+        try {
+          parsedLastUpdate = DateTime.parse(lastUpdateIso);
+        } catch (_) {}
+      }
 
+      if (!mounted) return;
       setState(() {
-        _lastUpdate = now;
-        _isRefreshing = false;
+        _lastUpdate = parsedLastUpdate ?? _repository.lastUpdate ?? _lastUpdate;
       });
 
       if (mounted) {
-        showSuccessNotification(
-          context,
-          'Расписание обновлено',
-          'Данные успешно загружены',
-          Icons.check_circle_outline,
-        );
+        if (ok) {
+          showSuccessNotification(
+            context,
+            'Расписание обновлено',
+            'Данные успешно загружены',
+            Icons.check_circle_outline,
+          );
+        } else {
+          showInfoNotification(
+            context,
+            'Нет интернета',
+            'Показано последнее сохранённое расписание',
+            Icons.wifi_off,
+          );
+        }
       }
-    } catch (e) {
-      setState(() {
-        _isRefreshing = false;
-      });
-
+    } catch (_) {
       if (mounted) {
         showErrorNotification(
           context,
@@ -274,6 +300,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'Не удалось обновить расписание',
           Icons.error_outline,
         );
+      }
+    } finally {
+      sw.stop();
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+          _refreshElapsed = Duration.zero;
+        });
       }
     }
   }
@@ -285,25 +322,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final groups = await _groupRepository.getGroupsBySpecialty(specialtyCode);
-      // Не выполняем дополнительную сортировку, так как группы уже отсортированы в репозитории
-      // Порядок сортировки: сначала по специальности, затем по году (новые года выше), затем по номеру группы
       final sortedGroups = List<Group>.from(groups);
 
-      // Загружаем выбранную группу, если она была сохранена
       Group? selectedGroup;
       if (_selectedGroup != null) {
-        // Проверяем, существует ли выбранная группа в новом списке
         selectedGroup = sortedGroups.firstWhere(
           (group) => group.code == _selectedGroup!.code,
           orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
         );
 
-        // Если группа не найдена, сбрасываем выбор
         if (selectedGroup.code.isEmpty) {
           selectedGroup = null;
         }
       } else {
-        // Проверяем, есть ли сохраненная группа в настройках
         final prefs = await SharedPreferences.getInstance();
         final savedGroupCode = prefs.getString(_selectedGroupKey);
         if (savedGroupCode != null && savedGroupCode.isNotEmpty) {
@@ -312,7 +343,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             orElse: () => Group(code: '', specialtyCode: '', specialtyName: ''),
           );
 
-          // Если группа не найдена, сбрасываем выбор
           if (selectedGroup.code.isEmpty) {
             selectedGroup = null;
           }
@@ -322,7 +352,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _groups = sortedGroups;
         _isLoading = false;
-        // Обновляем выбранную группу только если она существует в новом списке
         if (selectedGroup != null) {
           _selectedGroup = selectedGroup;
         }
@@ -349,7 +378,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedGroup = null;
     });
 
-    // Сохраняем выбранную специальность в настройках
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedSpecialtyKey, specialty.code);
     await prefs.setString('${_selectedSpecialtyKey}_name', specialty.name);
@@ -362,7 +390,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      // Сохраняем выбранную группу в настройках
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_selectedGroupKey, group.code);
       await prefs.setString(_selectedSpecialtyKey, group.specialtyCode);
@@ -371,46 +398,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
         group.specialtyName,
       );
 
-      // Обновляем расписание для новой группы
+      // Пытаемся обновить расписание под новую группу, но офлайн не ломаем
       try {
-        await _repository.refreshAllData();
+        final ok = await _repository.refreshAllDataWithStatus(forceRefresh: true);
 
-        // Сохраняем время обновления
-        final now = DateTime.now();
-        await prefs.setString(
-          'last_schedule_update',
-          now.millisecondsSinceEpoch.toString(),
-        );
+        // Перечитываем время из кэша расписания
+        final lastUpdateIso = prefs.getString('schedule_cache_last_update');
+        if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
+          try {
+            setState(() {
+              _lastUpdate = DateTime.parse(lastUpdateIso);
+            });
+          } catch (_) {}
+        } else if (_repository.lastUpdate != null) {
+          setState(() {
+            _lastUpdate = _repository.lastUpdate;
+          });
+        }
 
-        setState(() {
-          _lastUpdate = now;
-        });
+        // Уведомляем слушателей (если обновление прошло)
+        if (ok) {
+          _repository.dataUpdatedNotifier.value =
+              !_repository.dataUpdatedNotifier.value;
+        }
 
-        // Отправляем уведомление об обновлении данных всем слушателям
-        _repository.dataUpdatedNotifier.value =
-            !_repository.dataUpdatedNotifier.value;
-
-        // --- ВАЖНО: после смены группы сразу проверяем замены и можем уведомить,
-        // --- если они уже есть (не ждём фонового таймера).
+        // После смены группы проверяем замены (как было)
         try {
           final notificationService = NotificationService();
           await notificationService.initialize();
           await notificationService.checkForNewReplacements(
             notifyIfFirstCheck: true,
           );
-        } catch (e) {
-          // Игнорируем ошибки уведомлений
-        }
+        } catch (_) {}
 
         if (mounted) {
-          showSuccessNotification(
-            context,
-            'Группа выбрана',
-            'Выбрана группа ${group.code}. Расписание обновлено.',
-            Icons.check_circle_outline,
-          );
+          if (ok) {
+            showSuccessNotification(
+              context,
+              'Группа выбрана',
+              'Выбрана группа ${group.code}. Расписание обновлено.',
+              Icons.check_circle_outline,
+            );
+          } else {
+            showInfoNotification(
+              context,
+              'Группа выбрана',
+              'Выбрана группа ${group.code}. Показано сохранённое расписание (офлайн).',
+              Icons.wifi_off,
+            );
+          }
         }
-      } catch (e) {
+      } catch (_) {
         if (mounted) {
           showErrorNotification(
             context,
@@ -420,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         showErrorNotification(
           context,
@@ -463,7 +501,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Section(title: 'Расписание'),
               const SizedBox(height: 14),
               SettingsCard(
-                title: 'Обновить расписание',
+                title: _isRefreshing
+                    ? 'Обновление… ${_formatElapsed(_refreshElapsed)}'
+                    : 'Обновить расписание',
                 subtitle: _getLastUpdateText(),
                 icon: Icons.refresh,
                 onTap: _refreshSchedule,
@@ -595,11 +635,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// Открывает ссылку поддержки в Telegram
   Future<void> _openSupportLink() async {
     final Uri supportUri = Uri.parse('https://telegram.me/MptSupportBot');
     if (!await launchUrl(supportUri)) {
-      // Показываем сообщение об ошибке, если не удалось открыть ссылку
       if (mounted) {
         showErrorNotification(
           context,
@@ -657,7 +695,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               specialty.name,
                               style: const TextStyle(color: Colors.white),
                             ),
-                            // Убираем subtitle с кодом специальности
                             onTap: () {
                               Navigator.pop(context);
                               _onSpecialtySelected(specialty);

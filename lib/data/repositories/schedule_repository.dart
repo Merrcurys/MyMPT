@@ -1,122 +1,134 @@
 import 'package:flutter/foundation.dart';
+import 'package:my_mpt/data/datasources/cache/schedule_cache_data_source.dart';
+import 'package:my_mpt/data/datasources/remote/schedule_remote_datasource.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/domain/repositories/schedule_repository_interface.dart';
-import 'package:my_mpt/data/datasources/remote/schedule_remote_datasource.dart';
-import 'package:my_mpt/data/datasources/cache/schedule_cache_data_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Единое хранилище для всех данных расписания
-///
-/// Этот класс реализует интерфейс репозитория расписания и включает
-/// функциональность парсинга, кэширования и уведомлений об изменениях
 class ScheduleRepository implements ScheduleRepositoryInterface {
   final ScheduleRemoteDatasource _remoteDatasource = ScheduleRemoteDatasource();
   final ScheduleCacheDataSource _cacheDataSource = ScheduleCacheDataSource();
+
   static const String _selectedGroupKey = 'selected_group';
 
-  // Кэшированные данные
   Map<String, List<Schedule>>? _cachedWeeklySchedule;
   List<Schedule>? _cachedTodaySchedule;
   List<Schedule>? _cachedTomorrowSchedule;
-  DateTime? _lastUpdate;
-  bool _cacheInitialized = false;
 
-  // Уведомление об изменении данных
+  DateTime? _lastUpdate;
+  DateTime? _lastFailedRefreshAttempt;
+  bool _cacheInitialized = false;
+  bool _lastRefreshSucceeded = true;
+
+  static const Duration _failedRefreshCooldown = Duration(minutes: 10);
+
   final ValueNotifier<bool> dataUpdatedNotifier = ValueNotifier<bool>(false);
 
   static final ScheduleRepository _instance = ScheduleRepository._internal();
   factory ScheduleRepository() => _instance;
   ScheduleRepository._internal();
 
-  /// Получить расписание на неделю для конкретной группы
-  ///
-  /// Метод проверяет кэш и при необходимости загружает свежие данные
-  ///
-  /// Возвращает:
-  /// Расписание на неделю, где ключ - день недели
+  DateTime? get lastUpdate => _lastUpdate;
+
+  bool get isOfflineBadgeVisible => !_lastRefreshSucceeded && _lastUpdate != null;
+
+  DateTime? get lastFailedRefreshAttempt => _lastFailedRefreshAttempt;
+
   @override
   Future<Map<String, List<Schedule>>> getWeeklySchedule() async {
     await _restoreCacheIfNeeded();
+
     final needRefresh = _shouldRefreshData() || _cachedWeeklySchedule == null;
-    if (needRefresh) {
-      await _refreshAllData();
+    final canTryRefresh = !_isInFailedCooldown() || _cachedWeeklySchedule == null;
+
+    if (needRefresh && canTryRefresh) {
+      await _refreshAllData(forceRefresh: false);
     }
+
     return _cachedWeeklySchedule ?? {};
   }
 
-  /// Получить расписание на сегодня для конкретной группы
-  ///
-  /// Метод проверяет кэш и при необходимости загружает свежие данные
-  ///
-  /// Возвращает:
-  /// Список элементов расписания на сегодня
   @override
   Future<List<Schedule>> getTodaySchedule() async {
     await _restoreCacheIfNeeded();
+
     final needRefresh = _shouldRefreshData() || _cachedTodaySchedule == null;
-    if (needRefresh) {
-      await _refreshAllData();
+    final canTryRefresh = !_isInFailedCooldown() || _cachedTodaySchedule == null;
+
+    if (needRefresh && canTryRefresh) {
+      await _refreshAllData(forceRefresh: false);
     }
+
     return _cachedTodaySchedule ?? [];
   }
 
-  /// Получить расписание на завтра для конкретной группы
-  ///
-  /// Метод проверяет кэш и при необходимости загружает свежие данные
-  ///
-  /// Возвращает:
-  /// Список элементов расписания на завтра
   @override
   Future<List<Schedule>> getTomorrowSchedule() async {
     await _restoreCacheIfNeeded();
+
     final needRefresh = _shouldRefreshData() || _cachedTomorrowSchedule == null;
-    if (needRefresh) {
-      await _refreshAllData();
+    final canTryRefresh =
+        !_isInFailedCooldown() || _cachedTomorrowSchedule == null;
+
+    if (needRefresh && canTryRefresh) {
+      await _refreshAllData(forceRefresh: false);
     }
+
     return _cachedTomorrowSchedule ?? [];
   }
 
-  /// Обновить все данные
+  /// Совместимость: старый публичный метод остаётся.
   Future<void> refreshAllData() async {
-    await _refreshAllData(forceRefresh: true);
+    await refreshAllDataWithStatus(forceRefresh: true);
   }
 
-  /// Принудительно обновить все данные и уведомить слушателей
+  Future<bool> refreshAllDataWithStatus({bool forceRefresh = false}) async {
+    await _restoreCacheIfNeeded();
+    final ok = await _refreshAllData(forceRefresh: forceRefresh);
+    if (ok) {
+      dataUpdatedNotifier.value = !dataUpdatedNotifier.value;
+    }
+    return ok;
+  }
+
+  /// Совместимость: старый метод оставляем (используется в OverviewScreen),
+  /// но "красивый" статус даём отдельным методом.
   Future<void> forceRefresh() async {
-    // Очищаем кэш перед обновлением
-    await _clearCache();
-    await _refreshAllData(forceRefresh: true);
-    // Уведомляем слушателей об обновлении данных
-    dataUpdatedNotifier.value = !dataUpdatedNotifier.value;
+    await forceRefreshWithStatus();
   }
 
-  /// Проверить, нужно ли обновить данные (обновляем каждые 24 часа)
+  Future<bool> forceRefreshWithStatus() async {
+    return refreshAllDataWithStatus(forceRefresh: true);
+  }
+
   bool _shouldRefreshData() {
     if (_lastUpdate == null) return true;
-    final now = DateTime.now();
-    return now.difference(_lastUpdate!).inHours >= 24;
+    return DateTime.now().difference(_lastUpdate!).inHours >= 24;
   }
 
-  /// Обновить все данные из источника
-  Future<void> _refreshAllData({bool forceRefresh = false}) async {
+  bool _isInFailedCooldown() {
+    if (_lastFailedRefreshAttempt == null) return false;
+    return DateTime.now().difference(_lastFailedRefreshAttempt!) <
+        _failedRefreshCooldown;
+  }
+
+  Future<bool> _refreshAllData({required bool forceRefresh}) async {
     try {
-      // Получаем выбранную группу
       final groupCode = await _getSelectedGroupCode();
       if (groupCode.isEmpty) {
-        await _clearCache();
-        return;
+        await _clearCache(); // тут реально нечего показывать
+        _lastRefreshSucceeded = false;
+        return false;
       }
 
-      // Получаем расписание с парсера
       final parsedSchedule = await _remoteDatasource.fetchWeeklySchedule(
         groupCode,
         forceRefresh: forceRefresh,
       );
 
-      // Преобразуем данные в Schedule
       final Map<String, List<Schedule>> weeklySchedule = {};
       parsedSchedule.forEach((day, lessons) {
-        final List<Schedule> scheduleList = lessons.map((lesson) {
+        weeklySchedule[day] = lessons.map((lesson) {
           return Schedule(
             id: '${day}_${lesson.number}',
             number: lesson.number,
@@ -128,21 +140,15 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
             lessonType: lesson.lessonType,
           );
         }).toList();
-        weeklySchedule[day] = scheduleList;
       });
 
-      // Обновляем кэш
       _cachedWeeklySchedule = weeklySchedule;
-
-      // Получаем сегодняшний и завтрашний день
-      final today = _getTodayInRussian();
-      final tomorrow = _getTomorrowInRussian();
-
-      // Устанавливаем сегодняшнее и завтрашнее расписание
-      _cachedTodaySchedule = weeklySchedule[today] ?? [];
-      _cachedTomorrowSchedule = weeklySchedule[tomorrow] ?? [];
+      _cachedTodaySchedule = weeklySchedule[_getTodayInRussian()] ?? [];
+      _cachedTomorrowSchedule = weeklySchedule[_getTomorrowInRussian()] ?? [];
 
       _lastUpdate = DateTime.now();
+      _lastFailedRefreshAttempt = null;
+      _lastRefreshSucceeded = true;
 
       await _cacheDataSource.save(
         ScheduleCache(
@@ -152,70 +158,29 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
           lastUpdate: _lastUpdate!,
         ),
       );
+
+      return true;
     } catch (e) {
       debugPrint('Ошибка при обновлении данных расписания: $e');
-      // Очищаем кэш в случае ошибки
-      await _clearCache();
+      _lastFailedRefreshAttempt = DateTime.now();
+      _lastRefreshSucceeded = false;
+
+      // Ключевой момент: кэш НЕ очищаем — офлайн-просмотр сохраняется.
+      return false;
     }
   }
 
-  /// Очистить кэш
   Future<void> _clearCache() async {
     _cachedWeeklySchedule = null;
     _cachedTodaySchedule = null;
     _cachedTomorrowSchedule = null;
     _lastUpdate = null;
+    _lastFailedRefreshAttempt = null;
+    _lastRefreshSucceeded = false;
+
     _remoteDatasource.clearCache();
     _cacheInitialized = false;
     await _cacheDataSource.clear();
-  }
-
-  /// Получает код выбранной группы из настроек
-  Future<String> _getSelectedGroupCode() async {
-    try {
-      // Проверяем переменную окружения first
-      const envGroup = String.fromEnvironment('SELECTED_GROUP');
-      if (envGroup.isNotEmpty) {
-        return envGroup;
-      }
-
-      // Если переменная окружения не задана, используем SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_selectedGroupKey) ?? '';
-    } catch (e) {
-      debugPrint('Ошибка получения выбранной группы из настроек: $e');
-      return '';
-    }
-  }
-
-  /// Получает название текущего дня недели на русском языке ЗАГЛАВНЫМИ буквами
-  String _getTodayInRussian() {
-    final now = DateTime.now();
-    final weekdays = [
-      'ПОНЕДЕЛЬНИК',
-      'ВТОРНИК',
-      'СРЕДА',
-      'ЧЕТВЕРГ',
-      'ПЯТНИЦА',
-      'СУББОТА',
-      'ВОСКРЕСЕНЬЕ',
-    ];
-    return weekdays[now.weekday - 1];
-  }
-
-  /// Получает название завтрашнего дня недели на русском языке ЗАГЛАВНЫМИ буквами
-  String _getTomorrowInRussian() {
-    final now = DateTime.now().add(const Duration(days: 1));
-    final weekdays = [
-      'ПОНЕДЕЛЬНИК',
-      'ВТОРНИК',
-      'СРЕДА',
-      'ЧЕТВЕРГ',
-      'ПЯТНИЦА',
-      'СУББОТА',
-      'ВОСКРЕСЕНЬЕ',
-    ];
-    return weekdays[now.weekday - 1];
   }
 
   Future<void> _restoreCacheIfNeeded() async {
@@ -230,11 +195,56 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
       _cachedTodaySchedule = cache.todaySchedule;
       _cachedTomorrowSchedule = cache.tomorrowSchedule;
       _lastUpdate = cache.lastUpdate;
+
+      // Если у нас есть кэш — считаем, что "данные есть", даже если сеть потом пропадёт.
+      _lastRefreshSucceeded = true;
     } catch (_) {
       _cachedWeeklySchedule = null;
       _cachedTodaySchedule = null;
       _cachedTomorrowSchedule = null;
       _lastUpdate = null;
+      _lastRefreshSucceeded = false;
     }
+  }
+
+  Future<String> _getSelectedGroupCode() async {
+    try {
+      const envGroup = String.fromEnvironment('SELECTED_GROUP');
+      if (envGroup.isNotEmpty) return envGroup;
+
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_selectedGroupKey) ?? '';
+    } catch (e) {
+      debugPrint('Ошибка получения выбранной группы из настроек: $e');
+      return '';
+    }
+  }
+
+  String _getTodayInRussian() {
+    final now = DateTime.now();
+    const weekdays = [
+      'ПОНЕДЕЛЬНИК',
+      'ВТОРНИК',
+      'СРЕДА',
+      'ЧЕТВЕРГ',
+      'ПЯТНИЦА',
+      'СУББОТА',
+      'ВОСКРЕСЕНЬЕ',
+    ];
+    return weekdays[now.weekday - 1];
+  }
+
+  String _getTomorrowInRussian() {
+    final now = DateTime.now().add(const Duration(days: 1));
+    const weekdays = [
+      'ПОНЕДЕЛЬНИК',
+      'ВТОРНИК',
+      'СРЕДА',
+      'ЧЕТВЕРГ',
+      'ПЯТНИЦА',
+      'СУББОТА',
+      'ВОСКРЕСЕНЬЕ',
+    ];
+    return weekdays[now.weekday - 1];
   }
 }
