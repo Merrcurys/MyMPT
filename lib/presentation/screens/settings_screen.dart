@@ -37,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<Group> _groups = [];
   data_model.Specialty? _selectedSpecialty;
   Group? _selectedGroup;
+
   bool _isLoading = false;
   bool _isRefreshing = false;
   DateTime? _lastUpdate;
@@ -56,6 +57,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _specialtyRepository = SpecialtyRepository();
     _groupRepository = GroupRepository();
     _repository = ScheduleRepository();
+
+    // Важно: если расписание обновили на другом экране (Обзор/Неделя),
+    // то Settings должен обновить отображаемое время.
+    _repository.dataUpdatedNotifier.addListener(_onScheduleDataUpdated);
+
     _loadSpecialties();
     _loadSelectedPreferences();
     _loadAppVersion();
@@ -64,7 +70,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _repository.dataUpdatedNotifier.removeListener(_onScheduleDataUpdated);
     super.dispose();
+  }
+
+  Future<void> _onScheduleDataUpdated() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastUpdateIso = prefs.getString('schedule_cache_last_update');
+
+      DateTime? parsed;
+      if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
+        parsed = DateTime.tryParse(lastUpdateIso);
+      }
+
+      if (!mounted) return;
+
+      if (parsed != null) {
+        setState(() => _lastUpdate = parsed);
+      } else if (_repository.lastUpdate != null) {
+        setState(() => _lastUpdate = _repository.lastUpdate);
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   String _formatElapsed(Duration d) {
@@ -94,7 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final specialties = await _specialtyRepository.getSpecialties();
-      // Преобразуем доменные сущности в модели данных
       final dataSpecialties = specialties
           .map((s) => data_model.Specialty(code: s.code, name: s.name))
           .toList();
@@ -398,11 +426,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         group.specialtyName,
       );
 
-      // Пытаемся обновить расписание под новую группу, но офлайн не ломаем
       try {
-        final ok = await _repository.refreshAllDataWithStatus(forceRefresh: true);
+        final ok =
+            await _repository.refreshAllDataWithStatus(forceRefresh: true);
 
-        // Перечитываем время из кэша расписания
         final lastUpdateIso = prefs.getString('schedule_cache_last_update');
         if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
           try {
@@ -416,13 +443,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           });
         }
 
-        // Уведомляем слушателей (если обновление прошло)
         if (ok) {
           _repository.dataUpdatedNotifier.value =
               !_repository.dataUpdatedNotifier.value;
         }
 
-        // После смены группы проверяем замены (как было)
         try {
           final notificationService = NotificationService();
           await notificationService.initialize();

@@ -1,34 +1,37 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
 import 'package:my_mpt/core/services/background_task.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/services/rustore_update_ui.dart';
+
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() async {
+  runZonedGuarded(() async {
+    // ВАЖНО: ensureInitialized и runApp должны быть в одной Zone.
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Инициализируем сервис уведомлений
-  final notificationService = NotificationService();
-  await notificationService.initialize();
+    // Инициализируем сервис уведомлений
+    final notificationService = NotificationService();
+    await notificationService.initialize();
 
-  // Инициализируем фоновые задачи
-  await initializeBackgroundTasks();
+    // Инициализируем фоновые задачи
+    await initializeBackgroundTasks();
 
-  runZonedGuarded(
-    () {
-      runApp(const MyApp());
-    },
-    (e, st) {
-      // Игнорируем необработанные ошибки
-    },
-  );
+    runApp(const MyApp());
+  }, (e, st) {
+    // Лучше не игнорировать полностью, но можешь оставить как было.
+    // debugPrint('Uncaught: $e');
+    // debugPrintStack(stackTrace: st);
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -37,7 +40,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Мой МПТ",
+      title: 'Мой МПТ',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -64,29 +68,22 @@ class MyApp extends StatelessWidget {
           height: 80,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith<IconThemeData>(
+          iconTheme: WidgetStateProperty.resolveWith(
             (states) => IconThemeData(
-              color: states.contains(WidgetState.selected)
-                  ? Colors.white
-                  : Colors.white70,
+              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
             ),
           ),
-          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
+          labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               fontSize: 11,
-              fontWeight: states.contains(WidgetState.selected)
-                  ? FontWeight.w600
-                  : FontWeight.w500,
+              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
               letterSpacing: 0.1,
-              color: states.contains(WidgetState.selected)
-                  ? Colors.white
-                  : Colors.white60,
+              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
             ),
           ),
         ),
       ),
       home: const MainScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -100,9 +97,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+
   bool _isFirstLaunch = true;
   bool _isLoading = true;
-
   bool _updateChecked = false;
 
   final List<Widget> _screens = const [
@@ -129,13 +126,18 @@ class _MainScreenState extends State<MainScreen> {
     final prefs = await SharedPreferences.getInstance();
     final isFirstLaunch = prefs.getBool('first_launch') ?? true;
 
+    if (!mounted) return;
     setState(() {
       _isFirstLaunch = isFirstLaunch;
       _isLoading = false;
     });
   }
 
-  void _onSetupComplete() {
+  Future<void> _onSetupComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('first_launch', false);
+
+    if (!mounted) return;
     setState(() {
       _isFirstLaunch = false;
     });
@@ -150,7 +152,10 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (_isFirstLaunch) {
-      return WelcomeScreen(onSetupComplete: _onSetupComplete);
+      return WelcomeScreen(onSetupComplete: () {
+        // onSetupComplete обычно void — делаем async через “fire-and-forget”.
+        _onSetupComplete();
+      });
     }
 
     // При открытии приложения запускаем RuStore UI update flow (1 раз за запуск)
@@ -168,8 +173,7 @@ class _MainScreenState extends State<MainScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: NavigationBar(
           selectedIndex: _currentIndex,
-          onDestinationSelected: (index) =>
-              setState(() => _currentIndex = index),
+          onDestinationSelected: (index) => setState(() => _currentIndex = index),
           surfaceTintColor: Colors.transparent,
           destinations: [
             for (final item in _navItems)

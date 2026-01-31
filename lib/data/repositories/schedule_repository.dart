@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:my_mpt/data/datasources/cache/schedule_cache_data_source.dart';
 import 'package:my_mpt/data/datasources/remote/schedule_remote_datasource.dart';
@@ -21,6 +23,9 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
   bool _lastRefreshSucceeded = true;
 
   static const Duration _failedRefreshCooldown = Duration(minutes: 10);
+
+  /// Дедупликация обновления: если refresh уже идёт — ждём тот же Future.
+  Future<bool>? _refreshInFlight;
 
   final ValueNotifier<bool> dataUpdatedNotifier = ValueNotifier<bool>(false);
 
@@ -112,7 +117,30 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
         _failedRefreshCooldown;
   }
 
-  Future<bool> _refreshAllData({required bool forceRefresh}) async {
+  /// Дедупликация: если уже обновляемся — не стартуем второй запрос.
+  Future<bool> _refreshAllData({required bool forceRefresh}) {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+
+    final completer = Completer<bool>();
+    _refreshInFlight = completer.future;
+
+    () async {
+      try {
+        final ok = await _refreshAllDataInternal(forceRefresh: forceRefresh);
+        completer.complete(ok);
+      } catch (_) {
+        // На всякий: internal уже сам выставляет флаги/тайминги, но не роняем Future.
+        completer.complete(false);
+      } finally {
+        _refreshInFlight = null;
+      }
+    }();
+
+    return _refreshInFlight!;
+  }
+
+  Future<bool> _refreshAllDataInternal({required bool forceRefresh}) async {
     try {
       final groupCode = await _getSelectedGroupCode();
       if (groupCode.isEmpty) {
@@ -153,8 +181,9 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
       await _cacheDataSource.save(
         ScheduleCache(
           weeklySchedule: _cachedWeeklySchedule ?? {},
-          todaySchedule: _cachedTodaySchedule ?? [],
-          tomorrowSchedule: _cachedTomorrowSchedule ?? [],
+          // В кэш больше не полагаемся на today/tomorrow, но модель оставляем совместимой.
+          todaySchedule: const [],
+          tomorrowSchedule: const [],
           lastUpdate: _lastUpdate!,
         ),
       );
@@ -192,8 +221,9 @@ class ScheduleRepository implements ScheduleRepositoryInterface {
       if (cache == null) return;
 
       _cachedWeeklySchedule = cache.weeklySchedule;
-      _cachedTodaySchedule = cache.todaySchedule;
-      _cachedTomorrowSchedule = cache.tomorrowSchedule;
+      // today/tomorrow теперь считаем из weekly (без дублей в prefs).
+      _cachedTodaySchedule = (_cachedWeeklySchedule ?? {})[_getTodayInRussian()] ?? [];
+      _cachedTomorrowSchedule = (_cachedWeeklySchedule ?? {})[_getTomorrowInRussian()] ?? [];
       _lastUpdate = cache.lastUpdate;
 
       // Если у нас есть кэш — считаем, что "данные есть", даже если сеть потом пропадёт.
