@@ -19,10 +19,10 @@ class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
 
   @override
-  State<OverviewScreen> createState() => _OverviewScreenState();
+  State createState() => _OverviewScreenState();
 }
 
-class _OverviewScreenState extends State<OverviewScreen> {
+class _OverviewScreenState extends State {
   static const backgroundColor = Color(0xFF000000);
   static const Color lessonAccent = Colors.grey;
 
@@ -44,12 +44,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
   @override
   void initState() {
     super.initState();
+
     repository = ScheduleRepository();
     changesRepository = ReplacementRepository();
 
     repository.dataUpdatedNotifier.addListener(onDataUpdated);
 
-    // Даем первому кадру отрисоваться.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       initializeSchedule();
     });
@@ -96,7 +96,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
       });
     } catch (_) {
       if (!mounted) return;
-
       if (showLoader) setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -178,7 +177,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final weekType = getWeekTypeForDate(targetDate);
     final filteredScheduleData = filterScheduleByWeekType(scheduleData, weekType);
     final filteredChanges = getFilteredScheduleChanges(pageTitle);
-    final callsData = CallsUtil.getCalls(); // List<dynamic>
+
+    final callsData = CallsUtil.getCalls(); // List
 
     final ScheduleChangesResult changesResult = filteredChanges.isEmpty
         ? ScheduleChangesResult(
@@ -303,7 +303,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                             }
                           } catch (_) {}
 
-                          final widgets = <Widget>[
+                          final List<Widget> widgets = [
                             LessonCard(
                               number: item.number,
                               subject: item.subject,
@@ -315,8 +315,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                           ];
 
                           if (index < scheduleWithChanges.length - 1) {
-                            String nextLessonStartTime =
-                                scheduleWithChanges[index + 1].startTime;
+                            String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
 
                             try {
                               final nextPeriodInt =
@@ -386,17 +385,20 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     final Map<String, List<Schedule>> lessonsByPeriod = {};
     for (final lesson in schedule) {
-      (lessonsByPeriod[lesson.number] ??= <Schedule>[]).add(lesson);
+      (lessonsByPeriod[lesson.number] ??= []).add(lesson);
     }
 
     final List<Schedule> filtered = [];
+
     lessonsByPeriod.forEach((_, lessons) {
       final numeratorLessons = lessons
           .where((l) => l.lessonType == 'numerator' && l.subject.trim().isNotEmpty)
           .toList();
+
       final denominatorLessons = lessons
           .where((l) => l.lessonType == 'denominator' && l.subject.trim().isNotEmpty)
           .toList();
+
       final regularLessons =
           lessons.where((l) => l.lessonType == null && l.subject.trim().isNotEmpty).toList();
 
@@ -419,7 +421,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   ScheduleChangesResult applyScheduleChanges(
     List<Schedule> schedule,
     List<Replacement> changes,
-    List<dynamic> callsData,
+    List callsData,
   ) {
     if (changes.isEmpty) {
       return ScheduleChangesResult(
@@ -462,6 +464,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
       if (existingIndex != -1) {
         final existing = result[existingIndex];
+
         result[existingIndex] = Schedule(
           id: existing.id,
           number: existing.number,
@@ -474,6 +477,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
         );
       } else {
         final timing = lessonTimingForNumber(lessonNumber, callsData);
+
         result.add(
           Schedule(
             id: 'change_${lessonNumber}_${change.updatedAt}',
@@ -512,7 +516,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return fallbackBuilding;
   }
 
-  LessonTiming lessonTimingForNumber(String lessonNumber, List<dynamic> callsData) {
+  LessonTiming lessonTimingForNumber(String lessonNumber, List callsData) {
     final sanitized = lessonNumber.trim();
     for (final call in callsData) {
       try {
@@ -578,14 +582,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
 class LessonTiming {
   final String start;
   final String end;
-
   const LessonTiming({required this.start, required this.end});
 }
 
 class ScheduleChangesResult {
   final List<Schedule> schedule;
   final bool hasBuildingOverride;
-
   ScheduleChangesResult({required this.schedule, required this.hasBuildingOverride});
 }
 
@@ -598,7 +600,7 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.child,
   });
 
-  final Color backgroundColor;
+  final Color backgroundColor; // оставлено, но фон не рисуем
   final double maxHeight;
   final double minHeight;
   final Widget child;
@@ -619,16 +621,13 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return ColoredBox(
-      color: backgroundColor,
-      child: SizedBox.expand(child: child),
-    );
+    // Убрали чёрный фон за pinned-шапкой
+    return SizedBox.expand(child: child);
   }
 }
 
-/// Всегда одна и та же компоновка (как в примере), просто всё меньше при сжатии:
-/// LEFT: pageTitle + dateLabel
-/// RIGHT: weekType pill, под ним wifi_off (если offline)
+/// MINI: weekType справа как было.
+/// EXPANDED: weekType слева сверху (как в расписании).
 class _CollapsibleOverviewHeader extends StatelessWidget {
   const _CollapsibleOverviewHeader({
     required this.maxHeight,
@@ -646,6 +645,7 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
   final String pageTitle;
   final String dateLabel;
   final String weekType;
+
   final List<Color> gradient;
   final bool isOffline;
 
@@ -655,6 +655,7 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
         final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+        final isMini = t > 0.65;
 
         final radius = lerpDouble(32, 22, t)!;
 
@@ -675,6 +676,13 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
         final iconSize = lerpDouble(18, 14, t)!;
         final iconOpacity = lerpDouble(1.0, 0.95, t)!;
 
+        final pill = _WeekTypePill(
+          text: weekType,
+          fontSize: pillFont,
+          padH: pillPH,
+          padV: pillPV,
+        );
+
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           decoration: BoxDecoration(
@@ -694,68 +702,117 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          pageTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: gapTitleDate),
-                        Text(
-                          dateLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: dateSize,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _WeekTypePill(
-                      text: weekType,
-                      fontSize: pillFont,
-                      padH: pillPH,
-                      padV: pillPV,
-                    ),
-                    SizedBox(height: gapPillIcon),
-                    SizedBox(
-                      height: iconSize, // место резервируем всегда, чтобы шапка не прыгала
-                      child: isOffline
-                          ? Opacity(
-                              opacity: iconOpacity,
-                              child: Icon(
-                                Icons.wifi_off,
-                                size: iconSize,
-                                color: Colors.white.withValues(alpha: 0.85),
+            child: isMini
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pageTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: titleSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
                               ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                              SizedBox(height: gapTitleDate),
+                              Text(
+                                dateLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: dateSize,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          pill,
+                          SizedBox(height: gapPillIcon),
+                          SizedBox(
+                            height: iconSize,
+                            child: isOffline
+                                ? Opacity(
+                                    opacity: iconOpacity,
+                                    child: Icon(
+                                      Icons.wifi_off,
+                                      size: iconSize,
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              pill, // EXPANDED: слева сверху
+                              SizedBox(height: gapPillIcon),
+                              Text(
+                                pageTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: titleSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: gapTitleDate),
+                              Text(
+                                dateLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: dateSize,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Справа в expanded оставляем только wifi_off, чтобы текст не обрезался точками.
+                      SizedBox(
+                        width: iconSize,
+                        height: iconSize,
+                        child: isOffline
+                            ? Opacity(
+                                opacity: iconOpacity,
+                                child: Icon(
+                                  Icons.wifi_off,
+                                  size: iconSize,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
           ),
         );
       },

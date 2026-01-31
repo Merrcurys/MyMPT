@@ -11,10 +11,10 @@ class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
-  State<ScheduleScreen> createState() => _ScheduleScreenState();
+  State createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
+class _ScheduleScreenState extends State {
   static const _backgroundColor = Color(0xFF000000);
   static const Color _lessonAccent = Colors.grey;
 
@@ -29,6 +29,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
+
     _repository = ScheduleRepository();
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
 
@@ -195,7 +196,7 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.child,
   });
 
-  final Color backgroundColor;
+  final Color backgroundColor; // оставлено, но фон не рисуем
   final double maxHeight;
   final double minHeight;
   final Widget child;
@@ -216,16 +217,13 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return ColoredBox(
-      color: backgroundColor,
-      child: SizedBox.expand(child: child),
-    );
+    // Убрали чёрный фон за pinned-шапкой
+    return SizedBox.expand(child: child);
   }
 }
 
-/// Одинаковая компоновка и в раскрытом, и в мини-режиме — всё только уменьшается:
-/// LEFT: title + dateLabel
-/// RIGHT: weekType pill, под ним wifi_off (если offline)
+/// MINI: weekType справа как было.
+/// EXPANDED: weekType слева сверху (как в overview).
 class _CollapsibleWeekHeader extends StatelessWidget {
   const _CollapsibleWeekHeader({
     required this.maxHeight,
@@ -243,6 +241,7 @@ class _CollapsibleWeekHeader extends StatelessWidget {
   final String title;
   final String dateLabel;
   final String weekType;
+
   final List<Color> gradient;
   final bool isOffline;
 
@@ -252,6 +251,7 @@ class _CollapsibleWeekHeader extends StatelessWidget {
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
         final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+        final isMini = t > 0.65;
 
         final radius = lerpDouble(32, 22, t)!;
 
@@ -270,6 +270,13 @@ class _CollapsibleWeekHeader extends StatelessWidget {
         final gapPillIcon = lerpDouble(10, 6, t)!;
 
         final iconSize = lerpDouble(18, 14, t)!;
+
+        final pill = _WeekTypePill(
+          text: weekType,
+          fontSize: pillFont,
+          padH: pillPH,
+          padV: pillPV,
+        );
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -290,68 +297,114 @@ class _CollapsibleWeekHeader extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+            child: isMini
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: titleSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: gapTitleDate),
+                              Text(
+                                dateLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: dateSize,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(height: gapTitleDate),
-                        Text(
-                          dateLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: dateSize,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _WeekTypePill(
-                      text: weekType,
-                      fontSize: pillFont,
-                      padH: pillPH,
-                      padV: pillPV,
-                    ),
-                    SizedBox(height: gapPillIcon),
-
-                    // Резервируем место всегда, но показываем только при офлайне.
-                    SizedBox(
-                      height: iconSize,
-                      child: Opacity(
-                        opacity: isOffline ? 1.0 : 0.0,
-                        child: Icon(
-                          Icons.wifi_off,
-                          size: iconSize,
-                          color: Colors.white.withValues(alpha: 0.85),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          pill,
+                          SizedBox(height: gapPillIcon),
+                          SizedBox(
+                            height: iconSize,
+                            child: Opacity(
+                              opacity: isOffline ? 1.0 : 0.0,
+                              child: Icon(
+                                Icons.wifi_off,
+                                size: iconSize,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              pill, // EXPANDED: слева сверху
+                              SizedBox(height: gapPillIcon),
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: titleSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: gapTitleDate),
+                              Text(
+                                dateLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: dateSize,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Справа в expanded оставляем только место под wifi_off (без скрытого pill),
+                      // чтобы текст не обрезался точками при наличии места.
+                      SizedBox(
+                        width: iconSize,
+                        height: iconSize,
+                        child: Opacity(
+                          opacity: isOffline ? 1.0 : 0.0,
+                          child: Icon(
+                            Icons.wifi_off,
+                            size: iconSize,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         );
       },
