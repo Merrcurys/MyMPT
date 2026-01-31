@@ -36,7 +36,7 @@
 
 APK-релизы можно скачать с GitHub -[<img align="center" height="60" alt="logo-color-dark" src="https://github.com/user-attachments/assets/1a481370-4323-40e8-94b8-0106b9fc5363" />](https://github.com/Merrcurys/MyMPT/releases)
 
-Установка .ipa на ios через Sideloadly или AltStore. - [Инструкция](https://ssl-team.com/blog/kak-zapustit-ipa-na-iphone/?utm_referrer=https%3A%2F%2Fyandex.ru%2F).
+Установка .ipa на ios через Sideloadly или AltStore - [<img align="center" height="45" alt="logo-color-dark" src="https://github.com/user-attachments/assets/02f227c3-3427-4560-8a31-c0bec72f55e2" />](https://ssl-team.com/blog/kak-zapustit-ipa-na-iphone/?utm_referrer=https%3A%2F%2Fyandex.ru%2F)
 
 ## Поддержка и обсуждение
 
