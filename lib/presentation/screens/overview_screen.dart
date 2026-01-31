@@ -1,6 +1,7 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
@@ -14,6 +15,9 @@ import 'package:my_mpt/presentation/widgets/overview/replacement_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/break_indicator.dart';
 import 'package:my_mpt/presentation/widgets/shared/lesson_card.dart';
 import 'package:my_mpt/presentation/widgets/shared/location.dart';
+
+// ВАЖНО: берём тот же баннер, что и в Settings.
+import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
@@ -38,13 +42,15 @@ class _OverviewScreenState extends State {
   /// true = показываем офлайн (когда пытались обновиться и не смогли, но кэш есть)
   bool isOffline = false;
 
+  /// чтобы авто-обновление (на входе) не спамило одним и тем же баннером
+  bool _autoOfflineNotified = false;
+
   final PageController pageController = PageController();
   int currentPageIndex = 0;
 
   @override
   void initState() {
     super.initState();
-
     repository = ScheduleRepository();
     changesRepository = ReplacementRepository();
 
@@ -55,18 +61,33 @@ class _OverviewScreenState extends State {
     });
   }
 
-  Future<void> initializeSchedule() async {
-    await fetchScheduleData(forceRefresh: false, showLoader: true);
-    await fetchScheduleData(forceRefresh: true, showLoader: false);
+  Future initializeSchedule() async {
+    await fetchScheduleData(forceRefresh: false, showLoader: true, userInitiated: false);
+    await fetchScheduleData(forceRefresh: true, showLoader: false, userInitiated: false);
   }
 
   void onDataUpdated() {
-    fetchScheduleData(forceRefresh: false, showLoader: false);
+    fetchScheduleData(forceRefresh: false, showLoader: false, userInitiated: false);
   }
 
-  Future<void> fetchScheduleData({
+  void _showOfflineBanner({required bool userInitiated}) {
+    // Показываем при ручном обновлении всегда.
+    // При авто — только один раз за жизненный цикл экрана.
+    if (!userInitiated && _autoOfflineNotified) return;
+    _autoOfflineNotified = true;
+
+    showInfoNotification(
+      context,
+      'Нет интернета',
+      'Показано последнее сохранённое расписание',
+      Icons.info_outline,
+    );
+  }
+
+  Future fetchScheduleData({
     required bool forceRefresh,
     bool showLoader = true,
+    bool userInitiated = false,
   }) async {
     if (showLoader) setState(() => isLoading = true);
 
@@ -88,16 +109,22 @@ class _OverviewScreenState extends State {
         todayScheduleData = scheduleResults[0];
         tomorrowScheduleData = scheduleResults[1];
 
-        // Если была реальная попытка обновления и она провалилась — показываем офлайн.
+        // Если была попытка обновления и она провалилась — офлайн.
         // Если не было попытки — берём флаг из репозитория.
         isOffline = refreshOk == null ? repository.isOfflineBadgeVisible : !refreshOk;
 
         if (showLoader) isLoading = false;
       });
+
+      // Если пытались обновиться, но нет сети — показываем баннер как в Settings.
+      if (forceRefresh && refreshOk == false) {
+        _showOfflineBanner(userInitiated: userInitiated);
+      }
     } catch (_) {
       if (!mounted) return;
       if (showLoader) setState(() => isLoading = false);
 
+      // Оставляем общий фолбэк на неожиданные ошибки.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ошибка загрузки расписания')),
       );
@@ -147,12 +174,18 @@ class _OverviewScreenState extends State {
                     onPageChanged: (index) => setState(() => currentPageIndex = index),
                     children: [
                       RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(forceRefresh: true),
+                        onRefresh: () => fetchScheduleData(
+                          forceRefresh: true,
+                          userInitiated: true,
+                        ),
                         color: Colors.white,
                         child: buildSchedulePage(todayScheduleData, 'Сегодня'),
                       ),
                       RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(forceRefresh: true),
+                        onRefresh: () => fetchScheduleData(
+                          forceRefresh: true,
+                          userInitiated: true,
+                        ),
                         color: Colors.white,
                         child: buildSchedulePage(tomorrowScheduleData, 'Завтра'),
                       ),
@@ -173,12 +206,12 @@ class _OverviewScreenState extends State {
   Widget buildSchedulePage(List<Schedule> scheduleData, String pageTitle) {
     final targetDate =
         pageTitle == 'Сегодня' ? DateTime.now() : DateTime.now().add(const Duration(days: 1));
-
     final weekType = getWeekTypeForDate(targetDate);
+
     final filteredScheduleData = filterScheduleByWeekType(scheduleData, weekType);
     final filteredChanges = getFilteredScheduleChanges(pageTitle);
 
-    final callsData = CallsUtil.getCalls(); // List
+    final callsData = CallsUtil.getCalls(); // List<dynamic>
 
     final ScheduleChangesResult changesResult = filteredChanges.isEmpty
         ? ScheduleChangesResult(
@@ -209,8 +242,8 @@ class _OverviewScreenState extends State {
               minHeight: headerMinHeight,
               pageTitle: pageTitle,
               dateLabel: dateLabel,
-              weekType: weekType,
-              gradient: getHeaderGradient(weekType),
+              weekType: weekType ?? '',
+              gradient: getHeaderGradient(weekType ?? ''),
               isOffline: isOffline,
             ),
           ),
@@ -275,12 +308,9 @@ class _OverviewScreenState extends State {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Text(
+                              const Text(
                                 'Нет запланированных занятий',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white54,
-                                ),
+                                style: TextStyle(fontSize: 16, color: Colors.white54),
                               ),
                             ],
                           ),
@@ -294,9 +324,7 @@ class _OverviewScreenState extends State {
 
                           try {
                             final periodInt = int.tryParse(item.number);
-                            if (periodInt != null &&
-                                periodInt > 0 &&
-                                periodInt <= callsData.length) {
+                            if (periodInt != null && periodInt > 0 && periodInt <= callsData.length) {
                               final call = callsData[periodInt - 1];
                               lessonStartTime = call.startTime;
                               lessonEndTime = call.endTime;
@@ -316,10 +344,8 @@ class _OverviewScreenState extends State {
 
                           if (index < scheduleWithChanges.length - 1) {
                             String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
-
                             try {
-                              final nextPeriodInt =
-                                  int.tryParse(scheduleWithChanges[index + 1].number);
+                              final nextPeriodInt = int.tryParse(scheduleWithChanges[index + 1].number);
                               if (nextPeriodInt != null &&
                                   nextPeriodInt > 0 &&
                                   nextPeriodInt <= callsData.length) {
@@ -378,7 +404,7 @@ class _OverviewScreenState extends State {
     );
   }
 
-  String getWeekTypeForDate(DateTime date) => DateFormatter.getWeekType(date);
+  String? getWeekTypeForDate(DateTime date) => DateFormatter.getWeekType(date);
 
   List<Schedule> filterScheduleByWeekType(List<Schedule> schedule, String? weekType) {
     if (weekType == null) return schedule;
@@ -389,16 +415,13 @@ class _OverviewScreenState extends State {
     }
 
     final List<Schedule> filtered = [];
-
     lessonsByPeriod.forEach((_, lessons) {
       final numeratorLessons = lessons
           .where((l) => l.lessonType == 'numerator' && l.subject.trim().isNotEmpty)
           .toList();
-
       final denominatorLessons = lessons
           .where((l) => l.lessonType == 'denominator' && l.subject.trim().isNotEmpty)
           .toList();
-
       final regularLessons =
           lessons.where((l) => l.lessonType == null && l.subject.trim().isNotEmpty).toList();
 
@@ -421,13 +444,10 @@ class _OverviewScreenState extends State {
   ScheduleChangesResult applyScheduleChanges(
     List<Schedule> schedule,
     List<Replacement> changes,
-    List callsData,
+    List<dynamic> callsData,
   ) {
     if (changes.isEmpty) {
-      return ScheduleChangesResult(
-        schedule: List<Schedule>.from(schedule),
-        hasBuildingOverride: false,
-      );
+      return ScheduleChangesResult(schedule: List<Schedule>.from(schedule), hasBuildingOverride: false);
     }
 
     final List<Schedule> result = List<Schedule>.from(schedule);
@@ -464,7 +484,6 @@ class _OverviewScreenState extends State {
 
       if (existingIndex != -1) {
         final existing = result[existingIndex];
-
         result[existingIndex] = Schedule(
           id: existing.id,
           number: existing.number,
@@ -477,7 +496,6 @@ class _OverviewScreenState extends State {
         );
       } else {
         final timing = lessonTimingForNumber(lessonNumber, callsData);
-
         result.add(
           Schedule(
             id: 'change_${lessonNumber}_${change.updatedAt}',
@@ -516,7 +534,7 @@ class _OverviewScreenState extends State {
     return fallbackBuilding;
   }
 
-  LessonTiming lessonTimingForNumber(String lessonNumber, List callsData) {
+  LessonTiming lessonTimingForNumber(String lessonNumber, List<dynamic> callsData) {
     final sanitized = lessonNumber.trim();
     for (final call in callsData) {
       try {
@@ -567,7 +585,6 @@ class _OverviewScreenState extends State {
         '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
 
     final targetDate = pageTitle == 'Сегодня' ? todayDate : tomorrowDate;
-
     return scheduleChanges.where((c) => c.changeDate == targetDate).toList();
   }
 
@@ -644,9 +661,10 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
 
   final String pageTitle;
   final String dateLabel;
-  final String weekType;
 
+  final String weekType;
   final List<Color> gradient;
+
   final bool isOffline;
 
   @override
@@ -658,7 +676,6 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
         final isMini = t > 0.65;
 
         final radius = lerpDouble(32, 22, t)!;
-
         final padH = lerpDouble(20, 16, t)!;
         final padTop = lerpDouble(18, 10, t)!;
         final padBottom = lerpDouble(18, 10, t)!;
@@ -744,7 +761,7 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
                           pill,
                           SizedBox(height: gapPillIcon),
                           SizedBox(
-                            height: iconSize,
+                            height: iconSize, // место резервируем всегда, чтобы шапка не прыгала
                             child: isOffline
                                 ? Opacity(
                                     opacity: iconOpacity,

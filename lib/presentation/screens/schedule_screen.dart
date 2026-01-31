@@ -1,10 +1,14 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
+
+// ВАЖНО: берём тот же баннер, что и в Settings.
+import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 
 /// Экран "Расписание" — недельный лонг-лист + pinned шапка, которая сжимается только по высоте.
 class ScheduleScreen extends StatefulWidget {
@@ -26,6 +30,9 @@ class _ScheduleScreenState extends State {
   /// true = показываем иконку wifi_off в шапке.
   bool _isOffline = false;
 
+  /// чтобы авто-обновление (на входе) не спамило одним и тем же баннером
+  bool _autoOfflineNotified = false;
+
   @override
   void initState() {
     super.initState();
@@ -38,18 +45,31 @@ class _ScheduleScreenState extends State {
     });
   }
 
-  Future<void> _initializeSchedule() async {
-    await _loadScheduleData(forceRefresh: false, showLoader: true);
-    await _loadScheduleData(forceRefresh: true, showLoader: false);
+  Future _initializeSchedule() async {
+    await _loadScheduleData(forceRefresh: false, showLoader: true, userInitiated: false);
+    await _loadScheduleData(forceRefresh: true, showLoader: false, userInitiated: false);
   }
 
   void _onDataUpdated() {
-    _loadScheduleData(forceRefresh: false, showLoader: false);
+    _loadScheduleData(forceRefresh: false, showLoader: false, userInitiated: false);
   }
 
-  Future<void> _loadScheduleData({
+  void _showOfflineBanner({required bool userInitiated}) {
+    if (!userInitiated && _autoOfflineNotified) return;
+    _autoOfflineNotified = true;
+
+    showInfoNotification(
+      context,
+      'Нет интернета',
+      'Показано последнее сохранённое расписание',
+      Icons.info_outline,
+    );
+  }
+
+  Future _loadScheduleData({
     required bool forceRefresh,
     bool showLoader = true,
+    bool userInitiated = false,
   }) async {
     if (showLoader) setState(() => _isLoading = true);
 
@@ -73,6 +93,10 @@ class _ScheduleScreenState extends State {
 
         if (showLoader) _isLoading = false;
       });
+
+      if (forceRefresh && refreshOk == false) {
+        _showOfflineBanner(userInitiated: userInitiated);
+      }
     } catch (_) {
       if (!mounted) return;
       if (showLoader) setState(() => _isLoading = false);
@@ -96,10 +120,11 @@ class _ScheduleScreenState extends State {
   @override
   Widget build(BuildContext context) {
     final isInitialLoading = _isLoading && _weeklySchedule.isEmpty;
+
     final days = _weeklySchedule.entries.toList();
 
     final now = DateTime.now();
-    final weekType = DateFormatter.getWeekType(now);
+    final weekType = DateFormatter.getWeekType(now) ?? '';
     final dateLabel = DateFormatter.formatDayWithMonth(now);
 
     const headerMaxHeight = 176.0;
@@ -111,7 +136,10 @@ class _ScheduleScreenState extends State {
         child: isInitialLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.white))
             : RefreshIndicator(
-                onRefresh: () => _loadScheduleData(forceRefresh: true),
+                onRefresh: () => _loadScheduleData(
+                  forceRefresh: true,
+                  userInitiated: true,
+                ),
                 color: Colors.white,
                 child: CustomScrollView(
                   slivers: [
@@ -240,9 +268,10 @@ class _CollapsibleWeekHeader extends StatelessWidget {
 
   final String title;
   final String dateLabel;
-  final String weekType;
 
+  final String weekType;
   final List<Color> gradient;
+
   final bool isOffline;
 
   @override
@@ -251,10 +280,10 @@ class _CollapsibleWeekHeader extends StatelessWidget {
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
         final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+
         final isMini = t > 0.65;
 
         final radius = lerpDouble(32, 22, t)!;
-
         final padH = lerpDouble(20, 16, t)!;
         final padTop = lerpDouble(18, 10, t)!;
         final padBottom = lerpDouble(18, 10, t)!;
