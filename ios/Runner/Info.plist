@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	 <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+    <!-- если когда‑нибудь понадобится что-то ещё в фоне, можно добавить другие режимы -->
+  </array>
+
+  <key>BGTaskSchedulerPermittedIdentifiers</key>
+  <array>
+    <string>dev.flutter.background.refresh</string>
+  </array>
 </dict>
 </plist>
