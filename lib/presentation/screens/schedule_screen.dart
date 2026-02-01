@@ -7,7 +7,7 @@ import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
-// ВАЖНО: берём тот же баннер, что и в Settings.
+// Баннер как в Settings
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 
 /// Экран "Расписание" — недельный лонг-лист + pinned шапка, которая сжимается только по высоте.
@@ -86,7 +86,6 @@ class _ScheduleScreenState extends State {
       setState(() {
         _weeklySchedule = weekly;
 
-        // Логика как в OverviewScreen:
         // - если не было попытки forceRefresh -> берём флаг из репозитория
         // - если была попытка -> офлайн = !refreshOk
         _isOffline = refreshOk == null ? _repository.isOfflineBadgeVisible : !refreshOk;
@@ -94,7 +93,7 @@ class _ScheduleScreenState extends State {
         if (showLoader) _isLoading = false;
       });
 
-      if (forceRefresh && refreshOk == false) {
+      if (forceRefresh && refreshOk == false && mounted) {
         _showOfflineBanner(userInitiated: userInitiated);
       }
     } catch (_) {
@@ -120,7 +119,6 @@ class _ScheduleScreenState extends State {
   @override
   Widget build(BuildContext context) {
     final isInitialLoading = _isLoading && _weeklySchedule.isEmpty;
-
     final days = _weeklySchedule.entries.toList();
 
     final now = DateTime.now();
@@ -136,10 +134,7 @@ class _ScheduleScreenState extends State {
         child: isInitialLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.white))
             : RefreshIndicator(
-                onRefresh: () => _loadScheduleData(
-                  forceRefresh: true,
-                  userInitiated: true,
-                ),
+                onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
                 color: Colors.white,
                 child: CustomScrollView(
                   slivers: [
@@ -245,13 +240,12 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Убрали чёрный фон за pinned-шапкой
     return SizedBox.expand(child: child);
   }
 }
 
-/// MINI: weekType справа как было.
-/// EXPANDED: weekType слева сверху (как в overview).
+/// Плашка weekType и wifi_off двигаются плавно, а левый блок в mini центрируется по вертикали.
+/// Wifi в mini вычисляется от высоты плашки (чтобы не было наезда).
 class _CollapsibleWeekHeader extends StatelessWidget {
   const _CollapsibleWeekHeader({
     required this.maxHeight,
@@ -281,8 +275,6 @@ class _CollapsibleWeekHeader extends StatelessWidget {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
         final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
 
-        final isMini = t > 0.65;
-
         final radius = lerpDouble(32, 22, t)!;
         final padH = lerpDouble(20, 16, t)!;
         final padTop = lerpDouble(18, 10, t)!;
@@ -307,6 +299,27 @@ class _CollapsibleWeekHeader extends StatelessWidget {
           padV: pillPV,
         );
 
+        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
+        final reservedTop = lerpDouble(estimatedPillHeight + gapPillIcon, 0, t)!;
+
+        final pillAlign = Alignment(
+          lerpDouble(-1.0, 1.0, t)!,
+          lerpDouble(-1.0, -0.18, t)!,
+        );
+
+        final leftInfoAlignY = lerpDouble(-0.35, 0.0, t)!;
+
+        // WIFI: рассчитываем y в mini от высоты плашки, чтобы не было пересечения.
+        final contentH = h - padTop - padBottom;
+        final half = (contentH <= 1) ? 1.0 : (contentH / 2);
+
+        const pillYMini = -0.18;
+        final minDelta =
+            (estimatedPillHeight / 2 + gapPillIcon + iconSize / 2 + 4) / half; // +4px запас
+        final wifiYMini = (pillYMini + minDelta).clamp(-1.0, 1.0);
+
+        final wifiAlign = Alignment(1.0, lerpDouble(0.0, wifiYMini, t)!);
+
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           decoration: BoxDecoration(
@@ -326,114 +339,62 @@ class _CollapsibleWeekHeader extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-            child: isMini
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: titleSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: gapTitleDate),
-                              Text(
-                                dateLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: dateSize,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Align(
+                  alignment: Alignment(-1.0, leftInfoAlignY),
+                  child: Padding(
+                    padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          pill,
-                          SizedBox(height: gapPillIcon),
-                          SizedBox(
-                            height: iconSize,
-                            child: Opacity(
-                              opacity: isOffline ? 1.0 : 0.0,
-                              child: Icon(
-                                Icons.wifi_off,
-                                size: iconSize,
-                                color: Colors.white.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              pill, // EXPANDED: слева сверху
-                              SizedBox(height: gapPillIcon),
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: titleSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: gapTitleDate),
-                              Text(
-                                dateLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: dateSize,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
+                        SizedBox(height: gapTitleDate),
+                        Text(
+                          dateLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: dateSize,
+                            color: Colors.white70,
                           ),
                         ),
-                      ),
-                      // Справа в expanded оставляем только место под wifi_off (без скрытого pill),
-                      // чтобы текст не обрезался точками при наличии места.
-                      SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                        child: Opacity(
-                          opacity: isOffline ? 1.0 : 0.0,
-                          child: Icon(
-                            Icons.wifi_off,
-                            size: iconSize,
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                ),
+                Align(
+                  alignment: pillAlign,
+                  child: pill,
+                ),
+                Align(
+                  alignment: wifiAlign,
+                  child: SizedBox(
+                    width: iconSize,
+                    height: iconSize,
+                    child: Opacity(
+                      opacity: isOffline ? 1.0 : 0.0,
+                      child: Icon(
+                        Icons.wifi_off,
+                        size: iconSize,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
