@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
@@ -26,7 +28,7 @@ class OverviewScreen extends StatefulWidget {
   final ValueNotifier<int>? innerPageRequest;
 
   @override
-  State createState() => _OverviewScreenState();
+  State<OverviewScreen> createState() => _OverviewScreenState();
 }
 
 class _OverviewScreenState extends State<OverviewScreen> {
@@ -49,11 +51,49 @@ class _OverviewScreenState extends State<OverviewScreen> {
   bool _autoOfflineNotified = false;
 
   late final PageController pageController;
-
   late final ValueNotifier<int> _pageRequest;
   late final bool _ownsPageRequest;
 
   int currentPageIndex = 0;
+
+  // --- карты: соответствие и открытие ---
+  static const Map<String, String> _buildingToAddress = {
+    'нежинская': 'Нежинская улица, 7, Москва',
+    'нахимовский': 'Нахимовский проспект, 21, Москва',
+  };
+
+  bool _canOpenBuilding(String label) {
+    final key = label.trim().toLowerCase();
+    return _buildingToAddress.containsKey(key);
+  }
+
+  Uri _mapsUriForAddress(String address) {
+    final q = Uri.encodeComponent(address);
+
+    if (Platform.isAndroid) {
+      // geo: URI обычно открывается через chooser карт, если нет дефолта [web:387][web:393]
+      return Uri.parse('geo:0,0?q=$q');
+    }
+
+    // iOS/прочие: универсальная ссылка; система сама решит, чем открыть
+    return Uri.parse('https://www.google.com/maps/search/?api=1&query=$q');
+  }
+
+  Future<void> _openBuildingInMaps(BuildContext context, String label) async {
+    final key = label.trim().toLowerCase();
+    final address = _buildingToAddress[key];
+    if (address == null) return;
+
+    final uri = _mapsUriForAddress(address);
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть карты')),
+      );
+    }
+  }
+  // --- /карты ---
 
   @override
   void initState() {
@@ -79,7 +119,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   void _onExternalPageRequest() {
     final target = _pageRequest.value.clamp(0, 1);
-
     if (!mounted) return;
     if (currentPageIndex == target) return;
 
@@ -90,7 +129,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
         if (currentPageIndex == target) return;
 
         setState(() => currentPageIndex = target);
-
         pageController.animateToPage(
           target,
           duration: const Duration(milliseconds: 260),
@@ -101,7 +139,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
 
     setState(() => currentPageIndex = target);
-
     pageController.animateToPage(
       target,
       duration: const Duration(milliseconds: 260),
@@ -109,7 +146,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
-  Future initializeSchedule() async {
+  Future<void> initializeSchedule() async {
     await fetchScheduleData(forceRefresh: false, showLoader: true, userInitiated: false);
     await fetchScheduleData(forceRefresh: true, showLoader: false, userInitiated: false);
   }
@@ -119,8 +156,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   void _showOfflineBanner({required bool userInitiated}) {
-    // Показываем при ручном обновлении всегда.
-    // При авто — только один раз за жизненный цикл экрана.
     if (!userInitiated && _autoOfflineNotified) return;
     _autoOfflineNotified = true;
 
@@ -132,7 +167,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
-  Future fetchScheduleData({
+  Future<void> fetchScheduleData({
     required bool forceRefresh,
     bool showLoader = true,
     bool userInitiated = false,
@@ -140,7 +175,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
     if (showLoader) setState(() => isLoading = true);
 
     bool? refreshOk;
-
     try {
       if (forceRefresh) {
         refreshOk = await repository.forceRefreshWithStatus();
@@ -156,15 +190,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         todayScheduleData = scheduleResults[0];
         tomorrowScheduleData = scheduleResults[1];
-
-        // Если была попытка обновления и она провалилась — офлайн.
-        // Если не было попытки — берём флаг из репозитория.
         isOffline = refreshOk == null ? repository.isOfflineBadgeVisible : !refreshOk;
 
         if (showLoader) isLoading = false;
       });
 
-      // Если пытались обновиться, но нет сети — показываем баннер как в Settings.
       if (forceRefresh && refreshOk == false) {
         _showOfflineBanner(userInitiated: userInitiated);
       }
@@ -172,14 +202,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
       if (!mounted) return;
       if (showLoader) setState(() => isLoading = false);
 
-      // Оставляем общий фолбэк на неожиданные ошибки.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ошибка загрузки расписания')),
       );
       return;
     }
 
-    // Изменения/уведомления — отдельным блоком, чтобы не ломать показ расписания.
     try {
       final loadedChanges = await changesRepository.getScheduleChanges();
       if (!mounted) return;
@@ -225,18 +253,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     },
                     children: [
                       RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(
-                          forceRefresh: true,
-                          userInitiated: true,
-                        ),
+                        onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
                         color: Colors.white,
                         child: buildSchedulePage(todayScheduleData, 'Сегодня'),
                       ),
                       RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(
-                          forceRefresh: true,
-                          userInitiated: true,
-                        ),
+                        onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
                         color: Colors.white,
                         child: buildSchedulePage(tomorrowScheduleData, 'Завтра'),
                       ),
@@ -261,8 +283,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     final filteredScheduleData = filterScheduleByWeekType(scheduleData, weekType);
     final filteredChanges = getFilteredScheduleChanges(pageTitle);
-
-    final callsData = CallsUtil.getCalls(); // List<dynamic>
+    final callsData = CallsUtil.getCalls();
 
     final ScheduleChangesResult changesResult = filteredChanges.isEmpty
         ? ScheduleChangesResult(
@@ -279,6 +300,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     const headerMaxHeight = 176.0;
     const headerMinHeight = 120.0;
+
+    final canOpen = _canOpenBuilding(building);
 
     return CustomScrollView(
       slivers: [
@@ -324,9 +347,13 @@ class _OverviewScreenState extends State<OverviewScreen> {
                       Flexible(
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: Location(
-                            label: building,
-                            showOverrideIndicator: hasBuildingOverride,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: canOpen ? () => _openBuildingInMaps(context, building) : null,
+                            child: Location(
+                              label: building,
+                              showOverrideIndicator: hasBuildingOverride,
+                            ),
                           ),
                         ),
                       ),
@@ -395,6 +422,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
                           if (index < scheduleWithChanges.length - 1) {
                             String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
+
                             try {
                               final nextPeriodInt =
                                   int.tryParse(scheduleWithChanges[index + 1].number);
@@ -467,13 +495,16 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
 
     final List<Schedule> filtered = [];
+
     lessonsByPeriod.forEach((_, lessons) {
       final numeratorLessons = lessons
           .where((l) => l.lessonType == 'numerator' && l.subject.trim().isNotEmpty)
           .toList();
+
       final denominatorLessons = lessons
           .where((l) => l.lessonType == 'denominator' && l.subject.trim().isNotEmpty)
           .toList();
+
       final regularLessons =
           lessons.where((l) => l.lessonType == null && l.subject.trim().isNotEmpty).toList();
 
@@ -496,7 +527,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   ScheduleChangesResult applyScheduleChanges(
     List<Schedule> schedule,
     List<Replacement> changes,
-    List<dynamic> callsData,
+    List callsData,
   ) {
     if (changes.isEmpty) {
       return ScheduleChangesResult(schedule: List<Schedule>.from(schedule), hasBuildingOverride: false);
@@ -575,8 +606,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   bool shouldHideLessonFromOverview(String replaceTo) {
     final normalized = replaceTo.toLowerCase();
-    return normalized.startsWith('занятие отменено') ||
-        normalized.startsWith('занятие перенесено на');
+    return normalized.startsWith('занятие отменено') || normalized.startsWith('занятие перенесено на');
   }
 
   String resolveBuildingFromChange(String replaceTo, String fallbackBuilding) {
@@ -586,7 +616,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return fallbackBuilding;
   }
 
-  LessonTiming lessonTimingForNumber(String lessonNumber, List<dynamic> callsData) {
+  LessonTiming lessonTimingForNumber(String lessonNumber, List callsData) {
     final sanitized = lessonNumber.trim();
     for (final call in callsData) {
       try {
@@ -606,7 +636,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   String primaryBuilding(List<Schedule> schedule) {
     if (schedule.isEmpty) return '';
-
     final Map<String, int> counts = {};
     for (final lesson in schedule) {
       counts[lesson.building] = (counts[lesson.building] ?? 0) + 1;
@@ -637,6 +666,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
         '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
 
     final targetDate = pageTitle == 'Сегодня' ? todayDate : tomorrowDate;
+
     return scheduleChanges.where((c) => c.changeDate == targetDate).toList();
   }
 
@@ -647,6 +677,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     pageController.dispose();
     repository.dataUpdatedNotifier.removeListener(onDataUpdated);
+
     super.dispose();
   }
 }
@@ -654,12 +685,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
 class LessonTiming {
   final String start;
   final String end;
+
   const LessonTiming({required this.start, required this.end});
 }
 
 class ScheduleChangesResult {
   final List<Schedule> schedule;
   final bool hasBuildingOverride;
+
   ScheduleChangesResult({required this.schedule, required this.hasBuildingOverride});
 }
 
@@ -713,13 +746,10 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
 
   final double maxHeight;
   final double minHeight;
-
   final String pageTitle;
   final String dateLabel;
-
   final String weekType;
   final List<Color> gradient;
-
   final bool isOffline;
 
   @override
@@ -727,8 +757,7 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
-        final t =
-            ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+        final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
         final isMini = t > 0.65;
 
         final radius = lerpDouble(32, 22, t)!;
@@ -869,7 +898,6 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // Справа в expanded оставляем только wifi_off, чтобы текст не обрезался точками.
                       SizedBox(
                         width: iconSize,
                         height: iconSize,
