@@ -71,7 +71,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final q = Uri.encodeComponent(address);
 
     if (Platform.isAndroid) {
-      // geo: URI обычно открывается через chooser карт, если нет дефолта [web:387][web:393]
+      // geo: URI обычно открывается через chooser карт, если нет дефолта
       return Uri.parse('geo:0,0?q=$q');
     }
 
@@ -156,6 +156,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   void _showOfflineBanner({required bool userInitiated}) {
+    // Показываем при ручном обновлении всегда.
+    // При авто — только один раз за жизненный цикл экрана.
     if (!userInitiated && _autoOfflineNotified) return;
     _autoOfflineNotified = true;
 
@@ -190,11 +192,15 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         todayScheduleData = scheduleResults[0];
         tomorrowScheduleData = scheduleResults[1];
+
+        // Если была попытка обновления и она провалилась — офлайн.
+        // Если не было попытки — берём флаг из репозитория.
         isOffline = refreshOk == null ? repository.isOfflineBadgeVisible : !refreshOk;
 
         if (showLoader) isLoading = false;
       });
 
+      // Если пытались обновиться, но нет сети — показываем баннер как в Settings.
       if (forceRefresh && refreshOk == false) {
         _showOfflineBanner(userInitiated: userInitiated);
       }
@@ -202,12 +208,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
       if (!mounted) return;
       if (showLoader) setState(() => isLoading = false);
 
+      // Оставляем общий фолбэк на неожиданные ошибки.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ошибка загрузки расписания')),
       );
       return;
     }
 
+    // Изменения/уведомления — отдельным блоком, чтобы не ломать показ расписания.
     try {
       final loadedChanges = await changesRepository.getScheduleChanges();
       if (!mounted) return;
@@ -283,6 +291,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     final filteredScheduleData = filterScheduleByWeekType(scheduleData, weekType);
     final filteredChanges = getFilteredScheduleChanges(pageTitle);
+
     final callsData = CallsUtil.getCalls();
 
     final ScheduleChangesResult changesResult = filteredChanges.isEmpty
@@ -314,7 +323,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
             child: _CollapsibleOverviewHeader(
               maxHeight: headerMaxHeight,
               minHeight: headerMinHeight,
-              pageTitle: pageTitle,
+              title: pageTitle,
               dateLabel: dateLabel,
               weekType: weekType ?? '',
               gradient: getHeaderGradient(weekType ?? ''),
@@ -424,8 +433,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                             String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
 
                             try {
-                              final nextPeriodInt =
-                                  int.tryParse(scheduleWithChanges[index + 1].number);
+                              final nextPeriodInt = int.tryParse(scheduleWithChanges[index + 1].number);
                               if (nextPeriodInt != null &&
                                   nextPeriodInt > 0 &&
                                   nextPeriodInt <= callsData.length) {
@@ -666,7 +674,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
         '${tomorrow.day.toString().padLeft(2, '0')}.${tomorrow.month.toString().padLeft(2, '0')}.${tomorrow.year}';
 
     final targetDate = pageTitle == 'Сегодня' ? todayDate : tomorrowDate;
-
     return scheduleChanges.where((c) => c.changeDate == targetDate).toList();
   }
 
@@ -677,7 +684,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     pageController.dispose();
     repository.dataUpdatedNotifier.removeListener(onDataUpdated);
-
     super.dispose();
   }
 }
@@ -731,13 +737,13 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// MINI: weekType справа как было.
-/// EXPANDED: weekType слева сверху (как в расписании).
+/// Плашка weekType и wifi_off двигаются плавно, а левый блок в mini центрируется по вертикали.
+/// Wifi в mini вычисляется от высоты плашки (чтобы не было наезда).
 class _CollapsibleOverviewHeader extends StatelessWidget {
   const _CollapsibleOverviewHeader({
     required this.maxHeight,
     required this.minHeight,
-    required this.pageTitle,
+    required this.title,
     required this.dateLabel,
     required this.weekType,
     required this.gradient,
@@ -746,7 +752,7 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
 
   final double maxHeight;
   final double minHeight;
-  final String pageTitle;
+  final String title;
   final String dateLabel;
   final String weekType;
   final List<Color> gradient;
@@ -757,8 +763,8 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
-        final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
-        final isMini = t > 0.65;
+        final t =
+            ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
 
         final radius = lerpDouble(32, 22, t)!;
         final padH = lerpDouble(20, 16, t)!;
@@ -776,7 +782,6 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
         final gapPillIcon = lerpDouble(10, 6, t)!;
 
         final iconSize = lerpDouble(18, 14, t)!;
-        final iconOpacity = lerpDouble(1.0, 0.95, t)!;
 
         final pill = _WeekTypePill(
           text: weekType,
@@ -784,6 +789,27 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
           padH: pillPH,
           padV: pillPV,
         );
+
+        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
+        final reservedTop = lerpDouble(estimatedPillHeight + gapPillIcon, 0, t)!;
+
+        final pillAlign = Alignment(
+          lerpDouble(-1.0, 1.0, t)!,
+          lerpDouble(-1.0, -0.18, t)!,
+        );
+
+        final leftInfoAlignY = lerpDouble(-0.35, 0.0, t)!;
+
+        // WIFI: рассчитываем y в mini от высоты плашки, чтобы не было пересечения.
+        final contentH = h - padTop - padBottom;
+        final half = (contentH <= 1) ? 1.0 : (contentH / 2);
+
+        const pillYMini = -0.18;
+        final minDelta =
+            (estimatedPillHeight / 2 + gapPillIcon + iconSize / 2 + 4) / half; // +4px запас
+        final wifiYMini = (pillYMini + minDelta).clamp(-1.0, 1.0);
+
+        final wifiAlign = Alignment(1.0, lerpDouble(0.0, wifiYMini, t)!);
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -804,116 +830,62 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-            child: isMini
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                pageTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: titleSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: gapTitleDate),
-                              Text(
-                                dateLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: dateSize,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Align(
+                  alignment: Alignment(-1.0, leftInfoAlignY),
+                  child: Padding(
+                    padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          pill,
-                          SizedBox(height: gapPillIcon),
-                          SizedBox(
-                            height: iconSize, // место резервируем всегда, чтобы шапка не прыгала
-                            child: isOffline
-                                ? Opacity(
-                                    opacity: iconOpacity,
-                                    child: Icon(
-                                      Icons.wifi_off,
-                                      size: iconSize,
-                                      color: Colors.white.withValues(alpha: 0.85),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              pill, // EXPANDED: слева сверху
-                              SizedBox(height: gapPillIcon),
-                              Text(
-                                pageTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: titleSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              SizedBox(height: gapTitleDate),
-                              Text(
-                                dateLabel,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: dateSize,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
+                        SizedBox(height: gapTitleDate),
+                        Text(
+                          dateLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: dateSize,
+                            color: Colors.white70,
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                        child: isOffline
-                            ? Opacity(
-                                opacity: iconOpacity,
-                                child: Icon(
-                                  Icons.wifi_off,
-                                  size: iconSize,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                ),
+                Align(
+                  alignment: pillAlign,
+                  child: pill,
+                ),
+                Align(
+                  alignment: wifiAlign,
+                  child: SizedBox(
+                    width: iconSize,
+                    height: iconSize,
+                    child: Opacity(
+                      opacity: isOffline ? 1.0 : 0.0,
+                      child: Icon(
+                        Icons.wifi_off,
+                        size: iconSize,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
