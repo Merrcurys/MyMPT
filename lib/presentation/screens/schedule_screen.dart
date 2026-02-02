@@ -326,7 +326,7 @@ class _CollapsibleWeekHeader extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Align(
-                  alignment: isCompact ? Alignment.center : Alignment.centerLeft,
+                  alignment: Alignment(lerpDouble(-1.0, 0.0, tCurved)!, 0.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
