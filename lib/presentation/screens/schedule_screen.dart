@@ -126,7 +126,7 @@ class _ScheduleScreenState extends State {
     final dateLabel = DateFormatter.formatDayWithMonth(now);
 
     const headerMaxHeight = 176.0;
-    const headerMinHeight = 120.0;
+    const headerMinHeight = 88.0;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -273,24 +273,25 @@ class _CollapsibleWeekHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight.clamp(minHeight, maxHeight);
-        final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+        final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0);
+        final tCurved = Curves.easeOutCubic.transform(t);
 
-        final radius = lerpDouble(32, 22, t)!;
-        final padH = lerpDouble(20, 16, t)!;
-        final padTop = lerpDouble(18, 10, t)!;
-        final padBottom = lerpDouble(18, 10, t)!;
+        final radius = lerpDouble(32, 18, tCurved)!;
+        final padH = lerpDouble(20, 14, tCurved)!;
+        final padTop = lerpDouble(18, 10, tCurved)!;
+        final padBottom = lerpDouble(18, 10, tCurved)!;
 
-        final titleSize = lerpDouble(28, 20, t)!;
-        final dateSize = lerpDouble(16, 12.5, t)!;
+        final titleSize = lerpDouble(28, 18, tCurved)!;
+        final dateSize = lerpDouble(16, 13, tCurved)!;
 
-        final pillFont = lerpDouble(13, 11.5, t)!;
-        final pillPH = lerpDouble(14, 10, t)!;
-        final pillPV = lerpDouble(6, 4.5, t)!;
+        final pillFont = lerpDouble(13, 11, tCurved)!;
+        final pillPH = lerpDouble(14, 10, tCurved)!;
+        final pillPV = lerpDouble(6, 4, tCurved)!;
 
-        final gapTitleDate = lerpDouble(4, 2, t)!;
-        final gapPillIcon = lerpDouble(10, 6, t)!;
+        final gapPillTitle = lerpDouble(10, 0, tCurved)!;
+        final gapTitleDate = lerpDouble(6, 4, tCurved)!;
 
-        final iconSize = lerpDouble(18, 14, t)!;
+        final iconSize = lerpDouble(18, 14, tCurved)!;
 
         final pill = _WeekTypePill(
           text: weekType,
@@ -299,26 +300,8 @@ class _CollapsibleWeekHeader extends StatelessWidget {
           padV: pillPV,
         );
 
-        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
-        final reservedTop = lerpDouble(estimatedPillHeight + gapPillIcon, 0, t)!;
-
-        final pillAlign = Alignment(
-          lerpDouble(-1.0, 1.0, t)!,
-          lerpDouble(-1.0, -0.18, t)!,
-        );
-
-        final leftInfoAlignY = lerpDouble(-0.35, 0.0, t)!;
-
-        // WIFI: рассчитываем y в mini от высоты плашки, чтобы не было пересечения.
-        final contentH = h - padTop - padBottom;
-        final half = (contentH <= 1) ? 1.0 : (contentH / 2);
-
-        const pillYMini = -0.18;
-        final minDelta =
-            (estimatedPillHeight / 2 + gapPillIcon + iconSize / 2 + 4) / half; // +4px запас
-        final wifiYMini = (pillYMini + minDelta).clamp(-1.0, 1.0);
-
-        final wifiAlign = Alignment(1.0, lerpDouble(0.0, wifiYMini, t)!);
+        final isCompact = tCurved > 0.5;
+        final displayTitle = isCompact ? weekType : title;
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -331,55 +314,56 @@ class _CollapsibleWeekHeader extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: lerpDouble(0.45, 0.25, t)!),
-                blurRadius: lerpDouble(30, 18, t)!,
-                offset: Offset(0, lerpDouble(18, 10, t)!),
+                color: Colors.black.withValues(alpha: lerpDouble(0.45, 0.2, tCurved)!),
+                blurRadius: lerpDouble(30, 12, tCurved)!,
+                offset: Offset(0, lerpDouble(18, 6, tCurved)!),
               ),
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
+            padding: EdgeInsets.fromLTRB(padH, padTop, padH + iconSize, padBottom),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Align(
-                  alignment: Alignment(-1.0, leftInfoAlignY),
-                  child: Padding(
-                    padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: gapTitleDate),
-                        Text(
-                          dateLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: dateSize,
-                            color: Colors.white70,
-                          ),
-                        ),
+                  alignment: isCompact ? Alignment.center : Alignment.centerLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: isCompact ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+                    children: [
+                      if (!isCompact) ...[
+                        pill,
+                        SizedBox(height: gapPillTitle),
                       ],
-                    ),
+                      Text(
+                        displayTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                        style: TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: gapTitleDate),
+                      Text(
+                        dateLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: isCompact ? TextAlign.center : TextAlign.start,
+                        style: TextStyle(
+                          fontSize: dateSize,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Align(
-                  alignment: pillAlign,
-                  child: pill,
-                ),
-                Align(
-                  alignment: wifiAlign,
+                Positioned(
+                  top: 0,
+                  right: 0,
                   child: SizedBox(
                     width: iconSize,
                     height: iconSize,
