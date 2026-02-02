@@ -68,39 +68,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
-  void activate() {
-    // Обновляем время последнего обновления при возвращении на экран
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateLastUpdateTime();
-    });
-    super.activate();
-  }
-
-  @override
   void dispose() {
     _refreshTimer?.cancel();
     _repository.dataUpdatedNotifier.removeListener(_onScheduleDataUpdated);
     super.dispose();
-  }
-
-  Future<void> _updateLastUpdateTime() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final lastUpdateIso = prefs.getString('schedule_cache_last_update');
-
-      DateTime? parsed;
-      if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
-        parsed = DateTime.tryParse(lastUpdateIso);
-      }
-
-      if (mounted && parsed != null) {
-        setState(() => _lastUpdate = parsed);
-      } else if (mounted && _repository.lastUpdate != null) {
-        setState(() => _lastUpdate = _repository.lastUpdate);
-      }
-    } catch (_) {
-      // ignore
-    }
   }
 
   Future<void> _onScheduleDataUpdated() async {
@@ -456,9 +427,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       try {
-        final ok = await _repository.refreshAllDataWithStatus(
-          forceRefresh: true,
-        );
+        final ok =
+            await _repository.refreshAllDataWithStatus(forceRefresh: true);
 
         final lastUpdateIso = prefs.getString('schedule_cache_last_update');
         if (lastUpdateIso != null && lastUpdateIso.isNotEmpty) {
@@ -541,8 +511,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 14),
               SettingsCard(
                 title: 'Выберите свою специальность',
-                subtitle:
-                    _selectedSpecialty?.name ?? 'Специальность не выбрана',
+                subtitle: _selectedSpecialty?.name ?? 'Специальность не выбрана',
                 icon: Icons.book_outlined,
                 onTap: _showSpecialtySelector,
               ),
@@ -732,9 +701,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Выберите специальность',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
               Expanded(
@@ -795,9 +764,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Text(
                       'Выберите группу',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                   Expanded(
@@ -808,28 +777,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           )
                         : _groups.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Группы не найдены',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: _groups.length,
-                            itemBuilder: (context, index) {
-                              final group = _groups[index];
-                              return ListTile(
-                                title: Text(
-                                  group.code,
-                                  style: const TextStyle(color: Colors.white),
+                            ? const Center(
+                                child: Text(
+                                  'Группы не найдены',
+                                  style: TextStyle(color: Colors.white70),
                                 ),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _onGroupSelected(group);
+                              )
+                            : ListView.builder(
+                                itemCount: _groups.length,
+                                itemBuilder: (context, index) {
+                                  final group = _groups[index];
+                                  return ListTile(
+                                    title: Text(
+                                      group.code,
+                                      style:
+                                          const TextStyle(color: Colors.white),
+                                    ),
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      _onGroupSelected(group);
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
+                              ),
                   ),
                 ],
               ),
