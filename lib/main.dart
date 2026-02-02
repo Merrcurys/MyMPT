@@ -112,18 +112,14 @@ class _MainScreenState extends State<MainScreen> {
     _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
   ];
 
-  late final PageController _rootController = PageController(initialPage: _currentIndex);
+  static const double _minDragDistance = 50.0;
+  static const double _minVelocity = 400.0;
+  double _dragDx = 0.0;
 
   @override
   void initState() {
     super.initState();
     _checkFirstLaunch();
-  }
-
-  @override
-  void dispose() {
-    _rootController.dispose();
-    super.dispose();
   }
 
   Future<void> _checkFirstLaunch() async {
@@ -147,30 +143,22 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _animateRootTo(int index) {
+  void _goToPage(int index) {
     if (index < 0 || index >= _screens.length) return;
     if (index == _currentIndex) return;
-
     setState(() => _currentIndex = index);
+  }
 
-    if (!_rootController.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (!_rootController.hasClients) return;
-        _rootController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-        );
-      });
-      return;
-    }
-
-    _rootController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-    );
+  void _onHorizontalDragStart(DragStartDetails _) => _dragDx = 0.0;
+  void _onHorizontalDragUpdate(DragUpdateDetails d) => _dragDx += d.delta.dx;
+  void _onHorizontalDragEnd(DragEndDetails d) {
+    final v = d.velocity.pixelsPerSecond.dx;
+    final byDistance = _dragDx.abs() >= _minDragDistance;
+    final byVelocity = v.abs() >= _minVelocity;
+    if (!byDistance && !byVelocity) return;
+    final toRight = byDistance ? (_dragDx > 0) : (v > 0);
+    if (toRight && _currentIndex > 0) _goToPage(_currentIndex - 1);
+    else if (!toRight && _currentIndex < _screens.length - 1) _goToPage(_currentIndex + 1);
   }
 
   @override
@@ -200,10 +188,24 @@ class _MainScreenState extends State<MainScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          PageView(
-            controller: _rootController,
-            onPageChanged: (i) => setState(() => _currentIndex = i),
-            children: _screens,
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragStart: _onHorizontalDragStart,
+            onHorizontalDragUpdate: _onHorizontalDragUpdate,
+            onHorizontalDragEnd: _onHorizontalDragEnd,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+              child: KeyedSubtree(
+                key: ValueKey<int>(_currentIndex),
+                child: _screens[_currentIndex],
+              ),
+            ),
           ),
           if (_currentIndex == 0 || _currentIndex == 1)
             Positioned(
@@ -221,8 +223,8 @@ class _MainScreenState extends State<MainScreen> {
         child: NavigationBar(
           selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
           onDestinationSelected: (index) {
-            if (index == 0) _animateRootTo(0);
-            else _animateRootTo(index + 1);
+            if (index == 0) _goToPage(0);
+            else _goToPage(index + 1);
           },
           surfaceTintColor: Colors.transparent,
           destinations: [
