@@ -1,6 +1,4 @@
 import 'dart:io' show Platform;
-import 'dart:ui' show lerpDouble;
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -307,28 +305,17 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final building = primaryBuilding(scheduleWithChanges);
     final dateLabel = formatDate(targetDate);
 
-    const headerMaxHeight = 176.0;
-    const headerMinHeight = 120.0;
-
     final canOpen = _canOpenBuilding(building);
 
     return CustomScrollView(
       slivers: [
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _HeightPinnedHeaderDelegate(
-            backgroundColor: backgroundColor,
-            maxHeight: headerMaxHeight,
-            minHeight: headerMinHeight,
-            child: _CollapsibleOverviewHeader(
-              maxHeight: headerMaxHeight,
-              minHeight: headerMinHeight,
-              title: pageTitle,
-              dateLabel: dateLabel,
-              weekType: weekType ?? '',
-              gradient: getHeaderGradient(weekType ?? ''),
-              isOffline: isOffline,
-            ),
+        SliverToBoxAdapter(
+          child: _StaticOverviewHeader(
+            title: pageTitle,
+            dateLabel: dateLabel,
+            weekType: weekType ?? '',
+            gradient: getHeaderGradient(weekType ?? ''),
+            isOffline: isOffline,
           ),
         ),
         SliverPadding(
@@ -702,47 +689,12 @@ class ScheduleChangesResult {
   ScheduleChangesResult({required this.schedule, required this.hasBuildingOverride});
 }
 
-/// Делегат pinned-хедера: меняется только высота, без Transform.scale.
-class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _HeightPinnedHeaderDelegate({
-    required this.backgroundColor,
-    required this.maxHeight,
-    required this.minHeight,
-    required this.child,
-  });
+/// Высота шапки как на странице «Неделя» (schedule_screen).
+const _overviewHeaderHeight = 176.0;
 
-  final Color backgroundColor; // оставлено, но фон не рисуем
-  final double maxHeight;
-  final double minHeight;
-  final Widget child;
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  bool shouldRebuild(covariant _HeightPinnedHeaderDelegate old) {
-    return old.backgroundColor != backgroundColor ||
-        old.maxHeight != maxHeight ||
-        old.minHeight != minHeight ||
-        old.child != child;
-  }
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Убрали чёрный фон за pinned-шапкой
-    return SizedBox.expand(child: child);
-  }
-}
-
-/// Плашка weekType и wifi_off двигаются плавно, а левый блок в mini центрируется по вертикали.
-/// Wifi в mini вычисляется от высоты плашки (чтобы не было наезда).
-class _CollapsibleOverviewHeader extends StatelessWidget {
-  const _CollapsibleOverviewHeader({
-    required this.maxHeight,
-    required this.minHeight,
+/// Шапка обзора (числитель/знаменатель): прокручивается вместе с контентом.
+class _StaticOverviewHeader extends StatelessWidget {
+  const _StaticOverviewHeader({
     required this.title,
     required this.dateLabel,
     required this.weekType,
@@ -750,8 +702,6 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
     required this.isOffline,
   });
 
-  final double maxHeight;
-  final double minHeight;
   final String title;
   final String dateLabel;
   final String weekType;
@@ -760,135 +710,107 @@ class _CollapsibleOverviewHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final h = constraints.maxHeight.clamp(minHeight, maxHeight);
-        final t =
-            ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0); // 0 expanded -> 1 mini
+    const radius = 32.0;
+    const padH = 20.0;
+    const padTop = 18.0;
+    const padBottom = 18.0;
+    const titleSize = 28.0;
+    const dateSize = 16.0;
+    const gapTitleDate = 4.0;
+    const gapPillIcon = 10.0;
+    const iconSize = 18.0;
 
-        final radius = lerpDouble(32, 22, t)!;
-        final padH = lerpDouble(20, 16, t)!;
-        final padTop = lerpDouble(18, 10, t)!;
-        final padBottom = lerpDouble(18, 10, t)!;
+    final pill = _WeekTypePill(
+      text: weekType,
+      fontSize: 13,
+      padH: 14,
+      padV: 6,
+    );
 
-        final titleSize = lerpDouble(28, 20, t)!;
-        final dateSize = lerpDouble(16, 12.5, t)!;
+    const pillFont = 13.0;
+    const pillPV = 6.0;
+    final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
+    final reservedTop = estimatedPillHeight + gapPillIcon;
 
-        final pillFont = lerpDouble(13, 11.5, t)!;
-        final pillPH = lerpDouble(14, 10, t)!;
-        final pillPV = lerpDouble(6, 4.5, t)!;
-
-        final gapTitleDate = lerpDouble(4, 2, t)!;
-        final gapPillIcon = lerpDouble(10, 6, t)!;
-
-        final iconSize = lerpDouble(18, 14, t)!;
-
-        final pill = _WeekTypePill(
-          text: weekType,
-          fontSize: pillFont,
-          padH: pillPH,
-          padV: pillPV,
-        );
-
-        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
-        final reservedTop = lerpDouble(estimatedPillHeight + gapPillIcon, 0, t)!;
-
-        final pillAlign = Alignment(
-          lerpDouble(-1.0, 1.0, t)!,
-          lerpDouble(-1.0, -0.18, t)!,
-        );
-
-        final leftInfoAlignY = lerpDouble(-0.35, 0.0, t)!;
-
-        // WIFI: рассчитываем y в mini от высоты плашки, чтобы не было пересечения.
-        final contentH = h - padTop - padBottom;
-        final half = (contentH <= 1) ? 1.0 : (contentH / 2);
-
-        const pillYMini = -0.18;
-        final minDelta =
-            (estimatedPillHeight / 2 + gapPillIcon + iconSize / 2 + 4) / half; // +4px запас
-        final wifiYMini = (pillYMini + minDelta).clamp(-1.0, 1.0);
-
-        final wifiAlign = Alignment(1.0, lerpDouble(0.0, wifiYMini, t)!);
-
-        return Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            gradient: LinearGradient(
-              colors: gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return SizedBox(
+      height: _overviewHeaderHeight,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 30,
+              offset: const Offset(0, 18),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: lerpDouble(0.45, 0.25, t)!),
-                blurRadius: lerpDouble(30, 18, t)!,
-                offset: Offset(0, lerpDouble(18, 10, t)!),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Align(
+                alignment: const Alignment(-1.0, -0.35),
+                child: Padding(
+                  padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: gapTitleDate),
+                      Text(
+                        dateLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: dateSize,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.topLeft,
+                child: pill,
+              ),
+              Align(
+                alignment: const Alignment(1.0, 0.0),
+                child: SizedBox(
+                  width: iconSize,
+                  height: iconSize,
+                  child: Opacity(
+                    opacity: isOffline ? 1.0 : 0.0,
+                    child: Icon(
+                      Icons.wifi_off,
+                      size: iconSize,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Align(
-                  alignment: Alignment(-1.0, leftInfoAlignY),
-                  child: Padding(
-                    padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: gapTitleDate),
-                        Text(
-                          dateLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: dateSize,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: pillAlign,
-                  child: pill,
-                ),
-                Align(
-                  alignment: wifiAlign,
-                  child: SizedBox(
-                    width: iconSize,
-                    height: iconSize,
-                    child: Opacity(
-                      opacity: isOffline ? 1.0 : 0.0,
-                      child: Icon(
-                        Icons.wifi_off,
-                        size: iconSize,
-                        color: Colors.white.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
