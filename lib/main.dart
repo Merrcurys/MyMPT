@@ -211,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 115,
+              bottom: MediaQuery.of(context).padding.bottom + 80 + 10,
               child: IgnorePointer(
                 child: PageIndicator(currentPageIndex: _currentIndex),
               ),
