@@ -20,10 +20,13 @@ import 'package:my_mpt/presentation/widgets/shared/location.dart';
 import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
 
 class OverviewScreen extends StatefulWidget {
-  const OverviewScreen({super.key, this.innerPageRequest});
+  const OverviewScreen({super.key, this.innerPageRequest, this.forcedPage});
 
   /// 0 = Сегодня, 1 = Завтра
   final ValueNotifier<int>? innerPageRequest;
+
+  /// Когда задан — показываем только эту страницу (без внутреннего PageView). Для единого свайпа из main.
+  final int? forcedPage;
 
   @override
   State<OverviewScreen> createState() => _OverviewScreenState();
@@ -97,13 +100,13 @@ class _OverviewScreenState extends State<OverviewScreen> {
   void initState() {
     super.initState();
 
-    _ownsPageRequest = widget.innerPageRequest == null;
+    final useInnerPageView = widget.forcedPage == null;
+    _ownsPageRequest = useInnerPageView && widget.innerPageRequest == null;
     _pageRequest = widget.innerPageRequest ?? ValueNotifier<int>(0);
-
-    currentPageIndex = _pageRequest.value.clamp(0, 1);
+    currentPageIndex = (widget.forcedPage ?? _pageRequest.value).clamp(0, 1);
     pageController = PageController(initialPage: currentPageIndex);
 
-    _pageRequest.addListener(_onExternalPageRequest);
+    if (useInnerPageView) _pageRequest.addListener(_onExternalPageRequest);
 
     repository = ScheduleRepository();
     changesRepository = ReplacementRepository();
@@ -244,40 +247,64 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final hasCachedData = todayScheduleData.isNotEmpty || tomorrowScheduleData.isNotEmpty;
     final isInitialLoading = isLoading && !hasCachedData;
 
+    final forcedPage = widget.forcedPage;
+
+    if (isInitialLoading) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: SafeArea(
+          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+      );
+    }
+
+    if (forcedPage != null) {
+      final pageTitle = forcedPage == 0 ? 'Сегодня' : 'Завтра';
+      final scheduleData = forcedPage == 0 ? todayScheduleData : tomorrowScheduleData;
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
+            color: Colors.white,
+            child: buildSchedulePage(scheduleData, pageTitle),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: isInitialLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : Stack(
-                children: [
-                  PageView(
-                    controller: pageController,
-                    onPageChanged: (index) {
-                      setState(() => currentPageIndex = index);
-                      if (_pageRequest.value != index) _pageRequest.value = index;
-                    },
-                    children: [
-                      RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
-                        color: Colors.white,
-                        child: buildSchedulePage(todayScheduleData, 'Сегодня'),
-                      ),
-                      RefreshIndicator(
-                        onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
-                        color: Colors.white,
-                        child: buildSchedulePage(tomorrowScheduleData, 'Завтра'),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    bottom: 10,
-                    left: 0,
-                    right: 0,
-                    child: PageIndicator(currentPageIndex: currentPageIndex),
-                  ),
-                ],
-              ),
+        child: Stack(
+          children: [
+            PageView(
+              controller: pageController,
+              onPageChanged: (index) {
+                setState(() => currentPageIndex = index);
+                if (_pageRequest.value != index) _pageRequest.value = index;
+              },
+              children: [
+                RefreshIndicator(
+                  onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
+                  color: Colors.white,
+                  child: buildSchedulePage(todayScheduleData, 'Сегодня'),
+                ),
+                RefreshIndicator(
+                  onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
+                  color: Colors.white,
+                  child: buildSchedulePage(tomorrowScheduleData, 'Завтра'),
+                ),
+              ],
+            ),
+            Positioned(
+              bottom: 10,
+              left: 0,
+              right: 0,
+              child: PageIndicator(currentPageIndex: currentPageIndex),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -666,10 +693,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   @override
   void dispose() {
-    _pageRequest.removeListener(_onExternalPageRequest);
+    if (widget.forcedPage == null) {
+      _pageRequest.removeListener(_onExternalPageRequest);
+      pageController.dispose();
+    }
     if (_ownsPageRequest) _pageRequest.dispose();
-
-    pageController.dispose();
     repository.dataUpdatedNotifier.removeListener(onDataUpdated);
     super.dispose();
   }

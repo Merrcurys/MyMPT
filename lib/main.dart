@@ -10,6 +10,7 @@ import 'package:my_mpt/core/services/rustore_update_ui.dart';
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
+import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 
@@ -95,11 +96,10 @@ class _MainScreenState extends State<MainScreen> {
   bool _isLoading = true;
   bool _updateChecked = false;
 
-  // API для Overview: 0=Сегодня, 1=Завтра
-  final ValueNotifier<int> _overviewPage = ValueNotifier<int>(0);
-
+  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый свайп между всеми.
   late final List<Widget> _screens = <Widget>[
-    OverviewScreen(innerPageRequest: _overviewPage),
+    OverviewScreen(forcedPage: 0),
+    OverviewScreen(forcedPage: 1),
     const ScheduleScreen(),
     const CallsScreen(),
     const SettingsScreen(),
@@ -112,20 +112,7 @@ class _MainScreenState extends State<MainScreen> {
     _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
   ];
 
-  // Плавные переходы между root-экранами
   late final PageController _rootController = PageController(initialPage: _currentIndex);
-
-  // Чтобы не конфликтовать с системным back-gesture от края
-  static const double _systemGestureInset = 28.0;
-
-  // На "Обзоре" ловим свайп только в двух карманах
-  static const double _edgeZoneWidth = 70.0;
-
-  // Пороги распознавания
-  static const double _minDragDistance = 50.0;
-  static const double _minVelocity = 500.0;
-
-  double _dragDx = 0.0;
 
   @override
   void initState() {
@@ -135,7 +122,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    _overviewPage.dispose();
     _rootController.dispose();
     super.dispose();
   }
@@ -187,103 +173,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Порядок: Сегодня -> Завтра -> Неделя -> Звонки -> Настройки
-  void _goNextInChain() {
-    if (_currentIndex == 0) {
-      final page = _overviewPage.value.clamp(0, 1);
-      if (page == 0) {
-        _overviewPage.value = 1; // Сегодня -> Завтра
-        return;
-      }
-      _animateRootTo(1); // Завтра -> Неделя
-      return;
-    }
-
-    _animateRootTo(_currentIndex + 1);
-  }
-
-  void _goPrevInChain() {
-    if (_currentIndex == 0) {
-      final page = _overviewPage.value.clamp(0, 1);
-      if (page == 1) {
-        _overviewPage.value = 0; // Завтра -> Сегодня
-      }
-      return;
-    }
-
-    if (_currentIndex == 1) {
-      // Неделя -> возвращаемся в Обзор на "Завтра"
-      _overviewPage.value = 1;
-      _animateRootTo(0);
-      return;
-    }
-
-    _animateRootTo(_currentIndex - 1);
-  }
-
-  void _panStart(DragStartDetails details) => _dragDx = 0.0;
-
-  void _panUpdate(DragUpdateDetails details) {
-    _dragDx += details.delta.dx;
-  }
-
-  void _panEnd(DragEndDetails details) {
-    final v = details.velocity.pixelsPerSecond.dx;
-
-    final okByDistance = _dragDx.abs() >= _minDragDistance;
-    final okByVelocity = v.abs() >= _minVelocity;
-    if (!okByDistance && !okByVelocity) return;
-
-    final toRight = okByDistance ? (_dragDx > 0) : (v > 0);
-    if (toRight) {
-      _goPrevInChain();
-    } else {
-      _goNextInChain();
-    }
-  }
-
-  Widget _swipeLayerFull() {
-    return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: _panStart,
-        onHorizontalDragUpdate: _panUpdate,
-        onHorizontalDragEnd: _panEnd,
-      ),
-    );
-  }
-
-  Widget _swipeLayerEdgesOnly() {
-    return Stack(
-      children: [
-        Positioned(
-          left: _systemGestureInset,
-          top: 0,
-          bottom: 0,
-          width: _edgeZoneWidth,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: _panStart,
-            onHorizontalDragUpdate: _panUpdate,
-            onHorizontalDragEnd: _panEnd,
-          ),
-        ),
-        Positioned(
-          right: _systemGestureInset,
-          top: 0,
-          bottom: 0,
-          width: _edgeZoneWidth,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: _panStart,
-            onHorizontalDragUpdate: _panUpdate,
-            onHorizontalDragEnd: _panEnd,
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -313,20 +202,28 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           PageView(
             controller: _rootController,
-            physics: const NeverScrollableScrollPhysics(),
             onPageChanged: (i) => setState(() => _currentIndex = i),
             children: _screens,
           ),
-
-          // На Обзоре — только “карманы”, на остальных — вся ширина
-          if (_currentIndex == 0) _swipeLayerEdgesOnly() else _swipeLayerFull(),
+          if (_currentIndex == 0 || _currentIndex == 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 115,
+              child: IgnorePointer(
+                child: PageIndicator(currentPageIndex: _currentIndex),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: _animateRootTo,
+          selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
+          onDestinationSelected: (index) {
+            if (index == 0) _animateRootTo(0);
+            else _animateRootTo(index + 1);
+          },
           surfaceTintColor: Colors.transparent,
           destinations: [
             for (final item in _navItems)
