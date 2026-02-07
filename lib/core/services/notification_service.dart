@@ -18,11 +18,18 @@ class NotificationService {
   static const String _lastCheckedReplacementsKey = 'last_checked_replacements';
   static const String _notificationsEnabledKey = 'notifications_enabled';
 
-  // Android channel
+  // Android channel for replacement notifications
   static const String _channelId = 'replacements_channel';
   static const String _channelName = 'Замены в расписании';
   static const String _channelDescription =
       'Уведомления о новых заменах в расписании';
+
+  // Android channel for foreground background service notification
+  // Must exist before starting a foreground service on Android 8+.
+  static const String _serviceChannelId = 'mpt_bg_service';
+  static const String _serviceChannelName = 'Фоновая проверка';
+  static const String _serviceChannelDescription =
+      'Служебное уведомление для фоновой проверки замен';
 
   bool _initialized = false;
 
@@ -49,19 +56,28 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Создаём канал на Android (важно для Android 8+)
-    const channel = AndroidNotificationChannel(
+    final androidImpl = _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+
+    // Создаём каналы на Android (важно для Android 8+)
+    const replacementsChannel = AndroidNotificationChannel(
       _channelId,
       _channelName,
       description: _channelDescription,
       importance: Importance.high,
     );
 
-    final androidImpl = _notifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidImpl?.createNotificationChannel(channel);
+    const serviceChannel = AndroidNotificationChannel(
+      _serviceChannelId,
+      _serviceChannelName,
+      description: _serviceChannelDescription,
+      importance: Importance.low,
+    );
+
+    await androidImpl?.createNotificationChannel(replacementsChannel);
+    await androidImpl?.createNotificationChannel(serviceChannel);
 
     // Запрашиваем разрешения для Android 13+
     // (Если пользователь запретил — show() не покажет ничего)
