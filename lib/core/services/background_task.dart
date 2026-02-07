@@ -2,9 +2,18 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 
-/// Инициализирует фоновый сервис
+/// Как часто проверяем замены в фоне.
+///
+/// Важно: Android может «сдвигать» таймеры/будить реже (Doze), но foreground service
+/// существенно повышает шанс реального выполнения периодической проверки.
+const Duration _replacementCheckPeriod = Duration(minutes: 15);
+
+/// Инициализирует фоновый сервис.
+///
+/// Для надёжной работы на Android запускаем как foreground service.
 Future<void> initializeBackgroundTasks() async {
   final service = FlutterBackgroundService();
 
@@ -12,12 +21,17 @@ Future<void> initializeBackgroundTasks() async {
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
       autoStart: true,
-      isForegroundMode: false,
+      autoStartOnBoot: true,
+      isForegroundMode: true,
+      notificationChannelId: 'mpt_bg_service',
+      initialNotificationTitle: 'Мой МПТ',
+      initialNotificationContent: 'Проверка замен в фоне',
+      foregroundServiceNotificationId: 888,
     ),
     iosConfiguration: IosConfiguration(
       autoStart: true,
       onForeground: onStart,
-      onBackground: onIosBackground, // iOS Background Fetch/BGTaskScheduler
+      onBackground: onIosBackground,
     ),
   );
 
@@ -25,7 +39,8 @@ Future<void> initializeBackgroundTasks() async {
 }
 
 /// iOS background fetch entry-point.
-/// iOS НЕ поддерживает постоянный фоновый сервис как Android: это короткие запуски по решению системы. [web:91]
+///
+/// iOS не поддерживает постоянный сервис как Android: это короткие запуски по решению системы.
 @pragma('vm:entry-point')
 Future<bool> onIosBackground(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
@@ -45,31 +60,50 @@ void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
 
   if (service is AndroidServiceInstance) {
-    service.on('setAsForeground').listen((event) {
+    // По умолчанию работаем как foreground service (иначе Android может быстро убить процесс).
+    service.setAsForegroundService();
+    service.setForegroundNotificationInfo(
+      title: 'Мой МПТ',
+      content: 'Проверяю замены…',
+    );
+
+    service.on('setAsForeground').listen((_) {
       service.setAsForegroundService();
     });
-    service.on('setAsBackground').listen((event) {
+
+    // Оставляем хук, но в нашем сценарии лучше не уходить в background mode.
+    service.on('setAsBackground').listen((_) {
       service.setAsBackgroundService();
     });
   }
 
-  service.on('stopService').listen((event) {
+  service.on('stopService').listen((_) {
     service.stopSelf();
   });
 
-  // Первая проверка сразу
-  try {
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    await notificationService.checkForNewReplacements();
-  } catch (_) {}
-
-  // Периодическая проверка (на iOS это будет работать только пока приложение реально не “усыплено”)
-  Timer.periodic(const Duration(minutes: 60), (timer) async {
+  Future<void> runCheck() async {
     try {
       final notificationService = NotificationService();
       await notificationService.initialize();
       await notificationService.checkForNewReplacements();
+
+      if (service is AndroidServiceInstance) {
+        final now = DateTime.now();
+        final hh = now.hour.toString().padLeft(2, '0');
+        final mm = now.minute.toString().padLeft(2, '0');
+        service.setForegroundNotificationInfo(
+          title: 'Мой МПТ',
+          content: 'Проверка замен: $hh:$mm',
+        );
+      }
     } catch (_) {}
+  }
+
+  // Первая проверка сразу
+  await runCheck();
+
+  // Периодическая проверка
+  Timer.periodic(_replacementCheckPeriod, (_) async {
+    await runCheck();
   });
 }
