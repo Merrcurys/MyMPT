@@ -1,56 +1,35 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:my_mpt/data/models/lesson.dart';
+import 'package:my_mpt/data/parsers/mpt_parse_utils.dart';
 
 /// Парсер для извлечения расписания группы из HTML-документа
 class ScheduleParser {
-  /// Парсит HTML-страницу с расписанием и возвращает структурированные данные
+  /// Парсит HTML-страницу с расписанием и возвращает структурированные данные.
   ///
-  /// Метод находит вкладку соответствующей группы в HTML-документе,
-  /// извлекает таблицы с расписанием по дням недели и преобразует
-  /// их в структурированный формат
-  ///
-  /// Параметры:
-  /// - [html]: HTML-страница с расписанием
-  /// - [groupCode]: Код группы для которой нужно получить расписание
-  ///
-  /// Возвращает:
-  /// Расписание, где ключ - день недели, значение - список уроков
+  /// Возвращает расписание, где ключ - день недели (в верхнем регистре),
+  /// значение - список уроков.
   Map<String, List<Lesson>> parse(String html, String groupCode) {
-    // Парсим HTML-документ
     final document = html_parser.parse(html);
-    // Находим вкладку для указанной группы
+
     final tabPane = _findTabPaneForGroup(document, groupCode);
+    if (tabPane == null) return {};
 
-    // Если вкладка не найдена, возвращаем пустое расписание
-    if (tabPane == null) {
-      return {};
-    }
-
-    // Создаем карту для хранения расписания по дням недели
     final schedule = <String, List<Lesson>>{};
-    // Ищем все таблицы с расписанием в вкладке
-    final tables = tabPane.children.where(
-      (element) =>
-          element.localName == 'table' && element.classes.contains('table'),
-    );
 
-    // Проходим по всем таблицам и парсим расписание
+    // Внутри tab-pane таблицы могут быть как прямыми детьми, так и вложенными.
+    final tables = tabPane.querySelectorAll('table.table');
+
     for (final table in tables) {
-      // Ищем заголовок таблицы с днем недели
       final header = table.querySelector('thead h4');
       if (header == null) continue;
 
-      // Извлекаем день недели из заголовка
       final day = _extractDay(header);
       if (day.isEmpty) continue;
 
-      // Извлекаем информацию о корпусе из заголовка
       final building = header.querySelector('span')?.text.trim() ?? '';
-      // Парсим уроки из таблицы
       final lessons = _parseLessons(table, building);
 
-      // Добавляем уроки в расписание, если они есть
       if (lessons.isNotEmpty) {
         schedule[day] = lessons;
       }
@@ -59,31 +38,20 @@ class ScheduleParser {
     return schedule;
   }
 
-  /// Находит вкладку для указанной группы в HTML-документе
-  ///
-  /// Метод ищет вкладку, соответствующую коду группы, в навигационном меню
-  /// и возвращает соответствующий элемент tab-pane
-  ///
-  /// Параметры:
-  /// - [document]: HTML-документ
-  /// - [groupCode]: Код группы
-  ///
-  /// Возвращает:
-  /// - Element?: Элемент tab-pane для группы или null, если не найден
   Element? _findTabPaneForGroup(Document document, String groupCode) {
-    // Нормализуем код группы для поиска
-    final normalizedGroupCode = groupCode.trim().toUpperCase();
+    final group = normalizeGroupCode(groupCode);
+    if (group.isEmpty) return null;
 
-    // Ищем все ссылки на вкладки в навигационном меню (строгий селектор)
-    final tabLinks = document.querySelectorAll(
-      'ul.nav-tabs > li > a[href^="#"]',
-    );
+    // 1) Основной путь: вкладки групп
+    final tabLinks = <Element>[]
+      ..addAll(document.querySelectorAll('ul.nav-tabs a[href^="#"]'))
+      ..addAll(document.querySelectorAll('a[data-toggle="tab"][href^="#"]'));
+
     String? tabId;
 
-    // Пробуем найти точное совпадение кода группы
-    for (var link in tabLinks) {
-      final text = link.text.trim().toUpperCase();
-      if (text == normalizedGroupCode) {
+    for (final link in tabLinks) {
+      final text = link.text.trim();
+      if (groupMatchesTab(text, groupCode)) {
         final href = link.attributes['href'];
         if (href != null && href.startsWith('#')) {
           tabId = href.substring(1);
@@ -92,76 +60,31 @@ class ScheduleParser {
       }
     }
 
-    // Если точное совпадение не найдено, ищем частичное совпадение
-    if (tabId == null) {
-      for (var link in tabLinks) {
-        final text = link.text.trim().toUpperCase();
-        if (text.contains(normalizedGroupCode) ||
-            normalizedGroupCode.contains(text)) {
-          final href = link.attributes['href'];
-          if (href != null && href.startsWith('#')) {
-            tabId = href.substring(1);
-            break;
-          }
-        }
-      }
-    }
-
-    // Если ID вкладки не найден, возвращаем null
     if (tabId == null || tabId.isEmpty) {
+      // 2) Иногда табы могут быть без явного списка: пробуем найти tabpanel,
+      // где в навигации встречается группа.
       return null;
     }
 
-    // Возвращаем элемент tab-pane с найденным ID (строгий селектор)
-    return document.querySelector('[role="tabpanel"][id="$tabId"]');
+    return document.querySelector('[role="tabpanel"][id="$tabId"], #$tabId');
   }
 
-  /// Извлекает день недели из заголовка таблицы
-  ///
-  /// Метод извлекает текст дня недели из заголовка таблицы,
-  /// преобразуя его в верхний регистр
-  ///
-  /// Параметры:
-  /// - [header]: Заголовок таблицы
-  ///
-  /// Возвращает:
-  /// - String: День недели в верхнем регистре
   String _extractDay(Element header) {
-    // Пробуем извлечь текст из первого дочернего элемента
-    final primaryText = header.nodes.isNotEmpty
-        ? header.nodes.first.text?.trim() ?? ''
-        : '';
+    // Берём только текстовые ноды (чтобы не захватить корпус из <span>).
+    final textNodes = header.nodes.where((n) => n.nodeType == Node.TEXT_NODE);
+    final raw = textNodes.map((n) => n.text ?? '').join(' ').trim();
 
-    // Если текст найден, возвращаем его в верхнем регистре
-    if (primaryText.isNotEmpty) {
-      return primaryText.toUpperCase();
-    }
+    final cleaned = raw.isNotEmpty ? raw : header.text.trim();
+    if (cleaned.isEmpty) return '';
 
-    // В противном случае, извлекаем текст из заголовка и берем первое слово
-    final fallback = header.text.trim();
-    if (fallback.isEmpty) return '';
-
-    return fallback.split(' ').first.toUpperCase();
+    // На странице день обычно идёт первым словом.
+    return cleaned.split(RegExp(r'\s+')).first.toUpperCase();
   }
 
-  /// Парсит уроки из таблицы
-  ///
-  /// Метод извлекает строки с уроками из таблицы и преобразует
-  /// их в список объектов Lesson
-  ///
-  /// Параметры:
-  /// - [table]: Таблица с расписанием
-  /// - [building]: Корпус (извлекается из заголовка таблицы)
-  ///
-  /// Возвращает:
-  /// Список уроков
   List<Lesson> _parseLessons(Element table, String building) {
-    // Создаем список для хранения уроков
     final lessons = <Lesson>[];
-    // Извлекаем строки с уроками из таблицы
-    final rows = _collectLessonRows(table);
 
-    // Проходим по всем строкам и парсим уроки
+    final rows = _collectLessonRows(table);
     for (final row in rows) {
       lessons.addAll(_parseLessonRow(row, building));
     }
@@ -169,67 +92,36 @@ class ScheduleParser {
     return lessons;
   }
 
-  /// Извлекает строки с уроками из таблицы
-  ///
-  /// Метод извлекает все строки из таблицы, пропуская
-  /// первую (заголовок) и последнюю (пустую) строки
-  ///
-  /// Параметры:
-  /// - [table]: Таблица с расписанием
-  ///
-  /// Возвращает:
-  /// Список строк с уроками
   List<Element> _collectLessonRows(Element table) {
-    // Извлекаем все строки из таблицы
+    final bodyRows = table.querySelectorAll('tbody > tr');
+    if (bodyRows.isNotEmpty) return bodyRows;
+
     final rows = table.getElementsByTagName('tr');
-    // Если строк меньше или равно 2, возвращаем пустой список
     if (rows.length <= 2) return <Element>[];
-    // Возвращаем строки, исключая первую и последнюю
     return rows.sublist(1, rows.length - 1);
   }
 
-  /// Парсит строку с уроком
-  ///
-  /// Метод извлекает данные об уроке из строки таблицы
-  /// и создает соответствующий объект Lesson
-  ///
-  /// Параметры:
-  /// - [row]: Строка таблицы с уроком
-  /// - [building]: Корпус
-  ///
-  /// Возвращает:
-  /// Список уроков (может содержать несколько для числителя/знаменателя)
   List<Lesson> _parseLessonRow(Element row, String building) {
-    // Извлекаем ячейки из строки
     final cells = row.querySelectorAll('td');
-    // Если ячеек не 3, возвращаем пустой список
-    if (cells.length != 3) return <Lesson>[];
+    if (cells.length < 3) return <Lesson>[];
 
-    // Извлекаем текст из первой ячейки (номер пары и время)
     final numberCellText = cells[0].text;
-    // Извлекаем номер пары
     final number = _extractLessonNumber(numberCellText);
-    // Извлекаем время начала и окончания
     final times = _parseTimeRange(numberCellText);
 
-    // Если номер пары пустой, возвращаем пустой список
     if (number.isEmpty) return <Lesson>[];
 
-    // Извлекаем ячейки с предметом и преподавателем
     final subjectCell = cells[1];
     final teacherCell = cells[2];
 
-    // Ищем элементы с метками предметов и преподавателей (для числителя/знаменателя)
-    final subjectLabels = subjectCell.querySelectorAll('div.label');
-    final teacherLabels = teacherCell.querySelectorAll('div.label');
+    // Поддерживаем div.label и любые другие варианты (.label).
+    final subjectLabels = subjectCell.querySelectorAll('.label');
+    final teacherLabels = teacherCell.querySelectorAll('.label');
 
-    // Если меток нет, парсим как обычный урок
     if (subjectLabels.isEmpty || teacherLabels.isEmpty) {
       final subject = subjectCell.text.trim();
-      // Если предмет пустой, возвращаем пустой список
       if (subject.isEmpty) return <Lesson>[];
 
-      // Создаем и возвращаем обычный урок
       return [
         Lesson(
           number: number,
@@ -243,18 +135,13 @@ class ScheduleParser {
       ];
     }
 
-    // Если есть метки, парсим как уроки с числителем/знаменателем
     final lessons = <Lesson>[];
-    // Определяем количество пар меток
     final count = _pairedLabelsCount(subjectLabels, teacherLabels);
 
-    // Проходим по всем парам меток
     for (var i = 0; i < count; i++) {
       final subjectText = subjectLabels[i].text.trim();
-      // Если предмет пустой, пропускаем
       if (subjectText.isEmpty) continue;
 
-      // Добавляем урок в список
       lessons.add(
         Lesson(
           number: number,
@@ -271,79 +158,35 @@ class ScheduleParser {
     return lessons;
   }
 
-  /// Извлекает номер пары из текста
-  ///
-  /// Метод извлекает номер пары из текста первой ячейки строки
-  /// с помощью регулярного выражения
-  ///
-  /// Параметры:
-  /// - [text]: Текст первой ячейки строки
-  ///
-  /// Возвращает:
-  /// - String: Номер пары
   String _extractLessonNumber(String text) {
-    // Ищем номер пары с помощью регулярного выражения
     final match = RegExp(r'\d+').firstMatch(text);
-    // Возвращаем найденный номер или текст без пробелов
     return match?.group(0) ?? text.trim();
   }
 
-  /// Извлекает время начала и окончания пары из текста
-  ///
-  /// Метод извлекает время начала и окончания пары из текста
-  /// первой ячейки строки с помощью регулярного выражения
-  ///
-  /// Параметры:
-  /// - [text]: Текст первой ячейки строки
-  ///
-  /// Возвращает:
-  /// - (String, String): Кортеж из времени начала и окончания
   (String, String) _parseTimeRange(String text) {
-    // Ищем время с помощью регулярного выражения
     final match = RegExp(
-      r'(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})',
+      r'(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})',
     ).firstMatch(text);
-    // Если не найдено, возвращаем пустые строки
     if (match == null) return ('', '');
-
-    // Возвращаем время начала и окончания
     return (match.group(1)!, match.group(2)!);
   }
 
-  /// Определяет тип пары (числитель/знаменатель) по метке
-  ///
-  /// Метод определяет тип пары по CSS-классам метки
-  ///
-  /// Параметры:
-  /// - [label]: Элемент метки
-  ///
-  /// Возвращает:
-  /// - String?: Тип пары ('numerator', 'denominator' или null)
   String? _resolveLessonType(Element label) {
-    // Извлекаем CSS-классы метки
     final classes = label.attributes['class'] ?? '';
-    // Определяем тип по классам
+
+    // Старые bootstrap-классы на mpt.ru.
     if (classes.contains('label-danger')) return 'numerator';
     if (classes.contains('label-info')) return 'denominator';
+
+    // На всякий: если будут новые классы.
+    if (classes.contains('danger')) return 'numerator';
+    if (classes.contains('info')) return 'denominator';
+
     return null;
   }
 
-  /// Определяет количество пар меток предметов и преподавателей
-  ///
-  /// Метод возвращает минимальное количество из двух списков меток
-  ///
-  /// Параметры:
-  /// - [subjects]: Список меток предметов
-  /// - [teachers]: Список меток преподавателей
-  ///
-  /// Возвращает:
-  /// - int: Количество пар меток
   int _pairedLabelsCount(List<Element> subjects, List<Element> teachers) {
-    // Если один из списков пуст, возвращаем 0
     if (subjects.isEmpty || teachers.isEmpty) return 0;
-    // Возвращаем минимальное количество из двух списков
-    return subjects.length < teachers.length
-        ? subjects.length
-        : teachers.length;
+    return subjects.length < teachers.length ? subjects.length : teachers.length;
   }
 }
