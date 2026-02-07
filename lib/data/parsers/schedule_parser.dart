@@ -79,7 +79,8 @@ class ScheduleParser {
 
       // Стоп-условия, похожие на Kotlin: следующий заголовок группы/специальности.
       final upper = text.toUpperCase();
-      if (upper.startsWith('ГРУППА ') || upper.startsWith('РАСПИСАНИЕ ЗАНЯТИЙ ДЛЯ')) {
+      if (upper.startsWith('ГРУППА ') ||
+          upper.startsWith('РАСПИСАНИЕ ЗАНЯТИЙ ДЛЯ')) {
         break;
       }
 
@@ -132,9 +133,10 @@ class ScheduleParser {
     final group = normalizeGroupCode(groupCode);
     if (group.isEmpty) return null;
 
-    final tabLinks = <Element>[]
-      ..addAll(document.querySelectorAll('ul.nav-tabs a[href^="#"]'))
-      ..addAll(document.querySelectorAll('a[data-toggle="tab"][href^="#"]'));
+    final tabLinks = <Element>[
+      ...document.querySelectorAll('ul.nav-tabs a[href^="#"]'),
+      ...document.querySelectorAll('a[data-toggle="tab"][href^="#"]'),
+    ];
 
     String? tabId;
 
@@ -181,9 +183,10 @@ class ScheduleParser {
     for (final n in el.nodes) {
       if (n.nodeType == Node.TEXT_NODE) {
         final t = n.text ?? '';
-        if (t.trim().isNotEmpty) {
+        final trimmed = t.trim();
+        if (trimmed.isNotEmpty) {
           if (buffer.isNotEmpty) buffer.write(' ');
-          buffer.write(t.trim());
+          buffer.write(trimmed);
         }
       }
     }
@@ -338,7 +341,7 @@ class ScheduleParser {
     final html = td.innerHtml;
     final brSplit = html.split(RegExp(r'<br\s*/?>', caseSensitive: false));
     final brParts = brSplit
-        .map((s) => html_parser.parseFragment(s).text.trim())
+        .map((s) => (html_parser.parseFragment(s).text ?? '').trim())
         .where((s) => s.isNotEmpty)
         .toList(growable: false);
 
