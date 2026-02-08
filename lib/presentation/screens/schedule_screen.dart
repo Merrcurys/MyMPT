@@ -288,8 +288,11 @@ class _CollapsibleWeekHeader extends StatelessWidget {
         final pillPH = lerpDouble(14, 10, tCurved)!;
         final pillPV = lerpDouble(6, 4, tCurved)!;
 
-        final gapPillTitle = lerpDouble(10, 0, tCurved)!;
-        final gapTitleDate = lerpDouble(6, 4, tCurved)!;
+        // Те же отступы и структура, что в шапке «Сегодня» (_StaticOverviewHeader)
+        final gapTitleDate = lerpDouble(4, 4, tCurved)!;
+        final gapPillIcon = 10.0;
+        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
+        final reservedTop = estimatedPillHeight + gapPillIcon;
 
         final iconSize = lerpDouble(18, 14, tCurved)!;
 
@@ -325,42 +328,78 @@ class _CollapsibleWeekHeader extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Align(
-                  alignment: Alignment(lerpDouble(-1.0, 0.0, tCurved)!, 0.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: isCompact ? CrossAxisAlignment.center : CrossAxisAlignment.start,
-                    children: [
-                      if (!isCompact) ...[
-                        pill,
-                        SizedBox(height: gapPillTitle),
+                if (isCompact)
+                  Align(
+                    alignment: Alignment(lerpDouble(-1.0, 0.0, tCurved)!, 0.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          displayTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: gapTitleDate),
+                        Text(
+                          dateLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: dateSize,
+                            color: Colors.white70,
+                          ),
+                        ),
                       ],
-                      Text(
-                        displayTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: isCompact ? TextAlign.center : TextAlign.start,
-                        style: TextStyle(
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                    ),
+                  )
+                else
+                  ...[
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: pill,
+                    ),
+                    Align(
+                      alignment: const Alignment(-1.0, -0.35),
+                      child: Padding(
+                        padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: gapTitleDate),
+                            Text(
+                              dateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: dateSize,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: gapTitleDate),
-                      Text(
-                        dateLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: isCompact ? TextAlign.center : TextAlign.start,
-                        style: TextStyle(
-                          fontSize: dateSize,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
                 Positioned(
                   top: 0,
                   right: 0,
