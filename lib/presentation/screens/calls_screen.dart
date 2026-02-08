@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_mpt/data/models/call.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
+import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/presentation/widgets/calls/calls_header.dart';
 import 'package:my_mpt/presentation/widgets/calls/call_timeline_tile.dart';
 
@@ -16,9 +17,14 @@ class CallsScreen extends StatelessWidget {
   /// Цвет фона экрана
   static const _backgroundColor = Color(0xFF000000);
 
+  static const _numeratorColor = Color(0xFFFF8C00);
+  static const _denominatorColor = Color(0xFF4FC3F7);
+
   @override
   Widget build(BuildContext context) {
     final List<Call> callsData = CallsUtil.getCalls();
+    final weekType = DateFormatter.getWeekType(DateTime.now());
+    final accentColor = weekType == 'Знаменатель' ? _denominatorColor : _numeratorColor;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -50,12 +56,19 @@ class CallsScreen extends StatelessWidget {
                   children: List.generate(callsData.length, (index) {
                     final call = callsData[index];
                     final isLast = index == callsData.length - 1;
+                    final isCurrent = CallsUtil.isCallCurrent(call.startTime, call.endTime);
+                    final nextCall = !isLast ? callsData[index + 1] : null;
+                    final isBreakCurrent = nextCall != null &&
+                        CallsUtil.isBreakCurrent(call.endTime, nextCall.startTime);
                     return CallTimelineTile(
                       period: call.period,
                       startTime: call.startTime,
                       endTime: call.endTime,
                       description: call.description,
                       showConnector: !isLast,
+                      isCurrent: isCurrent,
+                      currentAccentColor: accentColor,
+                      isBreakCurrent: isBreakCurrent,
                     );
                   }),
                 ),

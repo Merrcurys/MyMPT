@@ -17,6 +17,15 @@ class CallTimelineTile extends StatelessWidget {
   /// Флаг отображения соединительной линии
   final bool showConnector;
 
+  /// Идёт ли сейчас эта пара (подсветка номера)
+  final bool isCurrent;
+
+  /// Цвет подсветки текущей пары и перемены (числитель/знаменатель)
+  final Color currentAccentColor;
+
+  /// Идёт ли сейчас перемена (подсветка соединительной палочки)
+  final bool isBreakCurrent;
+
   const CallTimelineTile({
     super.key,
     required this.period,
@@ -24,10 +33,17 @@ class CallTimelineTile extends StatelessWidget {
     required this.endTime,
     required this.description,
     required this.showConnector,
+    this.isCurrent = false,
+    this.currentAccentColor = const Color(0xFFFF8C00),
+    this.isBreakCurrent = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final periodColor = isCurrent ? currentAccentColor : Colors.white;
+    final containerColor = isCurrent ? currentAccentColor.withValues(alpha: 0.3) : const Color(0xFF333333);
+    final connectorColor = isBreakCurrent ? currentAccentColor : const Color(0xFFFFFFFF).withValues(alpha: 0.3);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -37,14 +53,14 @@ class CallTimelineTile extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF333333),
+                color: containerColor,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                 child: Text(
                   period,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: periodColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -55,7 +71,7 @@ class CallTimelineTile extends StatelessWidget {
                 width: 2,
                 height: 48,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                color: const Color(0xFFFFFFFF).withValues(alpha: 0.3),
+                color: connectorColor,
               ),
           ],
         ),
