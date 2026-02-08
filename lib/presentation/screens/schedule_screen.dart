@@ -1,191 +1,502 @@
+import 'dart:ui' show ImageFilter, lerpDouble;
+
 import 'package:flutter/material.dart';
+
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/data/repositories/schedule_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
-import 'package:my_mpt/presentation/widgets/schedule/schedule_header.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
-/// Экран "Расписание" — тёмный минималистичный лонг-лист
-///
-/// Этот экран отображает недельное расписание занятий с поддержкой
-/// отображения изменений в расписании и различий между числителем и знаменателем
+// Баннер как в Settings
+import 'package:my_mpt/presentation/widgets/settings/info_notification.dart';
+
+/// Экран "Расписание" — недельный лонг-лист + pinned шапка, которая сжимается только по высоте.
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
-  State<ScheduleScreen> createState() => _ScheduleScreenState();
+  State createState() => _ScheduleScreenState();
 }
 
-/// Состояние экрана расписания
-class _ScheduleScreenState extends State<ScheduleScreen> {
-  /// Цвет фона экрана
+class _ScheduleScreenState extends State {
   static const _backgroundColor = Color(0xFF000000);
+  static const Color _lessonAccent = Colors.grey;
 
-  /// Единое хранилище для работы с расписанием
-  late ScheduleRepository _repository;
+  late final ScheduleRepository _repository;
 
-  /// Недельное расписание
   Map<String, List<Schedule>> _weeklySchedule = {};
-
-  /// Флаг загрузки данных
   bool _isLoading = false;
 
-  /// Акцентный цвет для элементов расписания
-  static const Color _lessonAccent = Colors.grey;
+  /// true = показываем иконку wifi_off в шапке.
+  bool _isOffline = false;
+
+  /// чтобы авто-обновление (на входе) не спамило одним и тем же баннером
+  bool _autoOfflineNotified = false;
 
   @override
   void initState() {
     super.initState();
-    _repository = ScheduleRepository();
 
-    // Слушаем уведомления об обновлении данных
+    _repository = ScheduleRepository();
     _repository.dataUpdatedNotifier.addListener(_onDataUpdated);
 
-    _initializeSchedule();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeSchedule();
+    });
   }
 
-  /// Инициализация расписания
-  Future<void> _initializeSchedule() async {
-    await _loadScheduleData(forceRefresh: false, showLoader: false);
-    _loadScheduleData(forceRefresh: true, showLoader: false);
+  Future _initializeSchedule() async {
+    await _loadScheduleData(forceRefresh: false, showLoader: true, userInitiated: false);
+    await _loadScheduleData(forceRefresh: true, showLoader: false, userInitiated: false);
   }
 
-  /// Обработчик уведомлений об обновлении данных
   void _onDataUpdated() {
-    _loadScheduleData(forceRefresh: false, showLoader: false);
+    _loadScheduleData(forceRefresh: false, showLoader: false, userInitiated: false);
   }
 
-  /// Загрузка данных расписания
-  ///
-  /// Параметры:
-  /// - [forceRefresh]: Принудительное обновление данных
-  /// - [showLoader]: Показывать индикатор загрузки
-  Future<void> _loadScheduleData({
+  void _showOfflineBanner({required bool userInitiated}) {
+    if (!userInitiated && _autoOfflineNotified) return;
+    _autoOfflineNotified = true;
+
+    showInfoNotification(
+      context,
+      'Нет интернета',
+      'Показано последнее сохранённое расписание',
+      Icons.info_outline,
+    );
+  }
+
+  Future _loadScheduleData({
     required bool forceRefresh,
     bool showLoader = true,
+    bool userInitiated = false,
   }) async {
-    if (showLoader) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
+    if (showLoader) setState(() => _isLoading = true);
+
+    bool? refreshOk;
 
     try {
       if (forceRefresh) {
-        await _repository.refreshAllData();
+        refreshOk = await _repository.forceRefreshWithStatus();
       }
 
-      final weeklySchedule = await _repository.getWeeklySchedule();
+      final weekly = await _repository.getWeeklySchedule();
       if (!mounted) return;
+
       setState(() {
-        _weeklySchedule = weeklySchedule;
-        if (showLoader) {
-          _isLoading = false;
-        }
+        _weeklySchedule = weekly;
+
+        // - если не было попытки forceRefresh -> берём флаг из репозитория
+        // - если была попытка -> офлайн = !refreshOk
+        _isOffline = refreshOk == null ? _repository.isOfflineBadgeVisible : !refreshOk;
+
+        if (showLoader) _isLoading = false;
       });
-    } catch (e) {
-      if (showLoader) {
-        setState(() {
-          _isLoading = false;
-        });
+
+      if (forceRefresh && refreshOk == false && mounted) {
+        _showOfflineBanner(userInitiated: userInitiated);
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка загрузки расписания')),
-        );
-      }
-      return;
+    } catch (_) {
+      if (!mounted) return;
+      if (showLoader) setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка загрузки расписания')),
+      );
+    }
+  }
+
+  List<Color> _getHeaderGradient(String weekType) {
+    if (weekType == 'Знаменатель') {
+      return const [Color(0xFF111111), Color(0xFF4FC3F7)];
+    } else if (weekType == 'Числитель') {
+      return const [Color(0xFF111111), Color(0xFFFF8C00)];
+    } else {
+      return const [Color(0xFF111111), Color(0xFF333333)];
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isInitialLoading = _isLoading && _weeklySchedule.isEmpty;
     final days = _weeklySchedule.entries.toList();
 
-    final isInitialLoading = _isLoading && _weeklySchedule.isEmpty;
+    final now = DateTime.now();
+    final weekType = DateFormatter.getWeekType(now) ?? '';
+    final dateLabel = DateFormatter.formatDayWithMonth(now);
+
+    const headerMaxHeight = 176.0;
+    const headerMinHeight = 88.0;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: isInitialLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              )
-            : RefreshIndicator(
-                onRefresh: () => _loadScheduleData(forceRefresh: true),
-                color: Colors.white,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: ScheduleHeader(
-                        borderColor: const Color(0xFF333333),
-                        dateLabel: _formatDate(DateTime.now()),
-                        weekType: DateFormatter.getWeekType(DateTime.now()),
+      body: isInitialLoading
+          ? SafeArea(
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            )
+          : Stack(
+              children: [
+                SafeArea(
+                  child: RefreshIndicator(
+                    onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
+                    color: Colors.white,
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _HeightPinnedHeaderDelegate(
+                        backgroundColor: _backgroundColor,
+                        maxHeight: headerMaxHeight,
+                        minHeight: headerMinHeight,
+                        child: _CollapsibleWeekHeader(
+                          maxHeight: headerMaxHeight,
+                          minHeight: headerMinHeight,
+                          title: 'Неделя',
+                          dateLabel: dateLabel,
+                          weekType: weekType,
+                          gradient: _getHeaderGradient(weekType),
+                          isOffline: _isOffline,
+                        ),
                       ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final day = days[index];
-                          final building = _primaryBuilding(day.value);
-                          return DaySection(
-                            title: day.key,
-                            building: building,
-                            lessons: day.value,
-                            accentColor: _lessonAccent,
-                            weekType: DateFormatter.getWeekType(DateTime.now()),
-                          );
-                        }, childCount: days.length),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final day = days[index];
+                            final building = _primaryBuilding(day.value);
+
+                            return DaySection(
+                              title: day.key,
+                              building: building,
+                              lessons: day.value,
+                              accentColor: _lessonAccent,
+                              weekType: weekType,
+                            );
+                          },
+                          childCount: days.length,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-      ),
+            ),
+              ],
+            ),
     );
   }
 
-  /// Определяет основной корпус по количеству занятий
-  ///
-  /// Параметры:
-  /// - [schedule]: Список занятий для анализа
-  ///
-  /// Возвращает:
-  /// - String: Название основного корпуса
   String _primaryBuilding(List<Schedule> schedule) {
     if (schedule.isEmpty) return '';
-    final counts = <String, int>{};
+
+    final Map<String, int> counts = {};
     for (final lesson in schedule) {
       counts[lesson.building] = (counts[lesson.building] ?? 0) + 1;
     }
 
     String primary = schedule.first.building;
-    var maxCount = 0;
+    int maxCount = 0;
+
     counts.forEach((building, count) {
       if (count > maxCount) {
         maxCount = count;
         primary = building;
       }
     });
+
     return primary;
   }
 
   @override
   void dispose() {
-    // Удаляем слушателя уведомлений
     _repository.dataUpdatedNotifier.removeListener(_onDataUpdated);
     super.dispose();
   }
+}
 
-  /// Форматирует дату для отображения
-  ///
-  /// Параметры:
-  /// - [date]: Дата для форматирования
-  ///
-  /// Возвращает:
-  /// - String: Отформатированная дата
-  String _formatDate(DateTime date) {
-    return DateFormatter.formatDayWithMonth(date);
+/// Делегат pinned-хедера: меняется только высота.
+class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _HeightPinnedHeaderDelegate({
+    required this.backgroundColor,
+    required this.maxHeight,
+    required this.minHeight,
+    required this.child,
+  });
+
+  final Color backgroundColor; // оставлено, но фон не рисуем
+  final double maxHeight;
+  final double minHeight;
+  final Widget child;
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  bool shouldRebuild(covariant _HeightPinnedHeaderDelegate old) {
+    return old.backgroundColor != backgroundColor ||
+        old.maxHeight != maxHeight ||
+        old.minHeight != minHeight ||
+        old.child != child;
+  }
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Постепенный blur: от верха экрана до середины сжатой шапки
+          Positioned(
+            top: -MediaQuery.of(context).padding.top,
+            left: -MediaQuery.of(context).padding.left,
+            right: -MediaQuery.of(context).padding.right,
+            height: MediaQuery.of(context).padding.top + minHeight / 2,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.06),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Плашка weekType и wifi_off двигаются плавно, а левый блок в mini центрируется по вертикали.
+/// Wifi в mini вычисляется от высоты плашки (чтобы не было наезда).
+class _CollapsibleWeekHeader extends StatelessWidget {
+  const _CollapsibleWeekHeader({
+    required this.maxHeight,
+    required this.minHeight,
+    required this.title,
+    required this.dateLabel,
+    required this.weekType,
+    required this.gradient,
+    required this.isOffline,
+  });
+
+  final double maxHeight;
+  final double minHeight;
+
+  final String title;
+  final String dateLabel;
+
+  final String weekType;
+  final List<Color> gradient;
+
+  final bool isOffline;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight.clamp(minHeight, maxHeight);
+        final t = ((maxHeight - h) / (maxHeight - minHeight)).clamp(0.0, 1.0);
+        final tCurved = Curves.easeOutCubic.transform(t);
+
+        final radius = lerpDouble(32, 18, tCurved)!;
+        final padH = lerpDouble(20, 14, tCurved)!;
+        final padTop = lerpDouble(18, 10, tCurved)!;
+        final padBottom = lerpDouble(18, 10, tCurved)!;
+
+        final titleSize = lerpDouble(28, 18, tCurved)!;
+        final dateSize = lerpDouble(16, 13, tCurved)!;
+
+        final pillFont = lerpDouble(13, 11, tCurved)!;
+        final pillPH = lerpDouble(14, 10, tCurved)!;
+        final pillPV = lerpDouble(6, 4, tCurved)!;
+
+        // Те же отступы и структура, что в шапке «Сегодня» (_StaticOverviewHeader)
+        final gapTitleDate = lerpDouble(4, 4, tCurved)!;
+        final gapPillIcon = 10.0;
+        final estimatedPillHeight = pillFont + (pillPV * 2) + 6;
+        final reservedTop = estimatedPillHeight + gapPillIcon;
+
+        final iconSize = lerpDouble(18, 14, tCurved)!;
+
+        final pill = _WeekTypePill(
+          text: weekType,
+          fontSize: pillFont,
+          padH: pillPH,
+          padV: pillPV,
+        );
+
+        final isCompact = tCurved > 0.5;
+        final displayTitle = isCompact ? weekType : title;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            gradient: LinearGradient(
+              colors: gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: lerpDouble(0.45, 0.2, tCurved)!),
+                blurRadius: lerpDouble(30, 12, tCurved)!,
+                offset: Offset(0, lerpDouble(18, 6, tCurved)!),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(padH, padTop, padH + iconSize, padBottom),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (isCompact)
+                  Align(
+                    alignment: Alignment(lerpDouble(-1.0, 0.0, tCurved)!, 0.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          displayTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: gapTitleDate),
+                        Text(
+                          dateLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: dateSize,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...[
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: pill,
+                    ),
+                    Align(
+                      alignment: const Alignment(-1.0, -0.35),
+                      child: Padding(
+                        padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: gapTitleDate),
+                            Text(
+                              dateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: dateSize,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SizedBox(
+                    width: iconSize,
+                    height: iconSize,
+                    child: Opacity(
+                      opacity: isOffline ? 1.0 : 0.0,
+                      child: Icon(
+                        Icons.wifi_off,
+                        size: iconSize,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WeekTypePill extends StatelessWidget {
+  const _WeekTypePill({
+    required this.text,
+    required this.fontSize,
+    required this.padH,
+    required this.padV,
+  });
+
+  final String text;
+  final double fontSize;
+  final double padH;
+  final double padV;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 }

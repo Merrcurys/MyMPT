@@ -14,17 +14,34 @@ Future<void> initializeBackgroundTasks() async {
       autoStart: true,
       isForegroundMode: false,
     ),
-    iosConfiguration: IosConfiguration(autoStart: true, onForeground: onStart),
+    iosConfiguration: IosConfiguration(
+      autoStart: true,
+      onForeground: onStart,
+      onBackground: onIosBackground, // iOS Background Fetch/BGTaskScheduler
+    ),
   );
 
-  // ВАЖНО: без этого сервис часто не запускается вообще
   await service.startService();
 }
 
-/// Точка входа для фонового сервиса
+/// iOS background fetch entry-point.
+/// iOS НЕ поддерживает постоянный фоновый сервис как Android: это короткие запуски по решению системы. [web:91]
+@pragma('vm:entry-point')
+Future<bool> onIosBackground(ServiceInstance service) async {
+  DartPluginRegistrant.ensureInitialized();
+
+  try {
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+    await notificationService.checkForNewReplacements();
+  } catch (_) {}
+
+  return true;
+}
+
+/// Точка входа для сервиса (Android + iOS foreground)
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  // ВАЖНО: без этого плагины (например, уведомления) в фоне могут не работать
   DartPluginRegistrant.ensureInitialized();
 
   if (service is AndroidServiceInstance) {
@@ -40,21 +57,19 @@ void onStart(ServiceInstance service) async {
     service.stopSelf();
   });
 
-  // Можно сделать первую проверку сразу при старте сервиса
+  // Первая проверка сразу
   try {
     final notificationService = NotificationService();
     await notificationService.initialize();
     await notificationService.checkForNewReplacements();
   } catch (_) {}
 
-  // Периодическая проверка замен каждые 60 минут
+  // Периодическая проверка (на iOS это будет работать только пока приложение реально не “усыплено”)
   Timer.periodic(const Duration(minutes: 60), (timer) async {
     try {
       final notificationService = NotificationService();
       await notificationService.initialize();
       await notificationService.checkForNewReplacements();
-    } catch (_) {
-      // Игнорируем ошибки
-    }
+    } catch (_) {}
   });
 }

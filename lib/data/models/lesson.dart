@@ -24,16 +24,6 @@ class Lesson {
   /// Тип пары (numerator, denominator или null для обычных пар)
   final String? lessonType;
 
-  /// Конструктор урока
-  ///
-  /// Параметры:
-  /// - [number]: Номер пары (обязательный)
-  /// - [subject]: Название предмета (обязательный)
-  /// - [teacher]: Преподаватель (обязательный)
-  /// - [startTime]: Время начала пары (обязательный)
-  /// - [endTime]: Время окончания пары (обязательный)
-  /// - [building]: Корпус проведения пары (обязательный)
-  /// - [lessonType]: Тип пары (опциональный)
   Lesson({
     required this.number,
     required this.subject,
@@ -44,15 +34,23 @@ class Lesson {
     this.lessonType,
   });
 
+  factory Lesson.fromJson(Map<String, dynamic> json) {
+    return Lesson(
+      number: (json['number'] ?? '') as String,
+      subject: (json['subject'] ?? '') as String,
+      teacher: (json['teacher'] ?? '') as String,
+      startTime: (json['startTime'] ?? '') as String,
+      endTime: (json['endTime'] ?? '') as String,
+      building: (json['building'] ?? '') as String,
+      lessonType: json['lessonType'] as String?,
+    );
+  }
+
   @override
   String toString() {
     return 'Lesson(number: $number, subject: $subject, teacher: $teacher, startTime: $startTime, endTime: $endTime, building: $building)';
   }
 
-  /// Преобразует объект урока в JSON
-  ///
-  /// Возвращает:
-  /// Представление урока в формате JSON
   Map<String, dynamic> toJson() {
     return {
       'number': number,
@@ -61,6 +59,7 @@ class Lesson {
       'startTime': startTime,
       'endTime': endTime,
       'building': building,
+      'lessonType': lessonType,
     };
   }
 }

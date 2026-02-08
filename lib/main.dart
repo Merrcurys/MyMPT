@@ -1,34 +1,33 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:my_mpt/core/services/background_task.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/services/rustore_update_ui.dart';
+
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
 import 'package:my_mpt/presentation/screens/schedule_screen.dart';
+import 'package:my_mpt/presentation/widgets/overview/page_indicator.dart';
 import 'package:my_mpt/presentation/screens/settings_screen.dart';
 import 'package:my_mpt/presentation/screens/welcome_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() async {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Инициализируем сервис уведомлений
-  final notificationService = NotificationService();
-  await notificationService.initialize();
+    final notificationService = NotificationService();
+    await notificationService.initialize();
 
-  // Инициализируем фоновые задачи
-  await initializeBackgroundTasks();
+    await initializeBackgroundTasks();
 
-  runZonedGuarded(
-    () {
-      runApp(const MyApp());
-    },
-    (e, st) {
-      // Игнорируем необработанные ошибки
-    },
-  );
+    runApp(const MyApp());
+  }, (e, st) {
+    // debugPrint('Uncaught: $e');
+    // debugPrintStack(stackTrace: st);
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -37,7 +36,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Мой МПТ",
+      title: 'Мой МПТ',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -54,39 +54,30 @@ class MyApp extends StatelessWidget {
               displayColor: Colors.white,
             ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFF111111),
           indicatorColor: const Color(0x33FFFFFF),
           height: 80,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith<IconThemeData>(
+          iconTheme: WidgetStateProperty.resolveWith(
             (states) => IconThemeData(
-              color: states.contains(WidgetState.selected)
-                  ? Colors.white
-                  : Colors.white70,
+              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
             ),
           ),
-          labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>(
+          labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               fontSize: 11,
-              fontWeight: states.contains(WidgetState.selected)
-                  ? FontWeight.w600
-                  : FontWeight.w500,
+              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
               letterSpacing: 0.1,
-              color: states.contains(WidgetState.selected)
-                  ? Colors.white
-                  : Colors.white60,
+              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
             ),
           ),
         ),
       ),
       home: const MainScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -99,17 +90,23 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  /// Текущая страница PageView: 0=Сегодня, 1=Завтра, 2=Неделя, 3=Звонки, 4=Настройки
   int _currentIndex = 0;
+
+  /// PageController для переключения без анимации при нажатии на bottom nav
+  late final PageController _pageController;
+
   bool _isFirstLaunch = true;
   bool _isLoading = true;
-
   bool _updateChecked = false;
 
-  final List<Widget> _screens = const [
-    OverviewScreen(),
-    ScheduleScreen(),
-    CallsScreen(),
-    SettingsScreen(),
+  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый PageView
+  late final List<Widget> _screens = <Widget>[
+    OverviewScreen(forcedPage: 0),
+    OverviewScreen(forcedPage: 1),
+    const ScheduleScreen(),
+    const CallsScreen(),
+    const SettingsScreen(),
   ];
 
   final List<_NavItemData> _navItems = const [
@@ -122,6 +119,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: 0);
     _checkFirstLaunch();
   }
 
@@ -129,16 +127,35 @@ class _MainScreenState extends State<MainScreen> {
     final prefs = await SharedPreferences.getInstance();
     final isFirstLaunch = prefs.getBool('first_launch') ?? true;
 
+    if (!mounted) return;
     setState(() {
       _isFirstLaunch = isFirstLaunch;
       _isLoading = false;
     });
   }
 
-  void _onSetupComplete() {
+  Future<void> _onSetupComplete() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('first_launch', false);
+
+    if (!mounted) return;
     setState(() {
       _isFirstLaunch = false;
     });
+  }
+
+  /// Переход на страницу: при нажатии на nav — мгновенный jump, без прокрутки смежных
+  void _goToPage(int index) {
+    if (index < 0 || index >= _screens.length) return;
+    if (index == _currentIndex) return;
+    _pageController.jumpToPage(index);
+    setState(() => _currentIndex = index);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -150,10 +167,13 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     if (_isFirstLaunch) {
-      return WelcomeScreen(onSetupComplete: _onSetupComplete);
+      return WelcomeScreen(
+        onSetupComplete: () {
+          _onSetupComplete();
+        },
+      );
     }
 
-    // При открытии приложения запускаем RuStore UI update flow (1 раз за запуск)
     if (!_updateChecked) {
       _updateChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -162,14 +182,35 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      extendBody: true,
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            children: _screens,
+          ),
+          if (_currentIndex == 0 || _currentIndex == 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.of(context).padding.bottom + 80 + 10,
+              child: IgnorePointer(
+                child: PageIndicator(currentPageIndex: _currentIndex),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) =>
-              setState(() => _currentIndex = index),
+          selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
+          onDestinationSelected: (index) {
+            if (index == 0) _goToPage(0);
+            else _goToPage(index + 1);
+          },
           surfaceTintColor: Colors.transparent,
           destinations: [
             for (final item in _navItems)

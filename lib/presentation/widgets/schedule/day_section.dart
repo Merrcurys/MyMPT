@@ -1,4 +1,9 @@
+// day_section.dart
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/shared/location.dart';
@@ -32,17 +37,45 @@ class DaySection extends StatelessWidget {
     this.weekType,
   });
 
+  static const Map<String, String> _buildingToAddress = {
+    'нежинская': 'Нежинская улица, 7, Москва',
+    'нахимовский': 'Нахимовский проспект, 21, Москва',
+  };
+
+  bool _canOpenBuilding(String label) {
+    final key = label.trim().toLowerCase();
+    return _buildingToAddress.containsKey(key);
+  }
+
+  Uri _mapsUriForAddress(String address) {
+    final q = Uri.encodeComponent(address);
+
+    if (Platform.isAndroid) {
+      return Uri.parse('geo:0,0?q=$q'); // [web:387][web:393]
+    }
+
+    return Uri.parse('https://www.google.com/maps/search/?api=1&query=$q');
+  }
+
+  Future<void> _openBuildingInMaps(BuildContext context, String label) async {
+    final key = label.trim().toLowerCase();
+    final address = _buildingToAddress[key];
+    if (address == null) return;
+
+    final uri = _mapsUriForAddress(address);
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть карты')),
+      );
+    }
+  }
+
   /// Преобразует день недели из ЗАГЛАВНЫХ букв в формат с заглавной буквы
-  ///
-  /// Параметры:
-  /// - [day]: День недели в ЗАГЛАВНЫХ буквах
-  ///
-  /// Возвращает:
-  /// - String: День недели с заглавной буквы
   String _formatDayTitle(String day) {
     if (day.isEmpty) return day;
 
-    // Словарь для преобразования дней недели
     const dayMap = {
       'ПОНЕДЕЛЬНИК': 'Понедельник',
       'ВТОРНИК': 'Вторник',
@@ -57,63 +90,39 @@ class DaySection extends StatelessWidget {
   }
 
   /// Создает виджеты для отображения уроков с поддержкой числителя/знаменателя
-  ///
-  /// Параметры:
-  /// - [lessons]: Список занятий
-  /// - [callsData]: Данные о звонках
-  ///
-  /// Возвращает:
-  /// Список виджетов занятий
   List<Widget> _buildLessonWidgets(
     List<Schedule> lessons,
-    List<dynamic> callsData,
+    List callsData,
   ) {
-    final widgets = <Widget>[];
+    final List<Widget> widgets = [];
 
-    // Группируем уроки по номеру пары
     final Map<String, List<Schedule>> lessonsByPeriod = {};
     for (final lesson in lessons) {
       final period = lesson.number;
-      if (!lessonsByPeriod.containsKey(period)) {
-        lessonsByPeriod[period] = [];
-      }
-      lessonsByPeriod[period]!.add(lesson);
+      (lessonsByPeriod[period] ??= []).add(lesson);
     }
 
-    // Сортируем номера пар
     final sortedPeriods = lessonsByPeriod.keys.toList()
-      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      ..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
 
-    // Создаем виджеты для каждой пары
     for (int i = 0; i < sortedPeriods.length; i++) {
       final period = sortedPeriods[i];
       final periodLessons = lessonsByPeriod[period]!;
 
-      // Определяем время пары
       String startTime = '';
       String endTime = '';
-
       try {
         final periodInt = int.tryParse(period);
-        if (periodInt != null &&
-            periodInt > 0 &&
-            periodInt <= callsData.length) {
+        if (periodInt != null && periodInt > 0 && periodInt <= callsData.length) {
           final call = callsData[periodInt - 1];
           startTime = call.startTime;
           endTime = call.endTime;
         }
-      } catch (e) {
-        // Игнорируем ошибки
-      }
+      } catch (_) {}
 
-      // Проверяем, есть ли уроки с типом (числитель/знаменатель)
-      bool hasTypedLessons = periodLessons.any(
-        (lesson) => lesson.lessonType != null,
-      );
+      final hasTypedLessons = periodLessons.any((lesson) => lesson.lessonType != null);
 
       if (hasTypedLessons) {
-        // Обрабатываем пары с числителем/знаменателем
-        // В недельном расписании показываем обе пары, независимо от типа недели
         Schedule? numeratorLesson;
         Schedule? denominatorLesson;
 
@@ -135,9 +144,9 @@ class DaySection extends StatelessWidget {
           ),
         );
       } else {
-        // Обычные пары отображаем как раньше
         for (int j = 0; j < periodLessons.length; j++) {
           final lesson = periodLessons[j];
+
           widgets.add(
             LessonCard(
               number: lesson.number,
@@ -149,36 +158,23 @@ class DaySection extends StatelessWidget {
             ),
           );
 
-          // Для обычных пар добавляем разделитель между уроками в одной паре
           if (j < periodLessons.length - 1) {
             widgets.add(const SizedBox(height: 8));
           }
         }
       }
 
-      // Добавляем разделитель между парами, кроме последней
       if (i < sortedPeriods.length - 1) {
         String nextLessonStartTime = '';
-
         try {
           final nextPeriodInt = int.tryParse(sortedPeriods[i + 1]);
-          if (nextPeriodInt != null &&
-              nextPeriodInt > 0 &&
-              nextPeriodInt <= callsData.length) {
+          if (nextPeriodInt != null && nextPeriodInt > 0 && nextPeriodInt <= callsData.length) {
             final nextCall = callsData[nextPeriodInt - 1];
             nextLessonStartTime = nextCall.startTime;
           }
-        } catch (e) {
-          // Игнорируем ошибки
-        }
+        } catch (_) {}
 
-        widgets.add(
-          BreakIndicator(startTime: endTime, endTime: nextLessonStartTime),
-        );
-      }
-
-      // Добавляем отступ между парами
-      if (i < sortedPeriods.length - 1) {
+        widgets.add(BreakIndicator(startTime: endTime, endTime: nextLessonStartTime));
         widgets.add(const SizedBox(height: 14));
       }
     }
@@ -190,6 +186,8 @@ class DaySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final formattedTitle = _formatDayTitle(title);
     final callsData = CallsUtil.getCalls();
+
+    final canOpen = _canOpenBuilding(building);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -213,7 +211,11 @@ class DaySection extends StatelessWidget {
               Flexible(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: Location(label: building),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: canOpen ? () => _openBuildingInMaps(context, building) : null,
+                    child: Location(label: building),
+                  ),
                 ),
               ),
             ],
