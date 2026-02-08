@@ -1,4 +1,4 @@
-import 'dart:ui' show lerpDouble;
+import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:flutter/material.dart';
 
@@ -130,15 +130,19 @@ class _ScheduleScreenState extends State {
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: isInitialLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : RefreshIndicator(
-                onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
-                color: Colors.white,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverPersistentHeader(
+      body: isInitialLoading
+          ? SafeArea(
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            )
+          : Stack(
+              children: [
+                SafeArea(
+                  child: RefreshIndicator(
+                    onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
+                    color: Colors.white,
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverPersistentHeader(
                       pinned: true,
                       delegate: _HeightPinnedHeaderDelegate(
                         backgroundColor: _backgroundColor,
@@ -178,7 +182,9 @@ class _ScheduleScreenState extends State {
                   ],
                 ),
               ),
-      ),
+            ),
+              ],
+            ),
     );
   }
 
@@ -240,7 +246,40 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return SizedBox.expand(child: child);
+    return SizedBox.expand(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Постепенный blur: от верха экрана до середины сжатой шапки
+          Positioned(
+            top: -MediaQuery.of(context).padding.top,
+            left: -MediaQuery.of(context).padding.left,
+            right: -MediaQuery.of(context).padding.right,
+            height: MediaQuery.of(context).padding.top + minHeight / 2,
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.2),
+                        Colors.black.withValues(alpha: 0.06),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
   }
 }
 
