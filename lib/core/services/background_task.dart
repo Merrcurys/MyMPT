@@ -7,7 +7,9 @@ import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/domain/entities/replacement.dart';
 
 /// Временно для тестирования: чаще проверяем и обходим кэш.
-const bool _testingFastPolling = true;
+///
+/// В прод-режиме должно быть false.
+const bool _testingFastPolling = false;
 
 /// Как часто проверяем замены в фоне.
 ///
