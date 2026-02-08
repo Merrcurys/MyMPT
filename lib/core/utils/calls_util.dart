@@ -61,6 +61,38 @@ class CallsUtil {
     return List<Call>.from(_callsData);
   }
 
+  /// Проверяет, идёт ли сейчас перемена между [endTime] и [nextStartTime]
+  static bool isBreakCurrent(String endTime, String nextStartTime) {
+    try {
+      final now = DateTime.now();
+      final endParts = endTime.split(':');
+      final startParts = nextStartTime.split(':');
+      final end = DateTime(now.year, now.month, now.day,
+          int.parse(endParts[0]), int.parse(endParts[1]));
+      final nextStart = DateTime(now.year, now.month, now.day,
+          int.parse(startParts[0]), int.parse(startParts[1]));
+      return now.isAfter(end) && now.isBefore(nextStart);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Проверяет, идёт ли сейчас пара по времени [startTime]–[endTime]
+  static bool isCallCurrent(String startTime, String endTime) {
+    try {
+      final now = DateTime.now();
+      final startParts = startTime.split(':');
+      final endParts = endTime.split(':');
+      final start = DateTime(now.year, now.month, now.day,
+          int.parse(startParts[0]), int.parse(startParts[1]));
+      final end = DateTime(now.year, now.month, now.day,
+          int.parse(endParts[0]), int.parse(endParts[1]));
+      return (now.isAfter(start) || now.isAtSameMomentAs(start)) && now.isBefore(end);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Рассчитывает продолжительность перемены между парами
   ///
   /// Метод принимает время окончания предыдущей пары и время начала
