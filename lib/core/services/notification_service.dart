@@ -33,8 +33,11 @@ class NotificationService {
 
   bool _initialized = false;
 
-  /// Инициализирует сервис уведомлений
-  Future<void> initialize() async {
+  /// Инициализирует сервис уведомлений.
+  ///
+  /// requestPermission нужно вызывать только из UI-изолята (когда есть Activity).
+  /// В фоне этот вызов может падать/быть бесполезным.
+  Future<void> initialize({bool requestPermission = true}) async {
     if (_initialized) return;
 
     const androidSettings = AndroidInitializationSettings(
@@ -79,9 +82,13 @@ class NotificationService {
     await androidImpl?.createNotificationChannel(replacementsChannel);
     await androidImpl?.createNotificationChannel(serviceChannel);
 
-    // Запрашиваем разрешения для Android 13+
-    // (Если пользователь запретил — show() не покажет ничего)
-    await androidImpl?.requestNotificationsPermission();
+    if (requestPermission) {
+      try {
+        // Запрашиваем разрешения для Android 13+
+        // (Если пользователь запретил — show() не покажет ничего)
+        await androidImpl?.requestNotificationsPermission();
+      } catch (_) {}
+    }
 
     _initialized = true;
   }
@@ -100,7 +107,7 @@ class NotificationService {
     bool notifyIfFirstCheck = false,
   }) async {
     try {
-      await initialize();
+      await initialize(requestPermission: false);
 
       // Проверяем, включены ли уведомления логически (настройка приложения)
       final prefs = await SharedPreferences.getInstance();

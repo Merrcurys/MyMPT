@@ -47,7 +47,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
   try {
     final notificationService = NotificationService();
-    await notificationService.initialize();
+    await notificationService.initialize(requestPermission: false);
     await notificationService.checkForNewReplacements();
   } catch (_) {}
 
@@ -82,21 +82,25 @@ void onStart(ServiceInstance service) async {
   });
 
   Future<void> runCheck() async {
+    var ok = true;
+
     try {
       final notificationService = NotificationService();
-      await notificationService.initialize();
+      await notificationService.initialize(requestPermission: false);
       await notificationService.checkForNewReplacements();
+    } catch (_) {
+      ok = false;
+    }
 
-      if (service is AndroidServiceInstance) {
-        final now = DateTime.now();
-        final hh = now.hour.toString().padLeft(2, '0');
-        final mm = now.minute.toString().padLeft(2, '0');
-        service.setForegroundNotificationInfo(
-          title: 'Мой МПТ',
-          content: 'Проверка замен: $hh:$mm',
-        );
-      }
-    } catch (_) {}
+    if (service is AndroidServiceInstance) {
+      final now = DateTime.now();
+      final hh = now.hour.toString().padLeft(2, '0');
+      final mm = now.minute.toString().padLeft(2, '0');
+      service.setForegroundNotificationInfo(
+        title: 'Мой МПТ',
+        content: ok ? 'Проверка замен: $hh:$mm' : 'Ошибка проверки: $hh:$mm',
+      );
+    }
   }
 
   // Первая проверка сразу
