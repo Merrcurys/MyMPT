@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/domain/entities/replacement.dart';
 
 /// Временно для тестирования: чаще проверяем и обходим кэш.
 const bool _testingFastPolling = true;
@@ -14,6 +15,28 @@ const bool _testingFastPolling = true;
 /// существенно повышает шанс реального выполнения периодической проверки.
 const Duration _replacementCheckPeriod =
     _testingFastPolling ? Duration(minutes: 1) : Duration(minutes: 15);
+
+String _formatDates(List<Replacement> reps) {
+  final dates = reps.map((r) => r.changeDate).where((d) => d.isNotEmpty).toSet()
+    ..remove('');
+  if (dates.isEmpty) return '';
+  final list = dates.toList()..sort();
+  if (list.length == 1) return list.first;
+  return list.take(2).join(', ') + (list.length > 2 ? '…' : '');
+}
+
+String _formatReplacementSummary(List<Replacement> reps) {
+  if (reps.isEmpty) return 'Замены: нет';
+
+  if (reps.length == 1) {
+    final r = reps.first;
+    final date = r.changeDate.isEmpty ? '' : '${r.changeDate}: ';
+    return '${date}Пара ${r.lessonNumber}: ${r.replaceFrom} → ${r.replaceTo}';
+  }
+
+  final dates = _formatDates(reps);
+  return 'Замены: ${reps.length}${dates.isNotEmpty ? ' (даты: $dates)' : ''}';
+}
 
 /// Инициализирует фоновый сервис.
 ///
@@ -89,10 +112,16 @@ void onStart(ServiceInstance service) async {
 
   Future<void> runCheck() async {
     var ok = true;
+    var current = <Replacement>[];
 
     try {
       final notificationService = NotificationService();
       await notificationService.initialize(requestPermission: false);
+
+      current = await notificationService.getCurrentReplacements(
+        forceRefresh: _testingFastPolling,
+      );
+
       await notificationService.checkForNewReplacements(
         forceRefresh: _testingFastPolling,
       );
@@ -104,9 +133,10 @@ void onStart(ServiceInstance service) async {
       final now = DateTime.now();
       final hh = now.hour.toString().padLeft(2, '0');
       final mm = now.minute.toString().padLeft(2, '0');
+      final base = ok ? _formatReplacementSummary(current) : 'Ошибка проверки';
       service.setForegroundNotificationInfo(
         title: 'Мой МПТ',
-        content: ok ? 'Проверка замен: $hh:$mm' : 'Ошибка проверки: $hh:$mm',
+        content: '$base • $hh:$mm',
       );
     }
   }

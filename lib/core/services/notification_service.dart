@@ -93,6 +93,17 @@ class NotificationService {
     _initialized = true;
   }
 
+  /// Возвращает текущие замены (на сегодня и завтра — как парсер отдаёт), без сравнения с last_checked.
+  Future<List<Replacement>> getCurrentReplacements({
+    bool forceRefresh = false,
+  }) async {
+    await initialize(requestPermission: false);
+
+    // В отличие от checkForNewReplacements тут не проверяем notificationsEnabled,
+    // т.к. это нужно для статуса в foreground notification.
+    return _replacementRepository.getScheduleChanges(forceRefresh: forceRefresh);
+  }
+
   /// Обработчик нажатия на уведомление
   void _onNotificationTapped(NotificationResponse response) {
     // Можно добавить навигацию к экрану с заменами
