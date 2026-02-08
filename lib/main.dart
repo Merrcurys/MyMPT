@@ -90,13 +90,17 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  /// Текущая страница PageView: 0=Сегодня, 1=Завтра, 2=Неделя, 3=Звонки, 4=Настройки
   int _currentIndex = 0;
+
+  /// PageController для переключения без анимации при нажатии на bottom nav
+  late final PageController _pageController;
 
   bool _isFirstLaunch = true;
   bool _isLoading = true;
   bool _updateChecked = false;
 
-  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый свайп между всеми.
+  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый PageView
   late final List<Widget> _screens = <Widget>[
     OverviewScreen(forcedPage: 0),
     OverviewScreen(forcedPage: 1),
@@ -112,13 +116,10 @@ class _MainScreenState extends State<MainScreen> {
     _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
   ];
 
-  static const double _minDragDistance = 50.0;
-  static const double _minVelocity = 400.0;
-  double _dragDx = 0.0;
-
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: 0);
     _checkFirstLaunch();
   }
 
@@ -143,22 +144,18 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  /// Переход на страницу: при нажатии на nav — мгновенный jump, без прокрутки смежных
   void _goToPage(int index) {
     if (index < 0 || index >= _screens.length) return;
     if (index == _currentIndex) return;
+    _pageController.jumpToPage(index);
     setState(() => _currentIndex = index);
   }
 
-  void _onHorizontalDragStart(DragStartDetails _) => _dragDx = 0.0;
-  void _onHorizontalDragUpdate(DragUpdateDetails d) => _dragDx += d.delta.dx;
-  void _onHorizontalDragEnd(DragEndDetails d) {
-    final v = d.velocity.pixelsPerSecond.dx;
-    final byDistance = _dragDx.abs() >= _minDragDistance;
-    final byVelocity = v.abs() >= _minVelocity;
-    if (!byDistance && !byVelocity) return;
-    final toRight = byDistance ? (_dragDx > 0) : (v > 0);
-    if (toRight && _currentIndex > 0) _goToPage(_currentIndex - 1);
-    else if (!toRight && _currentIndex < _screens.length - 1) _goToPage(_currentIndex + 1);
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -188,24 +185,12 @@ class _MainScreenState extends State<MainScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onHorizontalDragStart: _onHorizontalDragStart,
-            onHorizontalDragUpdate: _onHorizontalDragUpdate,
-            onHorizontalDragEnd: _onHorizontalDragEnd,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: child,
-              ),
-              child: KeyedSubtree(
-                key: ValueKey<int>(_currentIndex),
-                child: _screens[_currentIndex],
-              ),
-            ),
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _currentIndex = index);
+            },
+            children: _screens,
           ),
           if (_currentIndex == 0 || _currentIndex == 1)
             Positioned(
