@@ -105,6 +105,7 @@ class NotificationService {
   /// - true: если это первая проверка и замены не пустые, уведомляем сразу (для сценария смены группы)
   Future<void> checkForNewReplacements({
     bool notifyIfFirstCheck = false,
+    bool forceRefresh = false,
   }) async {
     try {
       await initialize(requestPermission: false);
@@ -115,8 +116,9 @@ class NotificationService {
           prefs.getBool(_notificationsEnabledKey) ?? true;
       if (!notificationsEnabled) return;
 
-      final currentReplacements = await _replacementRepository
-          .getScheduleChanges();
+      final currentReplacements = await _replacementRepository.getScheduleChanges(
+        forceRefresh: forceRefresh,
+      );
 
       final lastCheckedReplacements = await _getLastCheckedReplacements();
 
@@ -165,6 +167,15 @@ class NotificationService {
     return '${replacement.lessonNumber}_${replacement.replaceFrom}_${replacement.replaceTo}_${replacement.changeDate}_${replacement.updatedAt}';
   }
 
+  String _formatDates(List<Replacement> reps) {
+    final dates = reps.map((r) => r.changeDate).where((d) => d.isNotEmpty).toSet()
+      ..remove('');
+    if (dates.isEmpty) return '';
+    final list = dates.toList()..sort();
+    if (list.length == 1) return list.first;
+    return list.take(2).join(', ') + (list.length > 2 ? '…' : '');
+  }
+
   /// Отображает уведомление о новых заменах
   Future<void> _showReplacementNotification(List<Replacement> reps) async {
     final count = reps.length;
@@ -173,9 +184,11 @@ class NotificationService {
         ? 'Новая замена в расписании'
         : 'Новые замены в расписании';
 
+    final datesText = _formatDates(reps);
+
     final body = count == 1
-        ? 'Пара ${reps.first.lessonNumber}: ${reps.first.replaceFrom} → ${reps.first.replaceTo}'
-        : 'Обнаружено новых замен: $count';
+        ? '${reps.first.changeDate}: Пара ${reps.first.lessonNumber}: ${reps.first.replaceFrom} → ${reps.first.replaceTo}'
+        : 'Обнаружено новых замен: $count${datesText.isNotEmpty ? ' (даты: $datesText)' : ''}';
 
     const androidDetails = AndroidNotificationDetails(
       _channelId,

@@ -11,7 +11,7 @@ class ReplacementRepository implements ReplacementRepositoryInterface {
 
   /// Получить замены в расписании для конкретной группы
   @override
-  Future<List<Replacement>> getScheduleChanges() async {
+  Future<List<Replacement>> getScheduleChanges({bool forceRefresh = false}) async {
     try {
       // Здесь нужно получить выбранную группу из настроек
       final groupCode = await _getSelectedGroupCode();
@@ -22,6 +22,7 @@ class ReplacementRepository implements ReplacementRepositoryInterface {
 
       final changes = await _changesService.parseScheduleChangesForGroup(
         groupCode,
+        forceRefresh: forceRefresh,
       );
 
       // Преобразуем модели замен в сущности замен

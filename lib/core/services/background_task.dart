@@ -5,11 +5,15 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 
+/// Временно для тестирования: чаще проверяем и обходим кэш.
+const bool _testingFastPolling = true;
+
 /// Как часто проверяем замены в фоне.
 ///
 /// Важно: Android может «сдвигать» таймеры/будить реже (Doze), но foreground service
 /// существенно повышает шанс реального выполнения периодической проверки.
-const Duration _replacementCheckPeriod = Duration(minutes: 15);
+const Duration _replacementCheckPeriod =
+    _testingFastPolling ? Duration(minutes: 1) : Duration(minutes: 15);
 
 /// Инициализирует фоновый сервис.
 ///
@@ -48,7 +52,9 @@ Future<bool> onIosBackground(ServiceInstance service) async {
   try {
     final notificationService = NotificationService();
     await notificationService.initialize(requestPermission: false);
-    await notificationService.checkForNewReplacements();
+    await notificationService.checkForNewReplacements(
+      forceRefresh: _testingFastPolling,
+    );
   } catch (_) {}
 
   return true;
@@ -87,7 +93,9 @@ void onStart(ServiceInstance service) async {
     try {
       final notificationService = NotificationService();
       await notificationService.initialize(requestPermission: false);
-      await notificationService.checkForNewReplacements();
+      await notificationService.checkForNewReplacements(
+        forceRefresh: _testingFastPolling,
+      );
     } catch (_) {
       ok = false;
     }
