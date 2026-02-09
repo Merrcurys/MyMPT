@@ -41,7 +41,9 @@ class FcmFirestoreService {
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
 
     _messaging.getToken().then((token) {
-      if (token != null) _syncTokenWithGroup(token);
+      if (token != null && token.isNotEmpty) _syncTokenWithGroup(token);
+    }).catchError((_) {
+      // На эмуляторе или без сети FIS может быть недоступен — не падаем
     });
 
     _messaging.onTokenRefresh.listen(_syncTokenWithGroup);
@@ -51,10 +53,15 @@ class FcmFirestoreService {
 
   /// Синхронизирует текущий FCM-токен и выбранную группу в Firestore.
   /// Вызывать при старте приложения и при смене группы в настройках.
+  /// При недоступности FIS (эмулятор, нет сети) токен может быть null — метод завершится без ошибки.
   Future<void> syncTokenWithGroup() async {
-    final token = await _messaging.getToken();
-    if (token == null || token.isEmpty) return;
-    await _syncTokenWithGroup(token);
+    try {
+      final token = await _messaging.getToken();
+      if (token == null || token.isEmpty) return;
+      await _syncTokenWithGroup(token);
+    } catch (_) {
+      // FIS/FCM недоступен (эмулятор без Google Play, нет интернета и т.д.)
+    }
   }
 
   Future<void> _syncTokenWithGroup(String token) async {
