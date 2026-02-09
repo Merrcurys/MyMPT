@@ -1,0 +1,23 @@
+# Сервис проверки замен МПТ. Запуск: см. README.md
+# Перед первым запуском положите ключ Firebase в ./firebase-service-account.json
+
+services:
+  mpt-replacement:
+    build: .
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
+      STATE_FILE: /data/last_replacements.json
+      DATA_DIR: /data
+    volumes:
+      - replacement-data:/data
+      # Монтируем ключ Firebase с хоста (не храните его в репозитории)
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+    # Опционально: запустить одну проверку и выйти (для теста по cron хоста)
+    # command: ["node", "index.js"]
+    # environment:
+    #   RUN_ONCE: "1"
+    #   GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+
+volumes:
+  replacement-data:

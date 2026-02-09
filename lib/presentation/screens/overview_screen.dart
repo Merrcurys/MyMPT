@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/utils/calls_util.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 import 'package:my_mpt/core/utils/lesson_details_parser.dart';
@@ -224,9 +223,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
       setState(() {
         scheduleChanges = loadedChanges;
       });
-
-      final notificationService = NotificationService();
-      await notificationService.updateLastCheckedReplacements();
     } catch (_) {
       // ignore
     }
