@@ -363,7 +363,7 @@ class _CollapsibleWeekHeader extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(padH, padTop, padH + iconSize, padBottom),
+            padding: EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -439,9 +439,8 @@ class _CollapsibleWeekHeader extends StatelessWidget {
                       ),
                     ),
                   ],
-                Positioned(
-                  top: 0,
-                  right: 0,
+                Align(
+                  alignment: const Alignment(1.0, 0.0),
                   child: SizedBox(
                     width: iconSize,
                     height: iconSize,
