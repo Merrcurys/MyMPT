@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:my_mpt/core/services/notification_service.dart';
+import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/data/repositories/group_repository.dart';
@@ -449,11 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
 
         try {
-          final notificationService = NotificationService();
-          await notificationService.initialize();
-          await notificationService.checkForNewReplacements(
-            notifyIfFirstCheck: true,
-          );
+          await FcmFirestoreService().syncTokenWithGroup();
         } catch (_) {}
 
         if (mounted) {

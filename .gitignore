@@ -39,6 +39,12 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# VPS replacement service: секреты и данные
+mpt-replacement-service/firebase-service-account.json
+mpt-replacement-service/data/
+mpt-replacement-service/.env
+mpt-replacement-service/node_modules/
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

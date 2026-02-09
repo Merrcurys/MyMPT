@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:my_mpt/core/services/background_task.dart';
+import 'package:my_mpt/firebase_options.dart';
+import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/services/rustore_update_ui.dart';
 
@@ -17,11 +19,14 @@ import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+    FcmFirestoreService.registerBackgroundHandler();
     final notificationService = NotificationService();
     await notificationService.initialize();
-
-    await initializeBackgroundTasks();
+    final fcmService = FcmFirestoreService();
+    await fcmService.initialize();
+    await fcmService.syncTokenWithGroup();
 
     runApp(const MyApp());
   }, (e, st) {
