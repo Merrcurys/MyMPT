@@ -5,6 +5,7 @@ import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/domain/repositories/specialty_repository_interface.dart';
 import 'package:my_mpt/domain/repositories/group_repository_interface.dart';
+import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/core/services/preload_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -168,6 +169,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       );
       await prefs.setString(_selectedGroupKey, _selectedGroup!.code);
       await prefs.setBool(_firstLaunchKey, false);
+      try {
+        await FcmFirestoreService().syncTokenWithGroup();
+      } catch (_) {}
 
       if (mounted) {
         widget.onSetupComplete();
