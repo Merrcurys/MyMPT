@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-      <img src="https://github.com/user-attachments/assets/ff8a4cd6-00bf-4729-9f9b-9d5a709c8781" alt="iOS" width="1000">      
+      <img src="https://github.com/user-attachments/assets/8201c745-c4d3-43e4-bd3f-afeaaa948a3c" alt="iOS" width="1000">      
 </p>
 
 ## Документация
