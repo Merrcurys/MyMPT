@@ -18,7 +18,11 @@
 ## Демонстрация интерфейса
 
 <p align="center">
-      <img src="https://github.com/user-attachments/assets/71d756bb-83be-42cb-9032-5f2e34558ed8" alt="Demo" width="1000">      
+      <img src="https://github.com/user-attachments/assets/71d756bb-83be-42cb-9032-5f2e34558ed8" alt="Android" width="1000">      
+</p>
+
+<p align="center">
+      <img src="https://github.com/user-attachments/assets/ff8a4cd6-00bf-4729-9f9b-9d5a709c8781" alt="iOS" width="1000">      
 </p>
 
 ## Документация
