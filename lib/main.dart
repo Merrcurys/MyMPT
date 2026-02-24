@@ -21,14 +21,20 @@ import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // Инициализируем Firebase (работает на всех платформах, если настроено)
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-    FcmFirestoreService.registerBackgroundHandler();
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    final fcmService = FcmFirestoreService();
-    await fcmService.initialize();
-    await fcmService.syncTokenWithGroup();
+    // FCM, локальные уведомления и Rustore могут вызывать краши на Web, 
+    // поэтому отключаем их вызов при запуске в браузере (для Device Preview)
+    if (!kIsWeb) {
+      FcmFirestoreService.registerBackgroundHandler();
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+      final fcmService = FcmFirestoreService();
+      await fcmService.initialize();
+      await fcmService.syncTokenWithGroup();
+    }
 
     runApp(
       DevicePreview(
@@ -37,8 +43,10 @@ Future<void> main() async {
       ),
     );
   }, (e, st) {
-    // debugPrint('Uncaught: $e');
-    // debugPrintStack(stackTrace: st);
+    if (kDebugMode) {
+      print('Uncaught error: $e');
+      print(st);
+    }
   });
 }
 
@@ -105,17 +113,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  /// Текущая страница PageView: 0=Сегодня, 1=Завтра, 2=Неделя, 3=Звонки, 4=Настройки
   int _currentIndex = 0;
-
-  /// PageController для переключения без анимации при нажатии на bottom nav
   late final PageController _pageController;
 
   bool _isFirstLaunch = true;
   bool _isLoading = true;
   bool _updateChecked = false;
 
-  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый PageView
   late final List<Widget> _screens = <Widget>[
     OverviewScreen(forcedPage: 0),
     OverviewScreen(forcedPage: 1),
@@ -159,7 +163,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  /// Переход на страницу: при нажатии на nav — мгновенный jump, без прокрутки смежных
   void _goToPage(int index) {
     if (index < 0 || index >= _screens.length) return;
     if (index == _currentIndex) return;
@@ -192,7 +195,10 @@ class _MainScreenState extends State<MainScreen> {
     if (!_updateChecked) {
       _updateChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        RuStoreUpdateUi.checkAndRunDeferredUpdate();
+        // Проверка обновлений RuStore крашится на Web, так как это сугубо Android фича
+        if (!kIsWeb) {
+          RuStoreUpdateUi.checkAndRunDeferredUpdate();
+        }
       });
     }
 
