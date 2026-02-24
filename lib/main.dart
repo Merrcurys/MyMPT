@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,7 +30,12 @@ Future<void> main() async {
     await fcmService.initialize();
     await fcmService.syncTokenWithGroup();
 
-    runApp(const MyApp());
+    runApp(
+      DevicePreview(
+        enabled: kDebugMode,
+        builder: (context) => const MyApp(),
+      ),
+    );
   }, (e, st) {
     // debugPrint('Uncaught: $e');
     // debugPrintStack(stackTrace: st);
@@ -43,6 +50,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Мой МПТ',
       debugShowCheckedModeBanner: false,
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
