@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui'; // Для ImageFilter.blur
 
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -195,7 +196,6 @@ class _MainScreenState extends State<MainScreen> {
     if (!_updateChecked) {
       _updateChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // Проверка обновлений RuStore крашится на Web, так как это сугубо Android фича
         if (!kIsWeb) {
           RuStoreUpdateUi.checkAndRunDeferredUpdate();
         }
@@ -226,17 +226,24 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: NavigationBar(
-          selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
-          onDestinationSelected: (index) {
-            if (index == 0) _goToPage(0);
-            else _goToPage(index + 1);
-          },
-          surfaceTintColor: Colors.transparent,
-          destinations: [
-            for (final item in _navItems)
-              NavigationDestination(icon: Icon(item.icon), label: item.label),
-          ],
+        child: BackdropFilter(
+          // Применяем эффект "матового стекла" (Liquid Glass)
+          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+          child: NavigationBar(
+            // Делаем саму панель полупрозрачной, чтобы был виден эффект размытия под ней
+            backgroundColor: const Color(0x73000000), // Полупрозрачный черный (около 45% opacity)
+            elevation: 0,
+            selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
+            onDestinationSelected: (index) {
+              if (index == 0) _goToPage(0);
+              else _goToPage(index + 1);
+            },
+            surfaceTintColor: Colors.transparent,
+            destinations: [
+              for (final item in _navItems)
+                NavigationDestination(icon: Icon(item.icon), label: item.label),
+            ],
+          ),
         ),
       ),
     );
