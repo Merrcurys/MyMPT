@@ -175,6 +175,31 @@ class ScheduleTeacherParser {
         result[day] = merged.values.toList()..sort((a, b) => int.parse(a.number).compareTo(int.parse(b.number)));
      });
      
-     return result;
+     return _sortDays(result);
+  }
+
+  Map<String, List<Lesson>> _sortDays(Map<String, List<Lesson>> schedule) {
+    const daysOrder = {
+      'ПОНЕДЕЛЬНИК': 1,
+      'ВТОРНИК': 2,
+      'СРЕДА': 3,
+      'ЧЕТВЕРГ': 4,
+      'ПЯТНИЦА': 5,
+      'СУББОТА': 6,
+      'ВОСКРЕСЕНЬЕ': 7,
+    };
+
+    final sortedKeys = schedule.keys.toList()..sort((a, b) {
+      final orderA = daysOrder[a] ?? 99;
+      final orderB = daysOrder[b] ?? 99;
+      return orderA.compareTo(orderB);
+    });
+
+    final sortedSchedule = <String, List<Lesson>>{};
+    for (final key in sortedKeys) {
+      sortedSchedule[key] = schedule[key]!;
+    }
+
+    return sortedSchedule;
   }
 }
