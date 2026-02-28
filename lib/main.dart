@@ -11,6 +11,7 @@ import 'package:my_mpt/firebase_options.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/services/rustore_update_ui.dart';
+import 'package:my_mpt/core/utils/date_formatter.dart';
 
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
 import 'package:my_mpt/presentation/screens/overview_screen.dart';
@@ -184,6 +185,10 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     final int selectedNavIndex = _currentIndex <= 1 ? 0 : _currentIndex - 1;
+    
+    // Определяем текущий тип недели (Числитель / Знаменатель)
+    final isNumerator = DateFormatter.getWeekType(DateTime.now()) == 'Числитель';
+    final Color activeColor = isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5); // Красный для числителя, Синий для знаменателя
 
     return Scaffold(
       extendBody: true,
@@ -213,7 +218,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Container(
             height: 70,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85), // Полупрозрачный белый фон (как на iOS скриншоте)
+              color: Colors.white.withOpacity(0.85), // Полупрозрачный белый фон
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
@@ -229,7 +234,7 @@ class _MainScreenState extends State<MainScreen> {
                 filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                 child: Stack(
                   children: [
-                    // Анимированный фон (синий овал) для выбранного элемента
+                    // Анимированный фон (овал) для выбранного элемента
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeOutCubic,
@@ -239,7 +244,7 @@ class _MainScreenState extends State<MainScreen> {
                       width: _calculateIndicatorWidth(context),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.2), // Голубой полупрозрачный фон
+                          color: activeColor.withOpacity(0.2), // Цвет подложки привязан к неделе
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
@@ -261,7 +266,7 @@ class _MainScreenState extends State<MainScreen> {
                               children: [
                                 Icon(
                                   isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
-                                  color: isSelected ? Colors.blue : const Color(0xFF4A3525), // Коричневатый цвет для неактивных, синий для активных
+                                  color: isSelected ? activeColor : const Color(0xFF4A3525), // Цвет иконки привязан к неделе
                                   size: 26,
                                 ),
                                 const SizedBox(height: 2),
@@ -270,7 +275,7 @@ class _MainScreenState extends State<MainScreen> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                    color: isSelected ? Colors.blue : const Color(0xFF4A3525),
+                                    color: isSelected ? activeColor : const Color(0xFF4A3525), // Цвет текста привязан к неделе
                                   ),
                                 ),
                               ],
