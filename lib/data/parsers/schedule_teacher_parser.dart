@@ -14,18 +14,36 @@ class ScheduleTeacherParser {
     final initials = teacherNameParts.sublist(0, teacherNameParts.length - 1).join(' ').toLowerCase();
 
     final tabPanels = document.querySelectorAll('[role="tabpanel"]');
+    
+    // Создаем карту соответствия id вкладки -> Название группы
+    final Map<String, String> idToGroup = {};
+    final tabLinks = document.querySelectorAll('ul.nav-tabs > li > a[href^="#"]');
+    for (var link in tabLinks) {
+       final href = link.attributes['href'];
+       if (href != null && href.startsWith('#')) {
+          final tabId = href.substring(1);
+          idToGroup[tabId] = link.text.trim();
+       }
+    }
 
     for (var tabPanel in tabPanels) {
-      final tables = tabPanel.querySelectorAll('table.table');
-      String currentSpecialty = '';
-      final h2Headers = tabPanel.querySelectorAll('h2');
-      for (var h2 in h2Headers) {
-        final text = h2.text.trim();
-        if (text.startsWith('Расписание занятий для')) {
-          currentSpecialty = text.replaceFirst('Расписание занятий для', '').trim();
-          break;
+      final tabId = tabPanel.attributes['id'];
+      
+      // Получаем название группы из вкладки, если не найдено - пробуем получить специальность из заголовка
+      String currentGroupOrSpecialty = tabId != null ? (idToGroup[tabId] ?? '') : '';
+
+      if (currentGroupOrSpecialty.isEmpty) {
+        final h2Headers = tabPanel.querySelectorAll('h2');
+        for (var h2 in h2Headers) {
+          final text = h2.text.trim();
+          if (text.startsWith('Расписание занятий для')) {
+            currentGroupOrSpecialty = text.replaceFirst('Расписание занятий для', '').trim();
+            break;
+          }
         }
       }
+
+      final tables = tabPanel.querySelectorAll('table.table');
 
       for (var table in tables) {
         final thead = table.querySelector('thead');
@@ -37,9 +55,6 @@ class ScheduleTeacherParser {
         String rawDay = h4.nodes.first.text?.trim() ?? '';
         final day = rawDay.toUpperCase();
         if (day.isEmpty) continue;
-
-        final groupTextMatch = RegExp(r'Группа\s+([^,]+)').firstMatch(h4.text);
-        final currentGroup = groupTextMatch != null ? groupTextMatch.group(1)?.trim() ?? '' : '';
 
         final rows = table.querySelectorAll('tbody tr');
         final iterRows = rows.isNotEmpty ? rows : table.querySelectorAll('tr');
@@ -73,7 +88,7 @@ class ScheduleTeacherParser {
                schedule[day]!.add(Lesson(
                  number: number,
                  subject: subject,
-                 teacher: currentGroup.isNotEmpty ? currentGroup : currentSpecialty,
+                 teacher: currentGroupOrSpecialty,
                  startTime: startTime,
                  endTime: endTime,
                  building: building,
@@ -93,7 +108,7 @@ class ScheduleTeacherParser {
                    schedule[day]!.add(Lesson(
                      number: number,
                      subject: subject,
-                     teacher: currentGroup.isNotEmpty ? currentGroup : currentSpecialty, // Сохраняем группу вместо препода
+                     teacher: currentGroupOrSpecialty, // Сохраняем группу
                      startTime: startTime,
                      endTime: endTime,
                      building: building,
@@ -139,7 +154,10 @@ class ScheduleTeacherParser {
               final existing = merged[key]!;
               final newGroup = existing.teacher == null || existing.teacher!.isEmpty 
                   ? (lesson.teacher ?? '') 
-                  : '${existing.teacher}, ${lesson.teacher ?? ''}';
+                  // Если группа уже есть в строке, не дублируем её
+                  : (existing.teacher!.contains(lesson.teacher ?? '') 
+                      ? existing.teacher 
+                      : '${existing.teacher}, ${lesson.teacher ?? ''}');
                   
               merged[key] = Lesson(
                   number: existing.number,
