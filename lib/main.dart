@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:ui'; // Для ImageFilter.blur
 
+import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,19 +22,32 @@ import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // Инициализируем Firebase (работает на всех платформах, если настроено)
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-    FcmFirestoreService.registerBackgroundHandler();
-    final notificationService = NotificationService();
-    await notificationService.initialize();
-    final fcmService = FcmFirestoreService();
-    await fcmService.initialize();
-    await fcmService.syncTokenWithGroup();
+    // FCM, локальные уведомления и Rustore могут вызывать краши на Web, 
+    // поэтому отключаем их вызов при запуске в браузере (для Device Preview)
+    if (!kIsWeb) {
+      FcmFirestoreService.registerBackgroundHandler();
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+      final fcmService = FcmFirestoreService();
+      await fcmService.initialize();
+      await fcmService.syncTokenWithGroup();
+    }
 
-    runApp(const MyApp());
+    runApp(
+      DevicePreview(
+        enabled: kDebugMode,
+        builder: (context) => const MyApp(),
+      ),
+    );
   }, (e, st) {
-    // debugPrint('Uncaught: $e');
-    // debugPrintStack(stackTrace: st);
+    if (kDebugMode) {
+      print('Uncaught error: $e');
+      print(st);
+    }
   });
 }
 
@@ -43,6 +59,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Мой МПТ',
       debugShowCheckedModeBanner: false,
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -62,25 +81,6 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        navigationBarTheme: NavigationBarThemeData(
-          indicatorColor: const Color(0x33FFFFFF),
-          height: 80,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
-            ),
-          ),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => TextStyle(
-              fontSize: 11,
-              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
-              letterSpacing: 0.1,
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
-            ),
-          ),
-        ),
       ),
       home: const MainScreen(),
     );
@@ -95,17 +95,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  /// Текущая страница PageView: 0=Сегодня, 1=Завтра, 2=Неделя, 3=Звонки, 4=Настройки
   int _currentIndex = 0;
-
-  /// PageController для переключения без анимации при нажатии на bottom nav
   late final PageController _pageController;
 
   bool _isFirstLaunch = true;
   bool _isLoading = true;
   bool _updateChecked = false;
 
-  /// 5 страниц: Сегодня, Завтра, Неделя, Звонки, Настройки — единый PageView
   late final List<Widget> _screens = <Widget>[
     OverviewScreen(forcedPage: 0),
     OverviewScreen(forcedPage: 1),
@@ -115,10 +111,10 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   final List<_NavItemData> _navItems = const [
-    _NavItemData(icon: Icons.flash_on_outlined, label: 'Обзор'),
-    _NavItemData(icon: Icons.view_week_outlined, label: 'Неделя'),
-    _NavItemData(icon: Icons.notifications_none_outlined, label: 'Звонки'),
-    _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
+    _NavItemData(icon: Icons.flash_on_outlined, selectedIcon: Icons.flash_on, label: 'Обзор'),
+    _NavItemData(icon: Icons.view_week_outlined, selectedIcon: Icons.view_week, label: 'Неделя'),
+    _NavItemData(icon: Icons.notifications_none_outlined, selectedIcon: Icons.notifications, label: 'Звонки'),
+    _NavItemData(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: 'Настройки'),
   ];
 
   @override
@@ -149,7 +145,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  /// Переход на страницу: при нажатии на nav — мгновенный jump, без прокрутки смежных
   void _goToPage(int index) {
     if (index < 0 || index >= _screens.length) return;
     if (index == _currentIndex) return;
@@ -182,9 +177,13 @@ class _MainScreenState extends State<MainScreen> {
     if (!_updateChecked) {
       _updateChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        RuStoreUpdateUi.checkAndRunDeferredUpdate();
+        if (!kIsWeb) {
+          RuStoreUpdateUi.checkAndRunDeferredUpdate();
+        }
       });
     }
+
+    final int selectedNavIndex = _currentIndex <= 1 ? 0 : _currentIndex - 1;
 
     return Scaffold(
       extendBody: true,
@@ -201,35 +200,115 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: MediaQuery.of(context).padding.bottom + 80 + 10,
+              bottom: MediaQuery.of(context).padding.bottom + 90,
               child: IgnorePointer(
                 child: PageIndicator(currentPageIndex: _currentIndex),
               ),
             ),
         ],
       ),
-      bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: NavigationBar(
-          selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
-          onDestinationSelected: (index) {
-            if (index == 0) _goToPage(0);
-            else _goToPage(index + 1);
-          },
-          surfaceTintColor: Colors.transparent,
-          destinations: [
-            for (final item in _navItems)
-              NavigationDestination(icon: Icon(item.icon), label: item.label),
-          ],
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.85), // Полупрозрачный белый фон (как на iOS скриншоте)
+              borderRadius: BorderRadius.circular(35),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(35),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: Stack(
+                  children: [
+                    // Анимированный фон (синий овал) для выбранного элемента
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      left: _calculateIndicatorPosition(selectedNavIndex, context),
+                      top: 6,
+                      bottom: 6,
+                      width: _calculateIndicatorWidth(context),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2), // Голубой полупрозрачный фон
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                    // Сами кнопки
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(_navItems.length, (index) {
+                        final isSelected = selectedNavIndex == index;
+                        return Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (index == 0) _goToPage(0);
+                              else _goToPage(index + 1);
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
+                                  color: isSelected ? Colors.blue : const Color(0xFF4A3525), // Коричневатый цвет для неактивных, синий для активных
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _navItems[index].label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected ? Colors.blue : const Color(0xFF4A3525),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  double _calculateIndicatorWidth(BuildContext context) {
+    // Ширина экрана минус отступы по краям (24 * 2) делить на количество элементов
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 48; 
+    return availableWidth / _navItems.length;
+  }
+
+  double _calculateIndicatorPosition(int index, BuildContext context) {
+    return index * _calculateIndicatorWidth(context);
   }
 }
 
 class _NavItemData {
   final IconData icon;
+  final IconData selectedIcon;
   final String label;
 
-  const _NavItemData({required this.icon, required this.label});
+  const _NavItemData({
+    required this.icon, 
+    required this.selectedIcon, 
+    required this.label
+  });
 }
