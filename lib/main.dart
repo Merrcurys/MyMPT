@@ -81,25 +81,6 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        navigationBarTheme: NavigationBarThemeData(
-          indicatorColor: const Color(0x33FFFFFF),
-          height: 80,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
-            ),
-          ),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => TextStyle(
-              fontSize: 11,
-              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
-              letterSpacing: 0.1,
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
-            ),
-          ),
-        ),
       ),
       home: const MainScreen(),
     );
@@ -130,10 +111,10 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   final List<_NavItemData> _navItems = const [
-    _NavItemData(icon: Icons.flash_on_outlined, label: 'Обзор'),
-    _NavItemData(icon: Icons.view_week_outlined, label: 'Неделя'),
-    _NavItemData(icon: Icons.notifications_none_outlined, label: 'Звонки'),
-    _NavItemData(icon: Icons.settings_outlined, label: 'Настройки'),
+    _NavItemData(icon: Icons.flash_on_outlined, selectedIcon: Icons.flash_on, label: 'Обзор'),
+    _NavItemData(icon: Icons.view_week_outlined, selectedIcon: Icons.view_week, label: 'Неделя'),
+    _NavItemData(icon: Icons.notifications_none_outlined, selectedIcon: Icons.notifications, label: 'Звонки'),
+    _NavItemData(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: 'Настройки'),
   ];
 
   @override
@@ -202,6 +183,8 @@ class _MainScreenState extends State<MainScreen> {
       });
     }
 
+    final int selectedNavIndex = _currentIndex <= 1 ? 0 : _currentIndex - 1;
+
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -217,42 +200,115 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: MediaQuery.of(context).padding.bottom + 80 + 10,
+              bottom: MediaQuery.of(context).padding.bottom + 90,
               child: IgnorePointer(
                 child: PageIndicator(currentPageIndex: _currentIndex),
               ),
             ),
         ],
       ),
-      bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          // Применяем эффект "матового стекла" (Liquid Glass)
-          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
-          child: NavigationBar(
-            // Делаем саму панель полупрозрачной, чтобы был виден эффект размытия под ней
-            backgroundColor: const Color(0x73000000), // Полупрозрачный черный (около 45% opacity)
-            elevation: 0,
-            selectedIndex: _currentIndex <= 1 ? 0 : _currentIndex - 1,
-            onDestinationSelected: (index) {
-              if (index == 0) _goToPage(0);
-              else _goToPage(index + 1);
-            },
-            surfaceTintColor: Colors.transparent,
-            destinations: [
-              for (final item in _navItems)
-                NavigationDestination(icon: Icon(item.icon), label: item.label),
-            ],
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.85), // Полупрозрачный белый фон (как на iOS скриншоте)
+              borderRadius: BorderRadius.circular(35),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(35),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: Stack(
+                  children: [
+                    // Анимированный фон (синий овал) для выбранного элемента
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      left: _calculateIndicatorPosition(selectedNavIndex, context),
+                      top: 6,
+                      bottom: 6,
+                      width: _calculateIndicatorWidth(context),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2), // Голубой полупрозрачный фон
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                    // Сами кнопки
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(_navItems.length, (index) {
+                        final isSelected = selectedNavIndex == index;
+                        return Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (index == 0) _goToPage(0);
+                              else _goToPage(index + 1);
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
+                                  color: isSelected ? Colors.blue : const Color(0xFF4A3525), // Коричневатый цвет для неактивных, синий для активных
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _navItems[index].label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected ? Colors.blue : const Color(0xFF4A3525),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+
+  double _calculateIndicatorWidth(BuildContext context) {
+    // Ширина экрана минус отступы по краям (24 * 2) делить на количество элементов
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 48; 
+    return availableWidth / _navItems.length;
+  }
+
+  double _calculateIndicatorPosition(int index, BuildContext context) {
+    return index * _calculateIndicatorWidth(context);
+  }
 }
 
 class _NavItemData {
   final IconData icon;
+  final IconData selectedIcon;
   final String label;
 
-  const _NavItemData({required this.icon, required this.label});
+  const _NavItemData({
+    required this.icon, 
+    required this.selectedIcon, 
+    required this.label
+  });
 }
