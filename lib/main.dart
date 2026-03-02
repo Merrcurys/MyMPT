@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:ui'; // Для ImageFilter.blur
+import 'dart:ui';
 
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:native_glass_navbar/native_glass_navbar.dart';
 
 import 'package:my_mpt/firebase_options.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
@@ -24,11 +25,8 @@ Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     
-    // Инициализируем Firebase (работает на всех платформах, если настроено)
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-    // FCM, локальные уведомления и Rustore могут вызывать краши на Web, 
-    // поэтому отключаем их вызов при запуске в браузере (для Device Preview)
     if (!kIsWeb) {
       FcmFirestoreService.registerBackgroundHandler();
       final notificationService = NotificationService();
@@ -186,9 +184,8 @@ class _MainScreenState extends State<MainScreen> {
 
     final int selectedNavIndex = _currentIndex <= 1 ? 0 : _currentIndex - 1;
     
-    // Определяем текущий тип недели (Числитель / Знаменатель)
     final isNumerator = DateFormatter.getWeekType(DateTime.now()) == 'Числитель';
-    final Color activeColor = isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5); // Красный для числителя, Синий для знаменателя
+    final Color activeColor = isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5);
 
     return Scaffold(
       extendBody: true,
@@ -212,87 +209,102 @@ class _MainScreenState extends State<MainScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(35),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(35),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
-                child: Container(
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5), // Высокая прозрачность для правильного блюра
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2), // Тонкая граница усиливает эффект стекла
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(35),
+      bottomNavigationBar: NativeGlassNavbar(
+        selectedIndex: selectedNavIndex,
+        onItemSelected: (index) {
+          if (index == 0) _goToPage(0);
+          else _goToPage(index + 1);
+        },
+        useFallbackOnAndroid: true,
+        useFallbackOnWeb: true,
+        useFallbackOnWindows: true,
+        activeColor: activeColor,
+        inactiveColor: const Color(0xFF4A3525),
+        items: _navItems.map((item) => GlassNavbarItem(
+          icon: item.icon,
+          activeIcon: item.selectedIcon,
+          label: item.label,
+        )).toList(),
+        fallback: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(35),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
                   ),
-                  child: Stack(
-                    children: [
-                      // Анимированный фон (овал) для выбранного элемента
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
-                        left: _calculateIndicatorPosition(selectedNavIndex, context),
-                        top: 6,
-                        bottom: 6,
-                        width: _calculateIndicatorWidth(context),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: activeColor.withOpacity(0.25), // Цвет подложки привязан к неделе
-                            borderRadius: BorderRadius.circular(30),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(35),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+                  child: Container(
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.5),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(35),
+                    ),
+                    child: Stack(
+                      children: [
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          left: _calculateIndicatorPosition(selectedNavIndex, context),
+                          top: 6,
+                          bottom: 6,
+                          width: _calculateIndicatorWidth(context),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: activeColor.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                           ),
                         ),
-                      ),
-                      // Сами кнопки
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(_navItems.length, (index) {
-                          final isSelected = selectedNavIndex == index;
-                          return Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                if (index == 0) _goToPage(0);
-                                else _goToPage(index + 1);
-                              },
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
-                                    color: isSelected ? activeColor : const Color(0xFF4A3525), // Цвет иконки привязан к неделе
-                                    size: 26,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _navItems[index].label,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                      color: isSelected ? activeColor : const Color(0xFF4A3525), // Цвет текста привязан к неделе
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: List.generate(_navItems.length, (index) {
+                            final isSelected = selectedNavIndex == index;
+                            return Expanded(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  if (index == 0) _goToPage(0);
+                                  else _goToPage(index + 1);
+                                },
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
+                                      color: isSelected ? activeColor : const Color(0xFF4A3525),
+                                      size: 26,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _navItems[index].label,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                        color: isSelected ? activeColor : const Color(0xFF4A3525),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -304,7 +316,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   double _calculateIndicatorWidth(BuildContext context) {
-    // Ширина экрана минус отступы по краям (24 * 2) делить на количество элементов
     final screenWidth = MediaQuery.of(context).size.width;
     final availableWidth = screenWidth - 48; 
     return availableWidth / _navItems.length;
