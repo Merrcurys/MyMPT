@@ -22,22 +22,27 @@ class ScheduleTeacherParser {
        final href = link.attributes['href'];
        if (href != null && href.startsWith('#')) {
           final tabId = href.substring(1);
-          idToGroup[tabId] = link.text.trim();
+          // Берем текст из вкладки (обычно там как раз группа, например П50-1-23)
+          idToGroup[tabId] = _extractGroup(link.text.trim());
        }
     }
 
     for (var tabPanel in tabPanels) {
       final tabId = tabPanel.attributes['id'];
       
-      // Получаем название группы из вкладки, если не найдено - пробуем получить специальность из заголовка
-      String currentGroupOrSpecialty = tabId != null ? (idToGroup[tabId] ?? '') : '';
+      // Получаем название группы из вкладки. Специально не берем специальность из h2, 
+      // чтобы избежать длинных названий типа "09.02.07 Информационные системы..."
+      String currentGroup = tabId != null ? (idToGroup[tabId] ?? '') : '';
 
-      if (currentGroupOrSpecialty.isEmpty) {
+      // Резервный вариант, если вкладки вдруг нет - попытаться вытащить именно группу из h2,
+      // но отрезав всё лишнее
+      if (currentGroup.isEmpty) {
         final h2Headers = tabPanel.querySelectorAll('h2');
         for (var h2 in h2Headers) {
           final text = h2.text.trim();
           if (text.startsWith('Расписание занятий для')) {
-            currentGroupOrSpecialty = text.replaceFirst('Расписание занятий для', '').trim();
+            final fullText = text.replaceFirst('Расписание занятий для', '').trim();
+            currentGroup = _extractGroup(fullText);
             break;
           }
         }
@@ -88,7 +93,7 @@ class ScheduleTeacherParser {
                schedule[day]!.add(Lesson(
                  number: number,
                  subject: subject,
-                 teacher: currentGroupOrSpecialty,
+                 teacher: currentGroup,
                  startTime: startTime,
                  endTime: endTime,
                  building: building,
@@ -108,7 +113,7 @@ class ScheduleTeacherParser {
                    schedule[day]!.add(Lesson(
                      number: number,
                      subject: subject,
-                     teacher: currentGroupOrSpecialty, // Сохраняем группу
+                     teacher: currentGroup, // Сохраняем группу
                      startTime: startTime,
                      endTime: endTime,
                      building: building,
@@ -122,6 +127,28 @@ class ScheduleTeacherParser {
     }
     
     return _mergeTeacherLessons(schedule);
+  }
+
+  /// Пытается вытащить только название группы (например, П50-1-23),
+  /// отбрасывая длинные названия специальностей.
+  String _extractGroup(String rawText) {
+    // Ищем паттерн группы: БуквыЦифры-Цифра-Цифры (например П50-1-23, ИСП-2-22, Р21-1)
+    // Поддерживает различные форматы групп МПТ
+    final groupRegex = RegExp(r'[А-Яа-яЁёA-Za-z0-9]+-\d+(?:-\d+)?');
+    final match = groupRegex.firstMatch(rawText);
+    
+    if (match != null) {
+      return match.group(0)!; // Возвращаем только саму группу
+    }
+    
+    // Если регулярка не нашла группу, просто берем первое слово 
+    // (обычно специальность идет дальше после пробелов/скобок)
+    // но если строка короткая (<15 символов), возвращаем целиком
+    if (rawText.length < 15) {
+      return rawText;
+    }
+    
+    return rawText.split(' ').first;
   }
 
   bool _isTeacherMatch(String cellText, String lastName, String initials) {
