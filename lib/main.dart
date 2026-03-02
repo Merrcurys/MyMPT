@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -201,6 +202,10 @@ class _MainScreenState extends State<MainScreen> {
     final isNumerator = DateFormatter.getWeekType(DateTime.now()) == 'Числитель';
     final Color activeColor =
         isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5);
+        
+    // На iOS точки индикатора нужно поднять чуть выше, так как навбар там имеет SafeArea
+    final bool isIOS = !kIsWeb && Platform.isIOS;
+    final double indicatorBottomOffset = isIOS ? 100 : 80;
 
     return Scaffold(
       extendBody: true,
@@ -217,8 +222,7 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               left: 0,
               right: 0,
-              // Чуть опускаем индикатор, так как сам навбар тоже опустился
-              bottom: MediaQuery.of(context).padding.bottom + 80,
+              bottom: MediaQuery.of(context).padding.bottom + indicatorBottomOffset,
               child: IgnorePointer(
                 child: PageIndicator(currentPageIndex: _currentIndex),
               ),
@@ -288,12 +292,18 @@ class _PillFallbackNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Убрали SafeArea, чтобы бар прижался к самому низу на Android.
-    // На Android без жестов системный бар и так отталкивает контент,
-    // а с жестами мы хотим, чтобы плашка висела максимально низко.
-    return Padding(
-      // Убрали вертикальный отступ снизу, оставили только по бокам и чуть сверху для отбивки
-      padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 16.0, bottom: 8.0),
+    // На iOS возвращаем SafeArea, чтобы бар не перекрывался полоской "домой".
+    // На Android прижимаем к низу.
+    final bool isIOS = !kIsWeb && Platform.isIOS;
+    
+    Widget navBarContent = Padding(
+      // Для iOS делаем отступ снизу 16, как было раньше, для Android - 8
+      padding: EdgeInsets.only(
+        left: 24.0, 
+        right: 24.0, 
+        top: 16.0, 
+        bottom: isIOS ? 16.0 : 8.0
+      ),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(35),
@@ -381,6 +391,13 @@ class _PillFallbackNavBar extends StatelessWidget {
         ),
       ),
     );
+
+    // Если это iOS - оборачиваем в SafeArea, чтобы избежать наложения на Home Indicator
+    if (isIOS) {
+      return SafeArea(child: navBarContent);
+    } 
+    
+    return navBarContent;
   }
 
   double _calculateIndicatorWidth(BuildContext context) {
