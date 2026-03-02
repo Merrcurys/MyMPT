@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>ru</string>
 	<key>CFBundleDisplayName</key>
-	<string>My Mpt</string>
+	<string>Мой МПТ</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -54,6 +54,13 @@
   <key>BGTaskSchedulerPermittedIdentifiers</key>
   <array>
     <string>dev.flutter.background.refresh</string>
+  </array>
+  <key>CFBundleAllowMixedLocalizations</key>
+  <true/>
+  <key>CFBundleLocalizations</key>
+  <array>
+      <string>en</string>
+      <string>ru</string>
   </array>
 </dict>
 </plist>
