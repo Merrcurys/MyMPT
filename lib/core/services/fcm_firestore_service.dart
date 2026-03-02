@@ -41,6 +41,15 @@ class FcmFirestoreService {
     // Открытие уведомления (background/terminated)
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
 
+    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
+      // На iOS/macOS перед получением FCM токена нужно обязательно дождаться APNs токена
+      final apnsToken = await _messaging.getAPNSToken();
+      if (apnsToken == null) {
+        // Если APNs токен получить не удалось, FCM токен также не будет работать для пушей
+        return;
+      }
+    }
+
     _messaging.getToken().then((token) {
       if (token != null && token.isNotEmpty) _syncTokenWithGroup(token);
     }).catchError((_) {
@@ -55,6 +64,10 @@ class FcmFirestoreService {
   /// Получает FCM-токен безопасно, возвращает null при ошибке (например, если нет Google Play)
   Future<String?> getTokenSafe() async {
     try {
+      if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
+        final apnsToken = await _messaging.getAPNSToken();
+        if (apnsToken == null) return null;
+      }
       return await _messaging.getToken();
     } catch (_) {
       return null;
@@ -66,6 +79,11 @@ class FcmFirestoreService {
   /// При недоступности FIS (эмулятор, нет сети) токен может быть null — метод завершится без ошибки.
   Future<void> syncTokenWithGroup() async {
     try {
+      if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
+        final apnsToken = await _messaging.getAPNSToken();
+        if (apnsToken == null) return;
+      }
+      
       final token = await _messaging.getToken();
       if (token == null || token.isEmpty) return;
       await _syncTokenWithGroup(token);
