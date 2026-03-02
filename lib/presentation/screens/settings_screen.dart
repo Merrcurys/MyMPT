@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
+import 'package:my_mpt/core/services/notification_service.dart'; // Добавлен импорт сервиса уведомлений
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/data/models/teacher.dart';
@@ -470,6 +471,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _testLocalNotification() async {
+    try {
+      await NotificationService().showNotification(
+        title: 'Тестовое уведомление',
+        body: 'Если вы видите это, локальные уведомления работают успешно!',
+      );
+      if (mounted) {
+        showSuccessNotification(context, 'Успешно', 'Тестовое уведомление отправлено', Icons.notifications_active);
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorNotification(context, 'Ошибка', 'Не удалось отправить уведомление: $e', Icons.error_outline);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -534,6 +551,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.refresh,
                 onTap: _refreshSchedule,
                 isRefreshing: _isRefreshing,
+              ),
+              const SizedBox(height: 28),
+              const Section(title: 'Уведомления (Тест)'),
+              const SizedBox(height: 14),
+              SettingsCard(
+                title: 'Отправить тестовое уведомление',
+                subtitle: 'Проверка работы локальных уведомлений на устройстве',
+                icon: Icons.notifications_active_outlined,
+                onTap: _testLocalNotification,
               ),
               const SizedBox(height: 28),
               const Section(title: 'Обратная связь'),
