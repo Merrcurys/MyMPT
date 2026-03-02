@@ -17,7 +17,7 @@ List<Map<String, dynamic>> _parseTeacherIsolate(Map<String, dynamic> message) {
 class TeacherRemoteDatasource {
   TeacherRemoteDatasource({
     http.Client? client,
-    this.baseUrl = 'https://mpt.ru/raspisanie-prepodavateley/',
+    this.baseUrl = 'https://mpt.ru/raspisanie-zanyatiy/',
     this.cacheTtl = const Duration(hours: 24),
   }) : _client = client ?? http.Client();
 

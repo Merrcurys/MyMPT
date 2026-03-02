@@ -34,7 +34,7 @@ Map<String, List<Map<String, dynamic>>> _parseTeacherScheduleIsolate(
 class ScheduleRemoteDatasource {
   ScheduleRemoteDatasource({
     http.Client? client,
-    this.baseUrl = 'https://mpt.ru/raspisanie/',
+    this.baseUrl = 'https://mpt.ru/raspisanie-zanyatiy/',
     this.cacheTtl = const Duration(hours: 24),
   }) : _client = client ?? http.Client();
 
@@ -46,8 +46,9 @@ class ScheduleRemoteDatasource {
   String? _cachedHtml;
   DateTime? _lastFetch;
   
-  // Для преподавателей URL отличается (используем /raspisanie-prepodavateley/)
-  final String teacherBaseUrl = 'https://mpt.ru/raspisanie-prepodavateley/';
+  // Возвращаем на ту же самую страницу, потому что парсер преподавателей
+  // ищет их по таблицам студентов. Отдельной страницы /raspisanie-prepodavateley/ больше нет.
+  final String teacherBaseUrl = 'https://mpt.ru/raspisanie-zanyatiy/';
   String? _cachedTeacherHtml;
   DateTime? _lastTeacherFetch;
 

@@ -8,8 +8,8 @@ class TeacherParser {
     final Set<String> result = {};
     final List<Teacher> teachers = [];
 
-    // Регекс для поиска ФИО (ищем хотя бы один шаблон И.О. Фамилия)
-    final fioRegex = RegExp(r'[А-ЯЁA-Z]\.[А-ЯЁA-Z]\.\s?[А-ЯЁа-яёA-Za-z\-]+');
+    // Регекс для поиска ФИО: поддерживает и "И.О. Фамилия" и "Фамилия И.О."
+    final fioRegex = RegExp(r'([А-ЯЁ][а-яё\-]+\s+[А-ЯЁ]\.\s?[А-ЯЁ]\.)|([А-ЯЁ]\.\s?[А-ЯЁ]\.\s?[А-ЯЁ][а-яё\-]+)');
 
     final tables = document.querySelectorAll('table');
 
@@ -38,7 +38,6 @@ class TeacherParser {
         if (labels.isNotEmpty) {
            for (var lbl in labels) {
             final txt = lbl.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-            // Исправлено: Извлекаем ВСЕ совпадения ФИО из текста, чтобы избежать склеивания "Иванов А.А., Петров В.В."
             final matches = fioRegex.allMatches(txt);
             for (var match in matches) {
                 result.add(match.group(0)!.trim());
@@ -61,13 +60,23 @@ class TeacherParser {
               for (var match in strongMatches) {
                  result.add(match.group(0)!.trim());
               }
+            } else {
+              // Если регулярка совсем не сработала, но в ячейке явно есть преподаватели через запятую
+              final parts = raw.split(',');
+              for (var part in parts) {
+                final cleaned = part.trim();
+                if (cleaned.length > 5 && cleaned.contains('.')) {
+                  // Пытаемся просто добавить как есть, если похоже на ФИО
+                  result.add(cleaned);
+                }
+              }
             }
           }
         }
       }
     }
 
-    // Сортировка по фамилии (последнее слово).
+    // Сортировка по фамилии (последнее слово или первое, если "Фамилия И.О.").
     final list = result.toList();
     list.sort((a, b) {
       final ka = _surnameKey(a);
@@ -105,9 +114,18 @@ class TeacherParser {
   }
 
   String _surnameKey(String s) {
-    final cleaned = s.replaceAll(RegExp(r'[,\\.\\(\\)]'), '').trim();
+    final cleaned = s.replaceAll(RegExp(r'[,\\.\(\)]'), '').trim();
     final words = cleaned.split(RegExp(r'\s+'));
     if (words.isEmpty) return cleaned.toLowerCase();
+    
+    // Если формат "Фамилия И О", фамилия - первое слово
+    // Если формат "И О Фамилия", фамилия - последнее слово
+    // Простейшая эвристика: слово, которое длиннее 2 символов
+    final possibleSurnames = words.where((w) => w.length > 2).toList();
+    if (possibleSurnames.isNotEmpty) {
+      return possibleSurnames.first.toLowerCase(); // чаще всего фамилия одна и она длинная
+    }
+    
     return words.last.toLowerCase();
   }
 }
