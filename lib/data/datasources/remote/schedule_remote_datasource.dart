@@ -45,6 +45,11 @@ class ScheduleRemoteDatasource {
 
   String? _cachedHtml;
   DateTime? _lastFetch;
+  
+  // Для преподавателей URL отличается (используем /raspisanie-prepodavateley/)
+  final String teacherBaseUrl = 'https://mpt.ru/raspisanie-prepodavateley/';
+  String? _cachedTeacherHtml;
+  DateTime? _lastTeacherFetch;
 
   Future<Map<String, List<Lesson>>> fetchWeeklySchedule(
     String targetName, {
@@ -54,7 +59,7 @@ class ScheduleRemoteDatasource {
     if (targetName.isEmpty) return {};
 
     try {
-      final html = await _fetchSchedulePage(forceRefresh: forceRefresh);
+      final html = await _fetchSchedulePage(forceRefresh: forceRefresh, isTeacher: isTeacher);
 
       final decoded = await compute(
         isTeacher ? _parseTeacherScheduleIsolate : _parseScheduleIsolate,
@@ -76,24 +81,36 @@ class ScheduleRemoteDatasource {
     }
   }
 
-  Future<String> _fetchSchedulePage({bool forceRefresh = false}) async {
-    final isCacheValid = _cachedHtml != null &&
-        _lastFetch != null &&
-        DateTime.now().difference(_lastFetch!) < cacheTtl;
+  Future<String> _fetchSchedulePage({bool forceRefresh = false, bool isTeacher = false}) async {
+    final lastFetch = isTeacher ? _lastTeacherFetch : _lastFetch;
+    final cachedHtml = isTeacher ? _cachedTeacherHtml : _cachedHtml;
+    
+    final isCacheValid = cachedHtml != null &&
+        lastFetch != null &&
+        DateTime.now().difference(lastFetch) < cacheTtl;
 
     if (!forceRefresh && isCacheValid) {
-      return _cachedHtml!;
+      return cachedHtml!;
     }
 
-    final freshHtml = await _loadFromNetwork();
-    _cachedHtml = freshHtml;
-    _lastFetch = DateTime.now();
+    final freshHtml = await _loadFromNetwork(isTeacher: isTeacher);
+    
+    if (isTeacher) {
+      _cachedTeacherHtml = freshHtml;
+      _lastTeacherFetch = DateTime.now();
+    } else {
+      _cachedHtml = freshHtml;
+      _lastFetch = DateTime.now();
+    }
+    
     return freshHtml;
   }
 
-  Future<String> _loadFromNetwork() async {
+  Future<String> _loadFromNetwork({bool isTeacher = false}) async {
+    final url = isTeacher ? teacherBaseUrl : baseUrl;
+    
     final response = await _client
-        .get(Uri.parse(baseUrl))
+        .get(Uri.parse(url))
         .timeout(
           const Duration(seconds: 15),
           onTimeout: () => throw const HttpException(
@@ -111,5 +128,7 @@ class ScheduleRemoteDatasource {
   void clearCache() {
     _cachedHtml = null;
     _lastFetch = null;
+    _cachedTeacherHtml = null;
+    _lastTeacherFetch = null;
   }
 }
