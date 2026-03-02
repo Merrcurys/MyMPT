@@ -217,7 +217,8 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: MediaQuery.of(context).padding.bottom + 90,
+              // Чуть опускаем индикатор, так как сам навбар тоже опустился
+              bottom: MediaQuery.of(context).padding.bottom + 80,
               child: IgnorePointer(
                 child: PageIndicator(currentPageIndex: _currentIndex),
               ),
@@ -241,7 +242,6 @@ class _MainScreenState extends State<MainScreen> {
               symbol: item.sfSymbol,
             ),
         ],
-        // Android / Web / Windows: показываем наш Flutter fallback (как в доках пакета)
         fallback: _PillFallbackNavBar(
           items: _navItems,
           selectedIndex: selectedNavIndex,
@@ -288,91 +288,93 @@ class _PillFallbackNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(35),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(35),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
-              child: Container(
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.5),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(35),
+    // Убрали SafeArea, чтобы бар прижался к самому низу на Android.
+    // На Android без жестов системный бар и так отталкивает контент,
+    // а с жестами мы хотим, чтобы плашка висела максимально низко.
+    return Padding(
+      // Убрали вертикальный отступ снизу, оставили только по бокам и чуть сверху для отбивки
+      padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 16.0, bottom: 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(35),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+            child: Container(
+              height: 70,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.5),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1.5,
                 ),
-                child: Stack(
-                  children: [
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      left: _calculateIndicatorPosition(selectedIndex, context),
-                      top: 6,
-                      bottom: 6,
-                      width: _calculateIndicatorWidth(context),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: activeColor.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                borderRadius: BorderRadius.circular(35),
+              ),
+              child: Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    left: _calculateIndicatorPosition(selectedIndex, context),
+                    top: 6,
+                    bottom: 6,
+                    width: _calculateIndicatorWidth(context),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: activeColor.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(items.length, (index) {
-                        final isSelected = selectedIndex == index;
-                        return Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => onTap(index),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  isSelected
-                                      ? items[index].selectedIcon
-                                      : items[index].icon,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(items.length, (index) {
+                      final isSelected = selectedIndex == index;
+                      return Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => onTap(index),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isSelected
+                                    ? items[index].selectedIcon
+                                    : items[index].icon,
+                                color: isSelected
+                                    ? activeColor
+                                    : const Color(0xFF4A3525),
+                                size: 26,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                items[index].label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
                                   color: isSelected
                                       ? activeColor
                                       : const Color(0xFF4A3525),
-                                  size: 26,
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  items[index].label,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
-                                    color: isSelected
-                                        ? activeColor
-                                        : const Color(0xFF4A3525),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        );
-                      }),
-                    ),
-                  ],
-                ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
             ),
           ),
