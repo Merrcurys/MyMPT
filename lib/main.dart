@@ -5,8 +5,8 @@ import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:my_mpt/firebase_options.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
@@ -24,9 +24,12 @@ import 'package:my_mpt/presentation/screens/welcome_screen.dart';
 Future<void> main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
+    // Инициализируем Firebase (работает на всех платформах, если настроено)
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+    // FCM, локальные уведомления и Rustore могут вызывать краши на Web,
+    // поэтому отключаем их вызов при запуске в браузере (для Device Preview)
     if (!kIsWeb) {
       FcmFirestoreService.registerBackgroundHandler();
       final notificationService = NotificationService();
@@ -110,10 +113,30 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   final List<_NavItemData> _navItems = const [
-    _NavItemData(icon: Icons.flash_on_outlined, selectedIcon: Icons.flash_on, label: 'Обзор'),
-    _NavItemData(icon: Icons.view_week_outlined, selectedIcon: Icons.view_week, label: 'Неделя'),
-    _NavItemData(icon: Icons.notifications_none_outlined, selectedIcon: Icons.notifications, label: 'Звонки'),
-    _NavItemData(icon: Icons.settings_outlined, selectedIcon: Icons.settings, label: 'Настройки'),
+    _NavItemData(
+      icon: Icons.flash_on_outlined,
+      selectedIcon: Icons.flash_on,
+      label: 'Обзор',
+      sfSymbol: 'bolt.fill',
+    ),
+    _NavItemData(
+      icon: Icons.view_week_outlined,
+      selectedIcon: Icons.view_week,
+      label: 'Неделя',
+      sfSymbol: 'calendar',
+    ),
+    _NavItemData(
+      icon: Icons.notifications_none_outlined,
+      selectedIcon: Icons.notifications,
+      label: 'Звонки',
+      sfSymbol: 'bell',
+    ),
+    _NavItemData(
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
+      label: 'Настройки',
+      sfSymbol: 'gearshape',
+    ),
   ];
 
   @override
@@ -183,9 +206,10 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     final int selectedNavIndex = _currentIndex <= 1 ? 0 : _currentIndex - 1;
-    
+
     final isNumerator = DateFormatter.getWeekType(DateTime.now()) == 'Числитель';
-    final Color activeColor = isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5);
+    final Color activeColor =
+        isNumerator ? const Color(0xFFEF5350) : const Color(0xFF42A5F5);
 
     return Scaffold(
       extendBody: true,
@@ -209,103 +233,154 @@ class _MainScreenState extends State<MainScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: NativeGlassNavbar(
-        selectedIndex: selectedNavIndex,
-        onItemSelected: (index) {
-          if (index == 0) _goToPage(0);
-          else _goToPage(index + 1);
+      bottomNavigationBar: NativeGlassNavBar(
+        currentIndex: selectedNavIndex,
+        tintColor: activeColor,
+        onTap: (index) {
+          if (index == 0) {
+            _goToPage(0);
+          } else {
+            _goToPage(index + 1);
+          }
         },
-        useFallbackOnAndroid: true,
-        useFallbackOnWeb: true,
-        useFallbackOnWindows: true,
-        activeColor: activeColor,
-        inactiveColor: const Color(0xFF4A3525),
-        items: _navItems.map((item) => GlassNavbarItem(
-          icon: item.icon,
-          activeIcon: item.selectedIcon,
-          label: item.label,
-        )).toList(),
-        fallback: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+        tabs: [
+          for (final item in _navItems)
+            NativeGlassNavBarItem(
+              label: item.label,
+              symbol: item.sfSymbol,
+            ),
+        ],
+        // Android / Web / Windows: показываем наш Flutter fallback (как в доках пакета)
+        fallback: _PillFallbackNavBar(
+          items: _navItems,
+          selectedIndex: selectedNavIndex,
+          activeColor: activeColor,
+          onTap: (index) {
+            if (index == 0) {
+              _goToPage(0);
+            } else {
+              _goToPage(index + 1);
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItemData {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final String sfSymbol;
+
+  const _NavItemData({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.sfSymbol,
+  });
+}
+
+class _PillFallbackNavBar extends StatelessWidget {
+  final List<_NavItemData> items;
+  final int selectedIndex;
+  final Color activeColor;
+  final ValueChanged<int> onTap;
+
+  const _PillFallbackNavBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(35),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(35),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
-                  child: Container(
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.5),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(35),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+              child: Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.5),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(35),
+                ),
+                child: Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      left: _calculateIndicatorPosition(selectedIndex, context),
+                      top: 6,
+                      bottom: 6,
+                      width: _calculateIndicatorWidth(context),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: activeColor.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(35),
                     ),
-                    child: Stack(
-                      children: [
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          left: _calculateIndicatorPosition(selectedNavIndex, context),
-                          top: 6,
-                          bottom: 6,
-                          width: _calculateIndicatorWidth(context),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: activeColor.withOpacity(0.25),
-                              borderRadius: BorderRadius.circular(30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(items.length, (index) {
+                        final isSelected = selectedIndex == index;
+                        return Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => onTap(index),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isSelected
+                                      ? items[index].selectedIcon
+                                      : items[index].icon,
+                                  color: isSelected
+                                      ? activeColor
+                                      : const Color(0xFF4A3525),
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  items[index].label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? activeColor
+                                        : const Color(0xFF4A3525),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: List.generate(_navItems.length, (index) {
-                            final isSelected = selectedNavIndex == index;
-                            return Expanded(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () {
-                                  if (index == 0) _goToPage(0);
-                                  else _goToPage(index + 1);
-                                },
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      isSelected ? _navItems[index].selectedIcon : _navItems[index].icon,
-                                      color: isSelected ? activeColor : const Color(0xFF4A3525),
-                                      size: 26,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _navItems[index].label,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                        color: isSelected ? activeColor : const Color(0xFF4A3525),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
+                        );
+                      }),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -317,23 +392,11 @@ class _MainScreenState extends State<MainScreen> {
 
   double _calculateIndicatorWidth(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - 48; 
-    return availableWidth / _navItems.length;
+    final availableWidth = screenWidth - 48;
+    return availableWidth / items.length;
   }
 
   double _calculateIndicatorPosition(int index, BuildContext context) {
     return index * _calculateIndicatorWidth(context);
   }
-}
-
-class _NavItemData {
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-
-  const _NavItemData({
-    required this.icon, 
-    required this.selectedIcon, 
-    required this.label
-  });
 }
