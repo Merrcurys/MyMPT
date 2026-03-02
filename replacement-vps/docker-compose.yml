@@ -9,8 +9,11 @@ services:
       TZ: Europe/Moscow
       STATE_FILE: /data/last_replacements.json
       DATA_DIR: /data
+      # Лог в корне примонтированной папки: ./data/service.log
+      LOG_FILE: /data/service.log
     volumes:
-      - replacement-data:/data
+      # Папка на VPS: ./data — данные и лог в корне проекта
+      - ./data:/data
       # Монтируем ключ Firebase с хоста (не храните его в репозитории)
       - ./firebase-service-account.json:/app/firebase-service-account.json:ro
     # Опционально: запустить одну проверку и выйти (для теста по cron хоста)
@@ -18,6 +21,3 @@ services:
     # environment:
     #   RUN_ONCE: "1"
     #   GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
-
-volumes:
-  replacement-data:
