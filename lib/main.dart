@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +28,7 @@ Future<void> main() async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
     // FCM, локальные уведомления и Rustore могут вызывать краши на Web,
-    // поэтому отключаем их вызов при запуске в браузере (для Device Preview)
+    // поэтому отключаем их вызов при запуске в браузере
     if (!kIsWeb) {
       FcmFirestoreService.registerBackgroundHandler();
       final notificationService = NotificationService();
@@ -39,12 +38,7 @@ Future<void> main() async {
       await fcmService.syncTokenWithGroup();
     }
 
-    runApp(
-      DevicePreview(
-        enabled: kDebugMode,
-        builder: (context) => const MyApp(),
-      ),
-    );
+    runApp(const MyApp());
   }, (e, st) {
     if (kDebugMode) {
       print('Uncaught error: $e');
@@ -61,9 +55,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Мой МПТ',
       debugShowCheckedModeBanner: false,
-      useInheritedMediaQuery: true,
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
