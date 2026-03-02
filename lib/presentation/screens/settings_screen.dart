@@ -295,7 +295,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {});
       
-      // Сброс расписания и попытка подгрузить актуальное
       await _repository.refreshAllDataWithStatus(forceRefresh: true);
       _repository.dataUpdatedNotifier.value = !_repository.dataUpdatedNotifier.value;
 
@@ -458,8 +457,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
