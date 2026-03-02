@@ -7,9 +7,10 @@ import 'package:my_mpt/data/parsers/teacher_parser.dart';
 
 List<Map<String, dynamic>> _parseTeacherIsolate(Map<String, dynamic> message) {
   final html = message['html'] as String? ?? '';
+  // Удалил импорт 'html/dom.dart', который конфликтовал. Метод parse у parser принимает String.
   final document = parser.parse(html);
   
-  final teachers = TeacherParser().parse(document);
+  final teachers = TeacherParser().parse(document.outerHtml);
   return teachers.map((t) => t.toJson()).toList();
 }
 
@@ -22,7 +23,7 @@ class TeacherRemoteDatasource {
   final http.Client _client;
   final String baseUrl;
 
-  Future<List<Teacher>> getTeachers() async {
+  Future<List<Teacher>> fetchTeachers({bool forceRefresh = false}) async {
     try {
       final response = await _client
           .get(Uri.parse(baseUrl))
@@ -41,7 +42,9 @@ class TeacherRemoteDatasource {
 
       final decoded = await compute(_parseTeacherIsolate, {'html': html});
 
-      final teachers = decoded.map(Teacher.fromJson).toList();
+      // Использован конструктор Teacher.fromJson, так как он не был определен в модели,
+      // мы пропишем здесь маппинг.
+      final teachers = decoded.map((map) => Teacher.fromJson(map)).toList();
 
       if (teachers.isEmpty) {
         throw Exception('Сайт МПТ не вернул список преподавателей. Возможно, страница недоступна.');

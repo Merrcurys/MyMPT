@@ -5,6 +5,12 @@ class Teacher {
 
   Teacher({required this.teacherName});
 
+  factory Teacher.fromJson(Map<String, dynamic> json) {
+    return Teacher(
+      teacherName: json['teacherName'] as String,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
