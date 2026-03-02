@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart'; // Добавлен импорт для kDebugMode
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/data/models/group.dart';
@@ -497,7 +497,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _copyFcmToken() async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await FcmFirestoreService().getTokenSafe();
       if (token != null && token.isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: token));
         if (mounted) {
@@ -585,22 +585,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _refreshSchedule,
                 isRefreshing: _isRefreshing,
               ),
-              const SizedBox(height: 28),
-              const Section(title: 'Уведомления (Тест)'),
-              const SizedBox(height: 14),
-              SettingsCard(
-                title: 'Отправить локальное уведомление',
-                subtitle: 'Проверка работы на самом устройстве',
-                icon: Icons.notifications_active_outlined,
-                onTap: _testLocalNotification,
-              ),
-              const SizedBox(height: 14),
-              SettingsCard(
-                title: 'Скопировать FCM Токен',
-                subtitle: 'Для теста пушей через Firebase Console',
-                icon: Icons.cloud_download_outlined,
-                onTap: _copyFcmToken,
-              ),
+              
+              if (kDebugMode) ...[
+                const SizedBox(height: 28),
+                const Section(title: 'Уведомления (Тест)'),
+                const SizedBox(height: 14),
+                SettingsCard(
+                  title: 'Отправить локальное уведомление',
+                  subtitle: 'Проверка работы на самом устройстве',
+                  icon: Icons.notifications_active_outlined,
+                  onTap: _testLocalNotification,
+                ),
+                const SizedBox(height: 14),
+                SettingsCard(
+                  title: 'Скопировать FCM Токен',
+                  subtitle: 'Для теста пушей через Firebase Console',
+                  icon: Icons.cloud_download_outlined,
+                  onTap: _copyFcmToken,
+                ),
+              ],
+
               const SizedBox(height: 28),
               const Section(title: 'Обратная связь'),
               const SizedBox(height: 14),
