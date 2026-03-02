@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
-import 'package:my_mpt/core/services/notification_service.dart'; // Добавлен импорт сервиса уведомлений
+import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/data/models/group.dart';
 import 'package:my_mpt/data/models/specialty.dart' as data_model;
 import 'package:my_mpt/data/models/teacher.dart';
@@ -99,7 +99,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       } else if (_repository.lastUpdate != null) {
         setState(() => _lastUpdate = _repository.lastUpdate);
       }
-    } catch (_) {}
+    } catch (_) {
+      // Игнорируем ошибки при обновлении данных
+    }
   }
 
   String _formatElapsed(Duration d) {
@@ -115,7 +117,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _appVersion = info.version;
       });
-    } catch (e) {}
+    } catch (e) {
+      // Игнорируем ошибки загрузки версии приложения
+    }
   }
 
   Future<void> _loadSpecialties() async {
@@ -189,7 +193,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
            }
         }
       });
-    } catch (e) {}
+    } catch (e) {
+      // Игнорируем ошибки при загрузке предпочтений
+    }
   }
 
   String _getLastUpdateText() {
@@ -473,9 +479,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _testLocalNotification() async {
     try {
+      // Исправлено: в NotificationService showNotification принимает позиционные аргументы
       await NotificationService().showNotification(
-        title: 'Тестовое уведомление',
-        body: 'Если вы видите это, локальные уведомления работают успешно!',
+        'Тестовое уведомление',
+        'Если вы видите это, локальные уведомления работают успешно!',
       );
       if (mounted) {
         showSuccessNotification(context, 'Успешно', 'Тестовое уведомление отправлено', Icons.notifications_active);
