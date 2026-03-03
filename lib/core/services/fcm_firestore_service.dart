@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
@@ -22,6 +24,23 @@ class FcmFirestoreService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
+  /// Вспомогательный метод для гарантированного получения APNs токена на iOS
+  Future<String?> _getApnsTokenWithRetry() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS && defaultTargetPlatform != TargetPlatform.macOS) {
+      return null;
+    }
+
+    String? apnsToken = await _messaging.getAPNSToken();
+    
+    // Если токена нет, ждем и пробуем еще раз (частая проблема при холодном старте на iOS)
+    if (apnsToken == null) {
+      await Future<void>.delayed(const Duration(seconds: 3));
+      apnsToken = await _messaging.getAPNSToken();
+    }
+    
+    return apnsToken;
+  }
+
   /// Инициализация: разрешения, подписка на foreground, обновление токена.
   Future<void> initialize() async {
     if (_initialized) return;
@@ -42,10 +61,9 @@ class FcmFirestoreService {
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
 
     if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-      // На iOS/macOS перед получением FCM токена нужно обязательно дождаться APNs токена
-      final apnsToken = await _messaging.getAPNSToken();
+      final apnsToken = await _getApnsTokenWithRetry();
       if (apnsToken == null) {
-        // Если APNs токен получить не удалось, FCM токен также не будет работать для пушей
+        // Если APNs токен получить не удалось даже с задержкой
         return;
       }
     }
@@ -65,7 +83,7 @@ class FcmFirestoreService {
   Future<String?> getTokenSafe() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-        final apnsToken = await _messaging.getAPNSToken();
+        final apnsToken = await _getApnsTokenWithRetry();
         if (apnsToken == null) return null;
       }
       return await _messaging.getToken();
@@ -80,7 +98,7 @@ class FcmFirestoreService {
   Future<void> syncTokenWithGroup() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-        final apnsToken = await _messaging.getAPNSToken();
+        final apnsToken = await _getApnsTokenWithRetry();
         if (apnsToken == null) return;
       }
       
