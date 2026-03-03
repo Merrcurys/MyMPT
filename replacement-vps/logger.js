@@ -19,8 +19,9 @@ const LOG_FILE = process.env.LOG_FILE || path.join(LOG_DIR, "service.log");
 let stream = null;
 
 function ensureLogDir() {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+  const dir = path.dirname(LOG_FILE);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
 }
 
@@ -32,7 +33,7 @@ function getStream() {
 }
 
 function format(level, ...args) {
-  const ts = new Date().toISOString();
+  const ts = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Moscow" });
   const msg = args
     .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
     .join(" ");

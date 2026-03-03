@@ -235,7 +235,7 @@ async function runCheck() {
     const groupCode = (data.groupCode || "").trim();
     if (!token || !groupCode) continue;
     if (!tokensByGroup.has(groupCode)) tokensByGroup.set(groupCode, []);
-    tokensByGroup.get(groupCode).push({ token, docRef: doc.ref });
+    tokensByGroup.get(groupCode).push({ token, docRef: doc.ref, device: data.device || "Unknown" });
   }
   log.info("Загружены FCM-токены", { groups: tokensByGroup.size, docs: tokensSnap.size });
 
@@ -273,7 +273,8 @@ async function runCheck() {
         : `Обнаружено новых замен: ${replacements.length}`;
 
     let sentCount = 0;
-    for (const { token, docRef } of tokens) {
+    const sentDevices = [];
+    for (const { token, docRef, device } of tokens) {
       try {
         await messaging.send({
           token,
@@ -281,6 +282,7 @@ async function runCheck() {
           android: { priority: "high" },
         });
         sentCount++;
+        sentDevices.push(device);
       } catch (sendErr) {
         if (
           sendErr.code === "messaging/invalid-registration-token" ||
@@ -289,13 +291,14 @@ async function runCheck() {
           try {
             await docRef.delete();
             log.info("Удалён недействительный токен", docRef.id);
-          } catch (_) {}
+          } catch (_) { }
         }
-        log.warn("Ошибка отправки FCM", docRef.id, sendErr.message, sendErr.code || "");
+        log.warn("Ошибка отправки FCM", device, docRef.id, sendErr.message, sendErr.code || "");
       }
     }
     if (sentCount > 0) {
-      log.info("FCM отправлены", groupCode, "успешно:", sentCount, "из", tokens.length);
+      const devicesStr = sentDevices.length ? `(${sentDevices.join(", ")})` : "";
+      log.info("FCM отправлены", groupCode, "успешно:", sentCount, "из", tokens.length, devicesStr);
     }
 
     state[key] = {

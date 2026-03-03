@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --production
 
-COPY index.js ./
+COPY index.js logger.js ./
 
 ENV NODE_ENV=production
 ENV DATA_DIR=/data
