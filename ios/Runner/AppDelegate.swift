@@ -3,6 +3,7 @@ import UIKit
 import UserNotifications
 import Firebase
 import FirebaseMessaging
+import firebase_messaging 
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -40,8 +41,19 @@ import FirebaseMessaging
   }
 
   // Передача APNs токена в Firebase (необходимо при отключенном FirebaseAppDelegateProxyEnabled)
-  override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+  override func application(
+    _ application: UIApplication, 
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+  ) {
+    // 1. Передаем в нативный Firebase
     Messaging.messaging().apnsToken = deviceToken
+    
+    // 2. Передаем во Flutter-плагин firebase_messaging
+    FlutterFirebaseMessagingPlugin.sharedInstance().application(
+      application, 
+      didRegisterForRemoteNotificationsWithDeviceToken: deviceToken
+    )
+    
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 }
