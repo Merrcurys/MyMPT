@@ -61,11 +61,8 @@ class FcmFirestoreService {
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
 
     if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-      final apnsToken = await _getApnsTokenWithRetry();
-      if (apnsToken == null) {
-        // Если APNs токен получить не удалось даже с задержкой
-        return;
-      }
+      await _getApnsTokenWithRetry();
+      // Убран ранний return - позволяем SDK самому дождаться APNs токена
     }
 
     _messaging.getToken().then((token) {
@@ -83,8 +80,7 @@ class FcmFirestoreService {
   Future<String?> getTokenSafe() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-        final apnsToken = await _getApnsTokenWithRetry();
-        if (apnsToken == null) return null;
+        await _getApnsTokenWithRetry();
       }
       return await _messaging.getToken();
     } catch (_) {
@@ -98,8 +94,7 @@ class FcmFirestoreService {
   Future<void> syncTokenWithGroup() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) {
-        final apnsToken = await _getApnsTokenWithRetry();
-        if (apnsToken == null) return;
+        await _getApnsTokenWithRetry();
       }
       
       final token = await _messaging.getToken();
