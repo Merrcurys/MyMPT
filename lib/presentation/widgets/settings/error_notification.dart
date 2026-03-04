@@ -7,6 +7,11 @@ void showErrorNotification(
   String message,
   IconData icon,
 ) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final bgColor = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+  final textColor = isDark ? Colors.white : Colors.black87;
+  final subTextColor = isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black54;
+
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Container(
@@ -33,8 +38,8 @@ void showErrorNotification(
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -44,7 +49,7 @@ void showErrorNotification(
                     Text(
                       message,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: subTextColor,
                         fontSize: 12,
                       ),
                     ),
@@ -55,11 +60,12 @@ void showErrorNotification(
           ],
         ),
       ),
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: bgColor,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      elevation: isDark ? 0 : 4,
       margin: const EdgeInsets.all(16),
       duration: const Duration(seconds: 4),
     ),

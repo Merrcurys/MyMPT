@@ -173,8 +173,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 await _loadScheduleData(forceRefresh: true, userInitiated: true);
               },
               color: progressColor,
+              displacement: 60.0,
+              edgeOffset: MediaQuery.of(context).padding.top + 20,
               child: CustomScrollView(
-                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(decelerationRate: ScrollDecelerationRate.normal),
+                ),
                 slivers: [
                   SliverPersistentHeader(
                     pinned: true,
@@ -270,6 +274,10 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get minExtent => minHeight;
 
+  // We add this to make the header pull down along with the physics
+  @override
+  bool get stretchConfiguration => null != StretchConfiguration();
+
   @override
   bool shouldRebuild(covariant _HeightPinnedHeaderDelegate old) {
     return old.backgroundColor != backgroundColor ||
@@ -281,8 +289,11 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // If shrinkOffset is negative (pulling down), we don't calculate progress based on it
+    // We just keep the header fully expanded. The physics engine will move the whole sliver down.
+    final actualShrinkOffset = shrinkOffset < 0 ? 0.0 : shrinkOffset;
     final range = (maxHeight - minHeight).abs() < 1 ? 1.0 : (maxHeight - minHeight);
-    final t = (shrinkOffset / range).clamp(0.0, 1.0);
+    final t = (actualShrinkOffset / range).clamp(0.0, 1.0);
 
     final blurSigma = lerpDouble(0, 20, Curves.easeOut.transform(t))!;
     final baseAlpha = backgroundColor.a;
