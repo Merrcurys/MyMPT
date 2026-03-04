@@ -268,14 +268,14 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final enableBlur = defaultTargetPlatform == TargetPlatform.iOS;
-
     final range = (maxHeight - minHeight).abs() < 1 ? 1.0 : (maxHeight - minHeight);
     final t = (shrinkOffset / range).clamp(0.0, 1.0);
 
-    final blurSigma = lerpDouble(0, 15, Curves.easeOut.transform(t))!;
+    final blurSigma = lerpDouble(0, 20, Curves.easeOut.transform(t))!;
     final baseAlpha = backgroundColor.a;
-    final overlayAlpha = lerpDouble(baseAlpha, baseAlpha * 0.5, Curves.easeOut.transform(t))!;
+    final overlayAlpha = lerpDouble(baseAlpha, baseAlpha * 0.4, Curves.easeOut.transform(t))!;
+    
+    final extraBlurPadding = 20.0; // Extend blur slightly below the top padding 
 
     return Stack(
       fit: StackFit.expand,
@@ -288,8 +288,8 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
             top: 0,
             left: 0,
             right: 0,
-            height: paddingTop + lerpDouble(16, 8, Curves.easeOutCubic.transform(t))!,
-            child: enableBlur && blurSigma > 0.1
+            height: paddingTop + lerpDouble(16, 8 + extraBlurPadding, Curves.easeOutCubic.transform(t))!,
+            child: blurSigma > 0.1
                 ? ClipRect(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
