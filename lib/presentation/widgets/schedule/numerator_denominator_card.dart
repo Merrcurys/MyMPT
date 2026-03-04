@@ -70,13 +70,14 @@ class NumeratorDenominatorCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Числитель
-                    if (numeratorLesson != null)
-                      _wrapIfTappable(
-                        _buildLessonItem(numeratorLesson!, true),
-                        numeratorLesson!,
-                      )
-                    else
-                      _buildEmptyLessonItem(true),
+                    Expanded(
+                      child: numeratorLesson != null
+                          ? _wrapIfTappable(
+                              _buildLessonItem(numeratorLesson!, true),
+                              numeratorLesson!,
+                            )
+                          : _buildEmptyLessonItem(true),
+                    ),
 
                     // Разделитель
                     Container(
@@ -86,13 +87,14 @@ class NumeratorDenominatorCard extends StatelessWidget {
                     ),
 
                     // Знаменатель
-                    if (denominatorLesson != null)
-                      _wrapIfTappable(
-                        _buildLessonItem(denominatorLesson!, false),
-                        denominatorLesson!,
-                      )
-                    else
-                      _buildEmptyLessonItem(false),
+                    Expanded(
+                      child: denominatorLesson != null
+                          ? _wrapIfTappable(
+                              _buildLessonItem(denominatorLesson!, false),
+                              denominatorLesson!,
+                            )
+                          : _buildEmptyLessonItem(false),
+                    ),
                   ],
                 ),
               ),
@@ -157,47 +159,45 @@ class NumeratorDenominatorCard extends StatelessWidget {
         ? const Color(0xFFFF8C00) // Оранжевый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
 
-    return Expanded(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Индикатор типа (числитель/знаменатель)
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Индикатор типа (числитель/знаменатель)
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
 
-          // Основной контент
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  lesson.subject,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+        // Основной контент
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                lesson.subject,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  lesson.teacher,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                lesson.teacher,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
-              ],
-            ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -213,39 +213,37 @@ class NumeratorDenominatorCard extends StatelessWidget {
         ? const Color(0xFFFF8C00) // Оранжевый для числителя
         : const Color(0xFF4FC3F7); // Голубой для знаменателя;
 
-    return Expanded(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Индикатор типа (числитель/знаменатель)
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Индикатор типа (числитель/знаменатель)
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
 
-          // Основной контент
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Нет пары',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white70,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        // Основной контент
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Нет пары',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white70,
                 ),
-              ],
-            ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
