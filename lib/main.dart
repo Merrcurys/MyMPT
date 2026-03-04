@@ -117,14 +117,14 @@ class MyApp extends StatelessWidget {
         backgroundColor: Color(0xFFFFFFFF), // Белый фон
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: const Color(0xFFFFFFFF),
+        backgroundColor: const Color(0xFFF5F5F5),
         indicatorColor: Colors.black.withOpacity(0.06),
         height: 80,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         elevation: 0,
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? cs.primary : Colors.black54,
+            color: states.contains(WidgetState.selected) ? Colors.black87 : Colors.black54,
           ),
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
@@ -132,7 +132,7 @@ class MyApp extends StatelessWidget {
             fontSize: 11,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
             letterSpacing: 0.1,
-            color: states.contains(WidgetState.selected) ? cs.primary : Colors.black54,
+            color: states.contains(WidgetState.selected) ? Colors.black87 : Colors.black54,
           ),
         ),
       ),
@@ -298,6 +298,7 @@ class _MainScreenState extends State<MainScreen> {
 
     final bool isIOS = !kIsWeb && Platform.isIOS;
     final double indicatorBottomOffset = isIOS ? 60 : (80 + 10);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget? bottomNavigationBar;
 
@@ -326,7 +327,7 @@ class _MainScreenState extends State<MainScreen> {
         child: Theme(
           data: Theme.of(context).copyWith(
             navigationBarTheme: Theme.of(context).navigationBarTheme.copyWith(
-              indicatorColor: activeColor.withOpacity(0.25),
+              indicatorColor: isDark ? activeColor.withOpacity(0.25) : Colors.black.withOpacity(0.06),
             ),
           ),
           child: NavigationBar(
@@ -343,7 +344,7 @@ class _MainScreenState extends State<MainScreen> {
               for (final item in _navItems)
                 NavigationDestination(
                   icon: Icon(item.icon),
-                  selectedIcon: Icon(item.selectedIcon, color: activeColor),
+                  selectedIcon: Icon(item.selectedIcon, color: isDark ? activeColor : Colors.black87),
                   label: item.label,
                 ),
             ],
