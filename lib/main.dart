@@ -11,6 +11,7 @@ import 'package:my_mpt/firebase_options.dart';
 import 'package:my_mpt/core/services/fcm_firestore_service.dart';
 import 'package:my_mpt/core/services/notification_service.dart';
 import 'package:my_mpt/core/services/rustore_update_ui.dart';
+import 'package:my_mpt/core/services/app_theme_service.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
 
 import 'package:my_mpt/presentation/screens/calls_screen.dart';
@@ -36,6 +37,8 @@ Future<void> main() async {
       await fcmService.syncTokenWithGroup();
     }
 
+    await AppThemeService.init();
+
     runApp(const MyApp());
   }, (e, st) {
     if (kDebugMode) {
@@ -48,51 +51,109 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Мой МПТ',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFF000000),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF8C00),
-          secondary: Color(0xFFFFA500),
-          tertiary: Color(0xFFFFB347),
-          surface: Color(0xFF121212),
-        ),
-        textTheme: ThemeData.dark().textTheme.apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
-            ),
-        appBarTheme: const AppBarTheme(
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        navigationBarTheme: NavigationBarThemeData(
-          indicatorColor: const Color(0x33FFFFFF),
-          height: 80,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          elevation: 0,
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) => IconThemeData(
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
-            ),
+  ThemeData _buildDarkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFF000000),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFFF8C00),
+        secondary: Color(0xFFFFA500),
+        tertiary: Color(0xFFFFB347),
+        surface: Color(0xFF121212),
+      ),
+      textTheme: ThemeData.dark().textTheme.apply(
+            bodyColor: Colors.white,
+            displayColor: Colors.white,
           ),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => TextStyle(
-              fontSize: 11,
-              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
-              letterSpacing: 0.1,
-              color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
-            ),
+      appBarTheme: const AppBarTheme(
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        indicatorColor: const Color(0x33FFFFFF),
+        height: 80,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        elevation: 0,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected) ? Colors.white : Colors.white70,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
+            letterSpacing: 0.1,
+            color: states.contains(WidgetState.selected) ? Colors.white : Colors.white60,
           ),
         ),
       ),
-      home: const MainScreen(),
+    );
+  }
+
+  ThemeData _buildLightTheme() {
+    const cs = ColorScheme.light(
+      primary: Color(0xFFFF8C00),
+      secondary: Color(0xFFFFA500),
+      tertiary: Color(0xFFFFB347),
+      surface: Color(0xFFFFFFFF),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+      colorScheme: cs,
+      textTheme: ThemeData.light().textTheme.apply(
+            bodyColor: Colors.black87,
+            displayColor: Colors.black87,
+          ),
+      appBarTheme: const AppBarTheme(
+        foregroundColor: Colors.black87,
+        elevation: 0,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        indicatorColor: Colors.black.withOpacity(0.06),
+        height: 80,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        elevation: 0,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected) ? cs.primary : Colors.black54,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
+            letterSpacing: 0.1,
+            color: states.contains(WidgetState.selected) ? cs.primary : Colors.black54,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final light = _buildLightTheme();
+    final dark = _buildDarkTheme();
+
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AppThemeService.themeMode,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Мой МПТ',
+          debugShowCheckedModeBanner: false,
+          theme: light,
+          darkTheme: dark,
+          themeMode: mode,
+          home: const MainScreen(),
+        );
+      },
     );
   }
 }
@@ -232,13 +293,13 @@ class _MainScreenState extends State<MainScreen> {
     final isNumerator = DateFormatter.getWeekType(DateTime.now()) == 'Числитель';
     final Color activeColor =
         isNumerator ? const Color(0xFFFF8C00) : const Color(0xFF42A5F5);
-        
+
     final bool isIOS = !kIsWeb && Platform.isIOS;
     // Уменьшаем отступ для iOS (60 вместо 100), чтобы кружочки страниц были ближе к навбару
-    final double indicatorBottomOffset = isIOS ? 60 : (80 + 10); 
+    final double indicatorBottomOffset = isIOS ? 60 : (80 + 10);
 
     Widget? bottomNavigationBar;
-    
+
     if (isIOS) {
       bottomNavigationBar = NativeGlassNavBar(
         currentIndex: selectedNavIndex,

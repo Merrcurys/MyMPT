@@ -21,8 +21,7 @@ class SettingsCard extends StatefulWidget {
   State<SettingsCard> createState() => _SettingsCardState();
 }
 
-class _SettingsCardState extends State<SettingsCard>
-    with SingleTickerProviderStateMixin {
+class _SettingsCardState extends State<SettingsCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
 
@@ -57,66 +56,74 @@ class _SettingsCardState extends State<SettingsCard>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111111),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+    final cs = Theme.of(context).colorScheme;
+
+    final bg = cs.surface;
+    final iconBg = cs.primary.withOpacity(0.12);
+    final iconColor = cs.primary;
+
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: cs.onSurface,
+        );
+    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: widget.isRefreshing
+                    ? RotationTransition(
+                        turns: _rotationAnimation,
+                        child: Icon(widget.icon, color: iconColor),
+                      )
+                    : Icon(widget.icon, color: iconColor),
               ),
-              child: widget.isRefreshing
-                  ? RotationTransition(
-                      turns: _rotationAnimation,
-                      child: Icon(widget.icon, color: Colors.white),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.title, style: titleStyle),
+                    const SizedBox(height: 6),
+                    Text(widget.subtitle, style: subtitleStyle),
+                  ],
+                ),
+              ),
+              widget.isRefreshing
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: cs.onSurface.withOpacity(0.7),
+                      ),
                     )
-                  : Icon(widget.icon, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  : Icon(
+                      widget.onTap != null ? Icons.arrow_forward_ios : null,
+                      size: 16,
+                      color: cs.onSurfaceVariant.withOpacity(0.8),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    widget.subtitle,
-                    style: const TextStyle(fontSize: 13, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-            widget.isRefreshing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(
-                    widget.onTap != null ? Icons.arrow_forward_ios : null,
-                    size: 16,
-                    color: Colors.white54,
-                  ),
-          ],
+            ],
+          ),
         ),
       ),
     );
