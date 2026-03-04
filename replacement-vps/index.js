@@ -66,27 +66,11 @@ function normalizeGroupCode(input) {
   return s;
 }
 
-function splitGroupCodes(raw) {
-  if (!raw || typeof raw !== "string") return [];
-  const parts = raw.replace(/\n/g, " ").split(/[,/;]/);
-  const seen = new Set();
-  const out = [];
-  for (const p of parts) {
-    const v = normalizeGroupCode(p);
-    if (!v || seen.has(v)) continue;
-    seen.add(v);
-    out.push(v);
-  }
-  return out;
-}
-
 function captionMatchesGroup(captionText, groupCode) {
-  const normalized = normalizeGroupCode(captionText);
+  const normalizedCaption = normalizeGroupCode(captionText);
   const normalizedGroup = normalizeGroupCode(groupCode);
   if (!normalizedGroup) return false;
-  if (normalized.includes(normalizedGroup)) return true;
-  const candidates = splitGroupCodes(groupCode);
-  return candidates.some((c) => c && normalized.includes(c));
+  return normalizedCaption.includes(normalizedGroup);
 }
 
 function getDateStrings() {
@@ -237,7 +221,7 @@ async function runCheck() {
     if (!tokensByGroup.has(groupCode)) tokensByGroup.set(groupCode, []);
     tokensByGroup.get(groupCode).push({ token, docRef: doc.ref, device: data.device || "Unknown" });
   }
-  log.info("Загружены FCM-токены", { groups: tokensByGroup.size, docs: tokensSnap.size });
+  log.info(`Загружены FCM-токены: уникальных групп = ${tokensByGroup.size}, устройств = ${tokensSnap.size}`);
 
   for (const [groupCode, tokens] of tokensByGroup) {
     const replacements = getReplacementsForGroup(parsedByCaption, groupCode);
