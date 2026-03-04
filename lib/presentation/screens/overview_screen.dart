@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -235,14 +236,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   List<Color> getHeaderGradient(String weekType, {required bool isDark}) {
-    final base = isDark ? const Color(0xFF111111) : const Color(0xFFF5F5F5);
+    final base = isDark ? const Color(0xFF111111) : Colors.white.withOpacity(0.85);
 
     if (weekType == 'Знаменатель') {
-      return [base, const Color(0xFF4FC3F7)];
+      return [base, isDark ? const Color(0xFF4FC3F7) : const Color(0xFF4FC3F7).withOpacity(0.85)];
     } else if (weekType == 'Числитель') {
-      return [base, const Color(0xFFFF8C00)];
+      return [base, isDark ? const Color(0xFFFF8C00) : const Color(0xFFFF8C00).withOpacity(0.85)];
     } else {
-      return [base, isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0)];
+      return [base, isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0).withOpacity(0.85)];
     }
   }
 
@@ -260,6 +261,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     if (isInitialLoading) {
       return Scaffold(
         backgroundColor: bg,
+        extendBodyBehindAppBar: true,
         body: SafeArea(
           bottom: false,
           child: Center(child: CircularProgressIndicator(color: cs.primary)),
@@ -272,6 +274,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
       final scheduleData = forcedPage == 0 ? todayScheduleData : tomorrowScheduleData;
       return Scaffold(
         backgroundColor: bg,
+        extendBodyBehindAppBar: true,
         body: SafeArea(
           bottom: false,
           child: RefreshIndicator(
@@ -289,6 +292,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     return Scaffold(
       backgroundColor: bg,
+      extendBodyBehindAppBar: true,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -799,78 +803,86 @@ class _StaticOverviewHeader extends StatelessWidget {
       height: _overviewHeaderHeight,
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        decoration: BoxDecoration(
+        child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.30 : 0.10),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Align(
-                alignment: const Alignment(-1.0, -0.35),
-                child: Padding(
-                  padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w700,
-                          color: titleColor,
-                        ),
-                      ),
-                      const SizedBox(height: gapTitleDate),
-                      Text(
-                        dateLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: dateSize,
-                          color: subColor,
-                        ),
-                      ),
-                    ],
-                  ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                gradient: LinearGradient(
+                  colors: gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.30 : 0.10),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              Align(
-                alignment: Alignment.topLeft,
-                child: pill,
-              ),
-              Align(
-                alignment: const Alignment(1.0, 0.0),
-                child: SizedBox(
-                  width: iconSize,
-                  height: iconSize,
-                  child: Opacity(
-                    opacity: isOffline ? 1.0 : 0.0,
-                    child: Icon(
-                      Icons.wifi_off,
-                      size: iconSize,
-                      color: titleColor.withOpacity(0.85),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Align(
+                      alignment: const Alignment(-1.0, -0.35),
+                      child: Padding(
+                        padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w700,
+                                color: titleColor,
+                              ),
+                            ),
+                            const SizedBox(height: gapTitleDate),
+                            Text(
+                              dateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: dateSize,
+                                color: subColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: pill,
+                    ),
+                    Align(
+                      alignment: const Alignment(1.0, 0.0),
+                      child: SizedBox(
+                        width: iconSize,
+                        height: iconSize,
+                        child: Opacity(
+                          opacity: isOffline ? 1.0 : 0.0,
+                          child: Icon(
+                            Icons.wifi_off,
+                            size: iconSize,
+                            color: titleColor.withOpacity(0.85),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
