@@ -293,6 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     RadioListTile<ThemeMode>(
                       value: ThemeMode.system,
                       groupValue: _themeMode,
+                      activeColor: Colors.grey,
                       onChanged: (v) async {
                         _triggerHaptic();
                         if (v == null) return;
@@ -304,6 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     RadioListTile<ThemeMode>(
                       value: ThemeMode.light,
                       groupValue: _themeMode,
+                      activeColor: Colors.grey,
                       onChanged: (v) async {
                         _triggerHaptic();
                         if (v == null) return;
@@ -315,6 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     RadioListTile<ThemeMode>(
                       value: ThemeMode.dark,
                       groupValue: _themeMode,
+                      activeColor: Colors.grey,
                       onChanged: (v) async {
                         _triggerHaptic();
                         if (v == null) return;
