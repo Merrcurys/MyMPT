@@ -362,15 +362,13 @@ class _CollapsibleWeekHeader extends StatelessWidget {
 
         final isCompact = tCurved > 0.5;
         final displayTitle = isCompact ? weekType : title;
-        
-        final adjustedGradient = gradient.map((c) => c.withValues(alpha: lerpDouble(1.0, 0.7, tCurved)!)).toList();
 
         return Container(
           margin: EdgeInsets.fromLTRB(16, lerpDouble(16, 8, tCurved)!, 16, lerpDouble(0, 8, tCurved)!),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
             gradient: LinearGradient(
-              colors: adjustedGradient,
+              colors: gradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
