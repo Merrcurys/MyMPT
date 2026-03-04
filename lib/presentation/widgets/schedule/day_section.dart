@@ -56,7 +56,7 @@ class DaySection extends StatelessWidget {
     final q = Uri.encodeComponent(address);
 
     if (Platform.isAndroid) {
-      return Uri.parse('geo:0,0?q=$q'); // [web:387][web:393]
+      return Uri.parse('geo:0,0?q=$q');
     }
 
     return Uri.parse('https://www.google.com/maps/search/?api=1&query=$q');
@@ -203,6 +203,7 @@ class DaySection extends StatelessWidget {
     final callsData = CallsUtil.getCalls();
 
     final canOpen = _canOpenBuilding(building);
+    final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -214,10 +215,10 @@ class DaySection extends StatelessWidget {
               Expanded(
                 child: Text(
                   formattedTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: cs.onSurface,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -238,7 +239,7 @@ class DaySection extends StatelessWidget {
           const SizedBox(height: 20),
           Column(children: _buildLessonWidgets(lessons, callsData, onLessonTap: onLessonTap)),
           const SizedBox(height: 12),
-          Divider(color: Colors.white.withValues(alpha: 0.05), height: 32),
+          Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 32),
         ],
       ),
     );
