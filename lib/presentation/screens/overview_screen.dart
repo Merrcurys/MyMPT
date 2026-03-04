@@ -236,14 +236,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   List<Color> getHeaderGradient(String weekType, {required bool isDark}) {
-    final base = isDark ? const Color(0xFF111111) : Colors.white.withOpacity(0.85);
+    final base = isDark ? const Color(0xFF111111).withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.5);
 
     if (weekType == 'Знаменатель') {
-      return [base, isDark ? const Color(0xFF4FC3F7) : const Color(0xFF4FC3F7).withOpacity(0.85)];
+      return [base, isDark ? const Color(0xFF4FC3F7).withValues(alpha: 0.6) : const Color(0xFF4FC3F7).withValues(alpha: 0.5)];
     } else if (weekType == 'Числитель') {
-      return [base, isDark ? const Color(0xFFFF8C00) : const Color(0xFFFF8C00).withOpacity(0.85)];
+      return [base, isDark ? const Color(0xFFFF8C00).withValues(alpha: 0.6) : const Color(0xFFFF8C00).withValues(alpha: 0.5)];
     } else {
-      return [base, isDark ? const Color(0xFF333333) : const Color(0xFFE0E0E0).withOpacity(0.85)];
+      return [base, isDark ? const Color(0xFF333333).withValues(alpha: 0.6) : const Color(0xFFE0E0E0).withValues(alpha: 0.5)];
     }
   }
 
@@ -275,17 +275,10 @@ class _OverviewScreenState extends State<OverviewScreen> {
       return Scaffold(
         backgroundColor: bg,
         extendBodyBehindAppBar: true,
-        body: SafeArea(
-          bottom: false,
-          child: RefreshIndicator(
-            onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
-            color: cs.primary,
-            child: buildSchedulePage(
-              scheduleData,
-              pageTitle,
-              isDark: isDark,
-            ),
-          ),
+        body: buildSchedulePage(
+          scheduleData,
+          pageTitle,
+          isDark: isDark,
         ),
       );
     }
@@ -293,43 +286,33 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return Scaffold(
       backgroundColor: bg,
       extendBodyBehindAppBar: true,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            PageView(
-              controller: pageController,
-              onPageChanged: (index) {
-                setState(() => currentPageIndex = index);
-                if (_pageRequest.value != index) _pageRequest.value = index;
-              },
-              children: [
-                RefreshIndicator(
-                  onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
-                  color: cs.primary,
-                  child: buildSchedulePage(todayScheduleData, 'Сегодня', isDark: isDark),
-                ),
-                RefreshIndicator(
-                  onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
-                  color: cs.primary,
-                  child: buildSchedulePage(tomorrowScheduleData, 'Завтра', isDark: isDark),
-                ),
-              ],
-            ),
-            Positioned(
-              bottom: 60,
-              left: 0,
-              right: 0,
-              child: PageIndicator(currentPageIndex: currentPageIndex),
-            ),
-          ],
-        ),
+      body: Stack(
+        children: [
+          PageView(
+            controller: pageController,
+            onPageChanged: (index) {
+              setState(() => currentPageIndex = index);
+              if (_pageRequest.value != index) _pageRequest.value = index;
+            },
+            children: [
+              buildSchedulePage(todayScheduleData, 'Сегодня', isDark: isDark),
+              buildSchedulePage(tomorrowScheduleData, 'Завтра', isDark: isDark),
+            ],
+          ),
+          Positioned(
+            bottom: 60,
+            left: 0,
+            right: 0,
+            child: PageIndicator(currentPageIndex: currentPageIndex),
+          ),
+        ],
       ),
     );
   }
 
   Widget buildSchedulePage(List<Schedule> scheduleData, String pageTitle, {required bool isDark}) {
     final cs = Theme.of(context).colorScheme;
+    final bg = Theme.of(context).scaffoldBackgroundColor;
     final onSurface = cs.onSurface;
     final onSurfaceV = cs.onSurfaceVariant;
 
@@ -357,185 +340,205 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
     final canOpen = _canOpenBuilding(building);
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _StaticOverviewHeader(
-            title: pageTitle,
-            dateLabel: dateLabel,
-            weekType: weekType ?? '',
-            gradient: getHeaderGradient(weekType ?? '', isDark: isDark),
-            isOffline: isOffline,
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(0, 24, 0, 110),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          pageTitle,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: onSurface,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: canOpen ? () => _openBuildingInMaps(context, building) : null,
-                            child: Location(
-                              label: building,
-                              showOverrideIndicator: hasBuildingOverride,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: scheduleWithChanges.isEmpty ? 50.0 : 12.0),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: () => fetchScheduleData(forceRefresh: true, userInitiated: true),
+          color: cs.primary,
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(0, MediaQuery.paddingOf(context).top + 16 + _overviewHeaderHeight + 24, 0, 110),
+                sliver: SliverToBoxAdapter(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (scheduleWithChanges.isEmpty) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
-                          alignment: Alignment.center,
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.weekend_outlined,
-                                size: 64,
-                                color: onSurface.withOpacity(0.30),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                '$pageTitle выходной',
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                pageTitle,
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600,
-                                  color: onSurface.withOpacity(0.80),
+                                  color: onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.translucent,
+                                  onTap: canOpen ? () => _openBuildingInMaps(context, building) : null,
+                                  child: Location(
+                                    label: building,
+                                    showOverrideIndicator: hasBuildingOverride,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Нет запланированных занятий',
-                                style: TextStyle(fontSize: 16, color: onSurfaceV),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ] else ...[
-                        ...List.generate(scheduleWithChanges.length, (index) {
-                          final item = scheduleWithChanges[index];
+                      ),
+                      SizedBox(height: scheduleWithChanges.isEmpty ? 50.0 : 12.0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            if (scheduleWithChanges.isEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 48),
+                                alignment: Alignment.center,
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.weekend_outlined,
+                                      size: 64,
+                                      color: onSurface.withOpacity(0.30),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      '$pageTitle выходной',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: onSurface.withOpacity(0.80),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Нет запланированных занятий',
+                                      style: TextStyle(fontSize: 16, color: onSurfaceV),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              ...List.generate(scheduleWithChanges.length, (index) {
+                                final item = scheduleWithChanges[index];
 
-                          String lessonStartTime = item.startTime;
-                          String lessonEndTime = item.endTime;
+                                String lessonStartTime = item.startTime;
+                                String lessonEndTime = item.endTime;
 
-                          try {
-                            final periodInt = int.tryParse(item.number);
-                            if (periodInt != null && periodInt > 0 && periodInt <= callsData.length) {
-                              final call = callsData[periodInt - 1];
-                              lessonStartTime = call.startTime;
-                              lessonEndTime = call.endTime;
-                            }
-                          } catch (_) {}
+                                try {
+                                  final periodInt = int.tryParse(item.number);
+                                  if (periodInt != null && periodInt > 0 && periodInt <= callsData.length) {
+                                    final call = callsData[periodInt - 1];
+                                    lessonStartTime = call.startTime;
+                                    lessonEndTime = call.endTime;
+                                  }
+                                } catch (_) {}
 
-                          Widget card = LessonCard(
-                            number: item.number,
-                            subject: item.subject,
-                            teacher: item.teacher,
-                            startTime: lessonStartTime,
-                            endTime: lessonEndTime,
-                            accentColor: lessonAccent,
-                          );
-                          if (_isStudent) {
-                            card = Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _onLessonTap(
-                                  item,
+                                Widget card = LessonCard(
+                                  number: item.number,
+                                  subject: item.subject,
+                                  teacher: item.teacher,
                                   startTime: lessonStartTime,
                                   endTime: lessonEndTime,
+                                  accentColor: lessonAccent,
+                                );
+                                if (_isStudent) {
+                                  card = Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _onLessonTap(
+                                        item,
+                                        startTime: lessonStartTime,
+                                        endTime: lessonEndTime,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: card,
+                                    ),
+                                  );
+                                }
+                                final List<Widget> widgets = [card];
+
+                                if (index < scheduleWithChanges.length - 1) {
+                                  String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
+
+                                  try {
+                                    final nextPeriodInt = int.tryParse(scheduleWithChanges[index + 1].number);
+                                    if (nextPeriodInt != null &&
+                                        nextPeriodInt > 0 &&
+                                        nextPeriodInt <= callsData.length) {
+                                      final nextCall = callsData[nextPeriodInt - 1];
+                                      nextLessonStartTime = nextCall.startTime;
+                                    }
+                                  } catch (_) {}
+
+                                  widgets.add(
+                                    BreakIndicator(
+                                      startTime: lessonEndTime,
+                                      endTime: nextLessonStartTime,
+                                    ),
+                                  );
+                                }
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: Column(children: widgets),
+                                );
+                              }),
+                            ],
+                            if (filteredChanges.isNotEmpty) ...[
+                              const SizedBox(height: 30),
+                              Divider(color: cs.outlineVariant.withOpacity(0.8), thickness: 1),
+                              const SizedBox(height: 20),
+                              Text(
+                                'Изменения в расписании',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: onSurface,
                                 ),
-                                borderRadius: BorderRadius.circular(16),
-                                child: card,
                               ),
-                            );
-                          }
-                          final List<Widget> widgets = [card];
-
-                          if (index < scheduleWithChanges.length - 1) {
-                            String nextLessonStartTime = scheduleWithChanges[index + 1].startTime;
-
-                            try {
-                              final nextPeriodInt = int.tryParse(scheduleWithChanges[index + 1].number);
-                              if (nextPeriodInt != null &&
-                                  nextPeriodInt > 0 &&
-                                  nextPeriodInt <= callsData.length) {
-                                final nextCall = callsData[nextPeriodInt - 1];
-                                nextLessonStartTime = nextCall.startTime;
-                              }
-                            } catch (_) {}
-
-                            widgets.add(
-                              BreakIndicator(
-                                startTime: lessonEndTime,
-                                endTime: nextLessonStartTime,
-                              ),
-                            );
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: Column(children: widgets),
-                          );
-                        }),
-                      ],
-                      if (filteredChanges.isNotEmpty) ...[
-                        const SizedBox(height: 30),
-                        Divider(color: cs.outlineVariant.withOpacity(0.8), thickness: 1),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Изменения в расписании',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: onSurface,
-                          ),
+                              const SizedBox(height: 12),
+                              ...filteredChanges.map((change) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: ReplacementCard(
+                                    lessonNumber: change.lessonNumber,
+                                    replaceFrom: change.replaceFrom,
+                                    replaceTo: change.replaceTo,
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 20),
+                            ],
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        ...filteredChanges.map((change) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: ReplacementCard(
-                              lessonNumber: change.lessonNumber,
-                              replaceFrom: change.replaceFrom,
-                              replaceTo: change.replaceTo,
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 20),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                color: bg.withValues(alpha: isDark ? 0.3 : 0.4),
+                padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 16, bottom: 16, left: 16, right: 16),
+                child: _StaticOverviewHeader(
+                  title: pageTitle,
+                  dateLabel: dateLabel,
+                  weekType: weekType ?? '',
+                  gradient: getHeaderGradient(weekType ?? '', isDark: isDark),
+                  isOffline: isOffline,
+                ),
+              ),
             ),
           ),
         ),
@@ -802,87 +805,78 @@ class _StaticOverviewHeader extends StatelessWidget {
     return SizedBox(
       height: _overviewHeaderHeight,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: ClipRRect(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(radius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(radius),
-                gradient: LinearGradient(
-                  colors: gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.30 : 0.10),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Align(
-                      alignment: const Alignment(-1.0, -0.35),
-                      child: Padding(
-                        padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: titleSize,
-                                fontWeight: FontWeight.w700,
-                                color: titleColor,
-                              ),
-                            ),
-                            const SizedBox(height: gapTitleDate),
-                            Text(
-                              dateLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: dateSize,
-                                color: subColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: pill,
-                    ),
-                    Align(
-                      alignment: const Alignment(1.0, 0.0),
-                      child: SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                        child: Opacity(
-                          opacity: isOffline ? 1.0 : 0.0,
-                          child: Icon(
-                            Icons.wifi_off,
-                            size: iconSize,
-                            color: titleColor.withOpacity(0.85),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.30 : 0.10),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(padH, padTop, padH, padBottom),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Align(
+                alignment: const Alignment(-1.0, -0.35),
+                child: Padding(
+                  padding: EdgeInsets.only(right: iconSize + 12, top: reservedTop),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w700,
+                          color: titleColor,
+                        ),
+                      ),
+                      const SizedBox(height: gapTitleDate),
+                      Text(
+                        dateLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: dateSize,
+                          color: subColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.topLeft,
+                child: pill,
+              ),
+              Align(
+                alignment: const Alignment(1.0, 0.0),
+                child: SizedBox(
+                  width: iconSize,
+                  height: iconSize,
+                  child: Opacity(
+                    opacity: isOffline ? 1.0 : 0.0,
+                    child: Icon(
+                      Icons.wifi_off,
+                      size: iconSize,
+                      color: titleColor.withOpacity(0.85),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
