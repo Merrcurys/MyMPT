@@ -51,6 +51,27 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen> {
     }
   }
 
+  String _primaryBuilding(List<Schedule> schedule) {
+    if (schedule.isEmpty) return '';
+
+    final Map<String, int> counts = {};
+    for (final lesson in schedule) {
+      counts[lesson.building] = (counts[lesson.building] ?? 0) + 1;
+    }
+
+    String primary = schedule.first.building;
+    int maxCount = 0;
+
+    counts.forEach((building, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        primary = building;
+      }
+    });
+
+    return primary;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -122,9 +143,11 @@ class _TeacherScheduleScreenState extends State<TeacherScheduleScreen> {
                     itemCount: _schedule.length,
                     itemBuilder: (context, index) {
                       final entry = _schedule.entries.elementAt(index);
+                      final building = _primaryBuilding(entry.value);
+                      
                       return DaySection(
                         title: entry.key,
-                        building: '',
+                        building: building,
                         lessons: entry.value,
                         accentColor: Colors.grey,
                         weekType: weekType,
