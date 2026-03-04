@@ -280,20 +280,27 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (enableBlur && blurSigma > 0.1)
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-              child: ColoredBox(
-                color: backgroundColor.withAlpha((overlayAlpha * 255).toInt()),
-              ),
-            ),
-          )
-        else if (!enableBlur && blurSigma > 0.1)
-          ColoredBox(color: backgroundColor.withAlpha((overlayAlpha * 255).toInt()))
-        else if (t == 0.0)
+        if (t == 0.0)
           ColoredBox(color: backgroundColor),
-          
+
+        if (t > 0.0)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: paddingTop + lerpDouble(16, 8, Curves.easeOutCubic.transform(t))!,
+            child: enableBlur && blurSigma > 0.1
+                ? ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                      child: ColoredBox(
+                        color: backgroundColor.withAlpha((overlayAlpha * 255).toInt()),
+                      ),
+                    ),
+                  )
+                : ColoredBox(color: backgroundColor.withAlpha((overlayAlpha * 255).toInt())),
+          ),
+
         Padding(
           padding: EdgeInsets.only(top: paddingTop),
           child: child,
