@@ -1,5 +1,6 @@
-import 'dart:ui' show lerpDouble;
+import 'dart:ui' show ImageFilter, lerpDouble;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -160,7 +161,7 @@ class _ScheduleScreenState extends State {
                     onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
                     color: Colors.white,
                     child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()), // Оптимизация физики скролла
+                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                       slivers: [
                         SliverPersistentHeader(
                           pinned: true,
@@ -266,10 +267,29 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Убрали BackdropFilter и ClipRect (блюр), так как они вызывают сильный jank в Impeller iOS
-    return ColoredBox(
-      color: backgroundColor, // Статичный фон вместо блюра для производительности 120Hz
-      child: child,
+    final enableBlur = defaultTargetPlatform == TargetPlatform.iOS;
+
+    final range = (maxHeight - minHeight).abs() < 1 ? 1.0 : (maxHeight - minHeight);
+    final t = (shrinkOffset / range).clamp(0.0, 1.0);
+
+    final blurSigma = lerpDouble(0, 10, Curves.easeOut.transform(t))!;
+    final overlayAlpha = lerpDouble(0.0, 0.14, Curves.easeOut.transform(t))!;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: backgroundColor),
+        if (enableBlur && overlapsContent && blurSigma > 0.1)
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+              child: ColoredBox(
+                color: backgroundColor.withValues(alpha: overlayAlpha),
+              ),
+            ),
+          ),
+        child,
+      ],
     );
   }
 }
@@ -339,7 +359,6 @@ class _CollapsibleWeekHeader extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            // Уменьшено количество теней для оптимизации
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: lerpDouble(0.3, 0.1, tCurved)!),
@@ -464,22 +483,30 @@ class _WeekTypePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-          color: Colors.white,
+    final radius = BorderRadius.circular(14);
+
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: radius,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
