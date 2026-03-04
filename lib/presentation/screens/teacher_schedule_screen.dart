@@ -1,164 +1,138 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_mpt/core/utils/date_formatter.dart';
-import 'package:my_mpt/data/repositories/schedule_repository.dart';
+import 'package:my_mpt/core/utils/teacher_full_name_resolver.dart';
+import 'package:my_mpt/data/repositories/teacher_schedule_repository.dart';
 import 'package:my_mpt/domain/entities/schedule.dart';
 import 'package:my_mpt/presentation/widgets/schedule/day_section.dart';
 
-/// Экран расписания преподавателя (открывается из расписания студента по кнопке «Посмотреть расписание преподавателя»).
-/// По жесту «назад» возвращает на расписание студента.
 class TeacherScheduleScreen extends StatefulWidget {
-  const TeacherScheduleScreen({super.key, required this.teacherName});
-
   final String teacherName;
+
+  const TeacherScheduleScreen({
+    super.key,
+    required this.teacherName,
+  });
 
   @override
   State<TeacherScheduleScreen> createState() => _TeacherScheduleScreenState();
 }
 
 class _TeacherScheduleScreenState extends State<TeacherScheduleScreen> {
-  final ScheduleRepository _repository = ScheduleRepository();
-  Map<String, List<Schedule>> _weeklySchedule = {};
+  late final TeacherScheduleRepository _repository;
+  Map<String, List<Schedule>> _schedule = {};
   bool _isLoading = true;
-  String? _loadError;
 
   @override
   void initState() {
     super.initState();
+    _repository = TeacherScheduleRepository(widget.teacherName);
     _loadSchedule();
   }
 
   Future<void> _loadSchedule() async {
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
+    setState(() => _isLoading = true);
     try {
-      final weekly = await _repository.getWeeklyScheduleForTeacher(widget.teacherName);
-      if (!mounted) return;
-      setState(() {
-        _weeklySchedule = weekly;
-        _isLoading = false;
-        if (weekly.isEmpty) _loadError = 'Расписание не найдено';
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _loadError = 'Ошибка загрузки';
-      });
-    }
-  }
-
-  String _primaryBuilding(List<Schedule> schedule) {
-    if (schedule.isEmpty) return '';
-    final Map<String, int> counts = {};
-    for (final lesson in schedule) {
-      counts[lesson.building] = (counts[lesson.building] ?? 0) + 1;
-    }
-    String primary = schedule.first.building;
-    int maxCount = 0;
-    counts.forEach((building, count) {
-      if (count > maxCount) {
-        maxCount = count;
-        primary = building;
+      final schedule = await _repository.getSchedule();
+      if (mounted) {
+        setState(() {
+          _schedule = schedule;
+          _isLoading = false;
+        });
       }
-    });
-    return primary;
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка загрузки расписания')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final primaryColor = isDark ? Colors.white : Colors.black87;
     final now = DateTime.now();
-    final weekType = DateFormatter.getWeekType(now) ?? '';
-    final days = _weeklySchedule.entries.toList();
-
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final weekType = DateFormatter.getWeekType(now);
     
-    final bgColor = theme.scaffoldBackgroundColor;
-    final fgColor = isDark ? Colors.white : Colors.black87;
-    final errorColor = isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black87;
-    final hintColor = isDark ? Colors.white70 : Colors.black54;
-
-    // Use primary color of the theme as accent for the teacher's schedule lessons
-    final accentColor = isDark ? Colors.grey : Colors.grey.shade400;
+    final progressColor = isDark ? Colors.white : Colors.grey;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: bg,
       appBar: AppBar(
-        title: Text(
-          widget.teacherName,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: fgColor,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
+        backgroundColor: bg,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: fgColor),
+          icon: Icon(Icons.arrow_back_ios, color: primaryColor, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        backgroundColor: bgColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Расписание преподавателя',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              resolveTeacherFullName(widget.teacherName),
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: false,
       ),
       body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(color: theme.colorScheme.primary),
-            )
-          : _loadError != null
+          ? Center(child: CircularProgressIndicator(color: progressColor))
+          : _schedule.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _loadError!,
-                        style: TextStyle(
-                          color: errorColor,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton.icon(
-                        onPressed: _loadSchedule,
-                        icon: Icon(Icons.refresh, color: hintColor),
-                        label: Text('Повторить', style: TextStyle(color: hintColor)),
-                      ),
-                    ],
+                  child: Text(
+                    'Расписание не найдено',
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      fontSize: 16,
+                    ),
                   ),
                 )
-              : days.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Нет занятий',
-                        style: TextStyle(
-                          color: hintColor,
-                          fontSize: 16,
-                        ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _loadSchedule,
-                      color: theme.colorScheme.primary,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: days.length,
-                        itemBuilder: (context, index) {
-                          final day = days[index];
-                          return DaySection(
-                            title: day.key,
-                            building: _primaryBuilding(day.value),
-                            lessons: day.value,
-                            accentColor: accentColor,
-                            weekType: weekType,
-                          );
-                        },
-                      ),
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+                      HapticFeedback.lightImpact();
+                    }
+                    await _loadSchedule();
+                  },
+                  color: progressColor,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
+                    padding: const EdgeInsets.only(top: 16, bottom: 40),
+                    itemCount: _schedule.length,
+                    itemBuilder: (context, index) {
+                      final entry = _schedule.entries.elementAt(index);
+                      return DaySection(
+                        title: entry.key,
+                        building: '',
+                        lessons: entry.value,
+                        accentColor: Colors.grey,
+                        weekType: weekType,
+                        showTeacherInsteadOfGroup: false,
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }

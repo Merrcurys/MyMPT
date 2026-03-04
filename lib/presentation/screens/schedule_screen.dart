@@ -152,6 +152,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     final bg = Theme.of(context).scaffoldBackgroundColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final progressColor = isDark ? Colors.white : Colors.grey;
 
     const headerMaxHeight = 176.0;
     const headerMinHeight = 88.0;
@@ -161,7 +163,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       body: isInitialLoading
           ? SafeArea(
               bottom: false,
-              child: Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)),
+              child: Center(child: CircularProgressIndicator(color: progressColor)),
             )
           : RefreshIndicator(
               onRefresh: () async {
@@ -170,7 +172,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 }
                 await _loadScheduleData(forceRefresh: true, userInitiated: true);
               },
-              color: Theme.of(context).colorScheme.primary,
+              color: progressColor,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
