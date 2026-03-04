@@ -17,10 +17,10 @@ class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
-  State createState() => _ScheduleScreenState();
+  State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State {
+class _ScheduleScreenState extends State<ScheduleScreen> {
   static const Color _lessonAccent = Colors.grey;
 
   late final ScheduleRepository _repository;
@@ -141,7 +141,7 @@ class _ScheduleScreenState extends State {
     final days = _weeklySchedule.entries.toList();
 
     final now = DateTime.now();
-    final weekType = DateFormatter.getWeekType(now) ?? '';
+    final weekType = DateFormatter.getWeekType(now);
     final dateLabel = DateFormatter.formatDayWithMonth(now);
 
     final bg = Theme.of(context).scaffoldBackgroundColor;
@@ -258,7 +258,8 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get maxExtent => maxHeight;
 
-  @override\n  double get minExtent => minHeight;
+  @override
+  double get minExtent => minHeight;
 
   @override
   bool shouldRebuild(covariant _HeightPinnedHeaderDelegate old) {
