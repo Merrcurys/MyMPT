@@ -157,59 +157,53 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               bottom: false,
               child: Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)),
             )
-          : Stack(
-              children: [
-                SafeArea(
-                  bottom: false,
-                  child: RefreshIndicator(
-                    onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
-                    color: Theme.of(context).colorScheme.primary,
-                    child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                      slivers: [
-                        SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _HeightPinnedHeaderDelegate(
-                            backgroundColor: bg,
-                            maxHeight: headerMaxHeight,
-                            minHeight: headerMinHeight,
-                            child: _CollapsibleWeekHeader(
-                              maxHeight: headerMaxHeight,
-                              minHeight: headerMinHeight,
-                              title: 'Неделя',
-                              dateLabel: dateLabel,
-                              weekType: weekType,
-                              gradient: _getHeaderGradient(weekType, isDark: isDark),
-                              isOffline: _isOffline,
-                            ),
-                          ),
-                        ),
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(0, 24, 0, 110),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final day = days[index];
-                                final building = _primaryBuilding(day.value);
-
-                                return DaySection(
-                                  title: day.key,
-                                  building: building,
-                                  lessons: day.value,
-                                  accentColor: _lessonAccent,
-                                  weekType: weekType,
-                                  onLessonTap: _isStudent ? _onLessonTap : null,
-                                );
-                              },
-                              childCount: days.length,
-                            ),
-                          ),
-                        ),
-                      ],
+          : RefreshIndicator(
+              onRefresh: () => _loadScheduleData(forceRefresh: true, userInitiated: true),
+              color: Theme.of(context).colorScheme.primary,
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _HeightPinnedHeaderDelegate(
+                      backgroundColor: bg,
+                      maxHeight: headerMaxHeight + MediaQuery.of(context).padding.top,
+                      minHeight: headerMinHeight + MediaQuery.of(context).padding.top,
+                      paddingTop: MediaQuery.of(context).padding.top,
+                      child: _CollapsibleWeekHeader(
+                        maxHeight: headerMaxHeight,
+                        minHeight: headerMinHeight,
+                        title: 'Неделя',
+                        dateLabel: dateLabel,
+                        weekType: weekType,
+                        gradient: _getHeaderGradient(weekType, isDark: isDark),
+                        isOffline: _isOffline,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(0, 24, 0, 110),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final day = days[index];
+                          final building = _primaryBuilding(day.value);
+
+                          return DaySection(
+                            title: day.key,
+                            building: building,
+                            lessons: day.value,
+                            accentColor: _lessonAccent,
+                            weekType: weekType,
+                            onLessonTap: _isStudent ? _onLessonTap : null,
+                          );
+                        },
+                        childCount: days.length,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
     );
   }
@@ -247,12 +241,14 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.backgroundColor,
     required this.maxHeight,
     required this.minHeight,
+    required this.paddingTop,
     required this.child,
   });
 
   final Color backgroundColor;
   final double maxHeight;
   final double minHeight;
+  final double paddingTop;
   final Widget child;
 
   @override
@@ -266,6 +262,7 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     return old.backgroundColor != backgroundColor ||
         old.maxHeight != maxHeight ||
         old.minHeight != minHeight ||
+        old.paddingTop != paddingTop ||
         old.child != child;
   }
 
@@ -276,23 +273,28 @@ class _HeightPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     final range = (maxHeight - minHeight).abs() < 1 ? 1.0 : (maxHeight - minHeight);
     final t = (shrinkOffset / range).clamp(0.0, 1.0);
 
-    final blurSigma = lerpDouble(0, 10, Curves.easeOut.transform(t))!;
-    final overlayAlpha = lerpDouble(0.0, 0.14, Curves.easeOut.transform(t))!;
+    final blurSigma = lerpDouble(0, 15, Curves.easeOut.transform(t))!;
+    final baseAlpha = backgroundColor.a;
+    final overlayAlpha = lerpDouble(baseAlpha, baseAlpha * 0.5, Curves.easeOut.transform(t))!;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: backgroundColor),
-        if (enableBlur && overlapsContent && blurSigma > 0.1)
+        if (enableBlur && blurSigma > 0.1)
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
               child: ColoredBox(
-                color: backgroundColor.withValues(alpha: overlayAlpha),
+                color: backgroundColor.withAlpha((overlayAlpha * 255).toInt()),
               ),
             ),
-          ),
-        child,
+          )
+        else
+          ColoredBox(color: backgroundColor),
+        Padding(
+          padding: EdgeInsets.only(top: paddingTop),
+          child: child,
+        ),
       ],
     );
   }
@@ -357,13 +359,15 @@ class _CollapsibleWeekHeader extends StatelessWidget {
 
         final isCompact = tCurved > 0.5;
         final displayTitle = isCompact ? weekType : title;
+        
+        final adjustedGradient = gradient.map((c) => c.withValues(alpha: lerpDouble(1.0, 0.7, tCurved)!)).toList();
 
         return Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          margin: EdgeInsets.fromLTRB(16, lerpDouble(16, 8, tCurved)!, 16, lerpDouble(0, 8, tCurved)!),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
             gradient: LinearGradient(
-              colors: gradient,
+              colors: adjustedGradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
